@@ -1,0 +1,67 @@
+# Render blueprint — deploys the FastAPI backend.
+# Render → New → Blueprint → pick this repo. Secrets are set in the dashboard
+# (sync:false), never committed.
+services:
+  - type: web
+    name: finovara-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health/ready
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: LOG_JSON
+        value: "true"
+      # Cross-site cookies (Vercel frontend ↔ Render backend are different sites):
+      # SameSite=None + Secure is REQUIRED or the browser drops the auth cookie.
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: RATE_LIMIT_ENABLED
+        value: "false"
+      - key: TRUSTED_HOSTS
+        value: "*"
+      # --- set these as SECRETS in the Render dashboard (sync:false) ---
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USE_PGBOUNCER
+        value: "true"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_ALGORITHM
+        value: ES256
+      - key: REDIS_URL
+        sync: false            # optional; leave unset — app degrades gracefully
+      # Set AFTER the Vercel frontend URL exists:
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SMTP_HOST
+        value: smtp-relay.brevo.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: SMTP_STARTTLS
+        value: "true"
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: "Finovara Advisory"

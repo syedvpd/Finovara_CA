@@ -1,0 +1,54 @@
+# --- Secrets — never commit -------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+token.txt
+*_token.txt
+credentials.json
+service-account*.json
+
+# --- Python ------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# --- Node --------------------------------------------------------------------
+node_modules/
+.pnp/
+.pnp.js
+
+# --- Build output ------------------------------------------------------------
+dist/
+build/
+.vite/
+
+# --- Logs and runtime --------------------------------------------------------
+*.log
+logs/
+pids/
+*.pid
+
+# --- Editors and OS ----------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Local archives ----------------------------------------------------------
+*.zip
+!supabase/**/*.sql
+tok.json
+*.tok.json
+scratch_*.py
+backend/scripts/check_users.py
+backend/scripts/fix_test_emails.py
