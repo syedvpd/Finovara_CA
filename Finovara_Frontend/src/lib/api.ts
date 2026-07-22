@@ -56,7 +56,12 @@ interface RequestOptions {
 }
 
 function buildUrl(path: string, query?: Record<string, QueryValue>): string {
-  const url = new URL(BASE_URL + path);
+  // BASE_URL may be absolute (http…) or same-origin relative (/api/v1). A
+  // relative base is preferred in production: the frontend and API share the
+  // vercel.app origin via a rewrite proxy, so cookies (incl. the CSRF token)
+  // are first-party and readable by JS.
+  const base = /^https?:\/\//.test(BASE_URL) ? BASE_URL : window.location.origin + BASE_URL;
+  const url = new URL(base + path);
   if (query) {
     for (const [k, v] of Object.entries(query)) {
       if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
