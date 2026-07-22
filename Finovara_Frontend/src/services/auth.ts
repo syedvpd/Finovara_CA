@@ -63,11 +63,18 @@ export function currentSession(): Promise<SessionInfo> {
   return api.get<SessionInfo>("/auth/session");
 }
 
-/** Sign out this device (clears cookies backend-side). */
+/** Sign out this device. Best-effort server revocation; never throws, so the
+ *  client always ends up logged out and can navigate away even if the backend
+ *  call fails (bad CSRF, network, already-expired cookie). */
 export async function logout(): Promise<void> {
   try {
     await api.delete<void>("/auth/session");
-  } finally {
+  } catch {
+    /* ignore — local sign-out below is what matters for the UI */
+  }
+  try {
     await supabase.auth.signOut();
+  } catch {
+    /* ignore */
   }
 }
