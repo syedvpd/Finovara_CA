@@ -13,6 +13,14 @@ import {
 } from "lucide-react";
 import { Page } from "../../types/index";
 import { useAuth } from "../../context";
+import { resources } from "../../services";
+import { api } from "../../lib/api";
+
+// Formatting + safe backend→UI mapping helpers for the admin lists.
+const _money = (v: unknown) => `₹${Number(v ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+const _date = (s?: string | null) => s ? new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—";
+const _tc = (s?: string | null) => s ? s.replace(/[_-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "";
+const _rowsOf = (r: PromiseSettledResult<any>): any[] => r.status === "fulfilled" ? (r.value?.data ?? r.value ?? []) : [];
 
 type ActionModalState = { title: string; type: 'form'|'upload'; section?: string; item?: any };
 
@@ -22,48 +30,15 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [actionModal, setActionModal] = useState<ActionModalState | null>(null);
   const [toastMessage, setToastMessage] = useState<{msg: string, type: 'success'|'info'|'error'} | null>(null);
-  const [clients, setClients] = useState([
-    { n: "TechCorp India Pvt Ltd", ca: "CA Priya Nair", pan: "AABCT1234A", gstin: "27AABCT1234A1Z5", svc: 5, status: "Active" as const },
-    { n: "ABC Manufacturing Ltd", ca: "CA Suresh Kumar", pan: "AABCA5678B", gstin: "27AABCA5678B1Z2", svc: 7, status: "Active" as const },
-    { n: "Sharma & Co LLP", ca: "CA Divya Rao", pan: "AAGFS9012C", gstin: "06AAGFS9012C1Z8", svc: 2, status: "Active" as const },
-    { n: "Green Pharma Pvt Ltd", ca: "CA Priya Nair", pan: "AACCP3456D", gstin: "27AACCP3456D1Z4", svc: 6, status: "Active" as const },
-    { n: "Sunrise Retail Ltd", ca: "CA Arjun Mehta", pan: "AADCS7890E", gstin: "07AADCS7890E1Z1", svc: 4, status: "Inactive" as const },
-  ]);
-  const [services, setServices] = useState([
-    { svc: "Income Tax Filing", cat: "Direct Tax", price: "₹2,000–₹15,000", clients: 892, active: true },
-    { svc: "GST Return Filing", cat: "Indirect Tax", price: "₹1,500–₹8,000", clients: 743, active: true },
-    { svc: "Accounting & Bookkeeping", cat: "Accounting", price: "₹5,000–₹25,000", clients: 521, active: true },
-    { svc: "Payroll Management", cat: "HR & Payroll", price: "₹3,000–₹20,000", clients: 389, active: true },
-    { svc: "Audit & Assurance", cat: "Audit", price: "₹15,000–₹1,00,000", clients: 267, active: true },
-    { svc: "Virtual CFO", cat: "Advisory", price: "₹25,000–₹75,000", clients: 98, active: true },
-    { svc: "Startup Advisory", cat: "Advisory", price: "₹10,000–₹50,000", clients: 54, active: true },
-    { svc: "Financial Due Diligence", cat: "Audit", price: "₹50,000+", clients: 22, active: false },
-  ]);
-  const [employees, setEmployees] = useState([
-    { n: "CA Priya Nair", role: "Partner", dept: "GST & Indirect Tax", clients: 142, tasks: 8, email: "priya@finovara.in" },
-    { n: "CA Suresh Kumar", role: "Partner", dept: "Direct Tax", clients: 118, tasks: 6, email: "suresh@finovara.in" },
-    { n: "Rahul Sharma", role: "Senior Manager", dept: "Audit", clients: 45, tasks: 18, email: "rahul@finovara.in" },
-    { n: "Kavya Reddy", role: "Staff", dept: "GST", clients: 62, tasks: 22, email: "kavya@finovara.in" },
-    { n: "Amit Patel", role: "Staff", dept: "Compliance", clients: 71, tasks: 27, email: "amit@finovara.in" },
-    { n: "Sneha Kumar", role: "Staff", dept: "Payroll", clients: 28, tasks: 12, email: "sneha@finovara.in" },
-  ]);
-  const [tasks, setTasks] = useState([
-    { task: "File GSTR-3B – TechCorp India", client: "TechCorp India", assignee: "Kavya R.", due: "20 Jul", priority: "High", status: "In Progress" },
-    { task: "Prepare P&L – ABC Mfg FY25", client: "ABC Mfg Ltd", assignee: "Rahul S.", due: "25 Jul", priority: "High", status: "Pending" },
-    { task: "Payroll June – Green Pharma", client: "Green Pharma", assignee: "Anita M.", due: "23 Jul", priority: "Medium", status: "In Progress" },
-    { task: "Director KYC – Sunrise Retail", client: "Sunrise Retail", assignee: "Amit P.", due: "24 Jul", priority: "Medium", status: "Pending" },
-    { task: "File ITR – Rajesh Mehta", client: "Rajesh Mehta", assignee: "Rahul S.", due: "31 Jul", priority: "High", status: "Not Started" },
-  ]);
-  const [leads, setLeads] = useState([
-    { name: "Vikram Industries", contact: "Vikram Shah", source: "Website", service: "GST Advisory", status: "Hot" as const, followUp: "Today" },
-    { name: "Priyanka Consultants", contact: "Priyanka R.", source: "Referral", service: "Income Tax", status: "Warm" as const, followUp: "22 Jul" },
-    { name: "Metro Constructions", contact: "Anil Sharma", source: "LinkedIn", service: "Audit", status: "Hot" as const, followUp: "Today" },
-    { name: "FinStart Pvt Ltd", contact: "CEO", source: "Google Ads", service: "Startup Advisory", status: "Cold" as const, followUp: "28 Jul" },
-    { name: "Sunita Kapoor", contact: "Sunita K.", source: "Walk-in", service: "ITR Filing", status: "Converted" as const, followUp: "Done" },
-  ]);
+  const [clients, setClients] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
   const [formValues, setFormValues] = useState({
     clientName: "",
     caName: "",
+    email: "",
     pan: "",
     gstin: "",
     services: "3",
@@ -101,29 +76,98 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     followUp: "Today",
   });
   const [formErrors, setFormErrors] = useState<{ pan?: string; gstin?: string }>({});
-  const [reviewDocs, setReviewDocs] = useState([
-    { doc: "Form 16 – Rajesh Mehta", client: "Rajesh Mehta", uploaded: "Today", reviewer: "Rahul S." },
-    { doc: "Balance Sheet FY24 – ABC Mfg", client: "ABC Mfg Ltd", uploaded: "Yesterday", reviewer: "CA Divya Rao" },
-    { doc: "GST Registration – Sharma & Co", client: "Sharma & Co", uploaded: "2 days ago", reviewer: "Kavya R." },
-    { doc: "Aadhaar – New Director, Green Pharma", client: "Green Pharma", uploaded: "3 days ago", reviewer: "Amit P." },
-    { doc: "Investment Proof – Rajesh Mehta", client: "Rajesh Mehta", uploaded: "3 days ago", reviewer: "Rahul S." },
-  ]);
-  const [dueTasks, setDueTasks] = useState([
-    { task: "GSTR-3B Jun 2025 – TechCorp India", date: "Mon 21 Jul", staff: "Kavya R." },
-    { task: "GSTR-3B Jun 2025 – Sharma & Co", date: "Mon 21 Jul", staff: "Kavya R." },
-    { task: "TDS Return Q1 – ABC Mfg", date: "Tue 22 Jul", staff: "Rahul S." },
-    { task: "Payroll June – Green Pharma", date: "Wed 23 Jul", staff: "Anita M." },
-    { task: "Director KYC – Sunrise Retail", date: "Thu 24 Jul", staff: "Amit P." },
-    { task: "Advance Tax Installment – Rajesh Mehta", date: "Fri 25 Jul", staff: "Rahul S." },
-  ]);
-  const [notifications, setNotifications] = useState([
-    { title:"GSTR-3B Due Today – 289 clients", msg:"Action required: GSTR-3B for June 2025 is due today for 289 clients.", t:"Just now", type:"critical" },
-    { title:"New Client Onboarded", msg:"ABC Trading Co has been successfully onboarded. 5 services activated.", t:"1 hr ago", type:"success" },
-    { title:"Payment Received – ₹75,000", msg:"Green Pharma paid Invoice INV-2025-0037.", t:"2 hrs ago", type:"success" },
-    { title:"Overdue: ITR – Sharma & Co", msg:"Income Tax Return for Sharma & Co LLP is 1 day overdue.", t:"3 hrs ago", type:"warning" },
-    { title:"Staff Alert: Amit P. Over Capacity", msg:"Amit Patel has 27 tasks assigned, exceeding capacity of 25.", t:"5 hrs ago", type:"warning" },
-    { title:"Document Uploaded – Review Pending", msg:"Rajesh Mehta uploaded Form 16. Assigned to Rahul S. for review.", t:"Yesterday", type:"info" },
-  ]);
+  const [reviewDocs, setReviewDocs] = useState<any[]>([]);
+  const [dueTasks, setDueTasks] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [blogs, setBlogs] = useState<any[]>([]);
+  const [careersList, setCareersList] = useState<any[]>([]);
+  const [taxReturns, setTaxReturns] = useState<any[]>([]);
+  const [gstReturns, setGstReturns] = useState<any[]>([]);
+  const [audits, setAudits] = useState<any[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  // Load real data and map backend rows into the compact shapes the tabs render.
+  const loadData = useCallback(async () => {
+      setDataLoading(true);
+      const r = await Promise.allSettled([
+        resources.clients.list({ page_size: 100 }),
+        resources.services.list({ page_size: 100 }),
+        resources.employees.list({ page_size: 100 }),
+        resources.tasks.list({ page_size: 100 }),
+        resources.leads.list({ page_size: 100 }),
+        resources.documents.list({ page_size: 50, status: "pending" }),
+        resources.notifications.list({ page_size: 50 }),
+        resources.invoices.list({ page_size: 100 }),
+        resources.payments.list({ page_size: 100 }),
+        resources.blogs.list({ page_size: 100 }),
+        resources.careers.list({ page_size: 100 }),
+        resources.taxReturns.list({ page_size: 100 }),
+        resources.gstReturns.list({ page_size: 100 }),
+        resources.audits.list({ page_size: 100 }),
+      ]);
+
+      setClients(_rowsOf(r[0]).map((c: any) => {
+        const e = c.entities?.[0] ?? {};
+        return { n: e.legal_name ?? e.trade_name ?? c.client_code, ca: c.client_type ? _tc(c.client_type) : "—",
+          pan: e.pan ?? "—", gstin: e.gstin ?? "—", svc: c.entities?.length ?? 0,
+          status: c.status === "active" ? "Active" : "Inactive", _raw: c };
+      }));
+      setServices(_rowsOf(r[1]).map((s: any) => ({ svc: s.name, cat: _tc(s.department), price: _money(s.base_price), clients: 0, active: true, _raw: s })));
+      setEmployees(_rowsOf(r[2]).map((e: any) => ({
+        n: e.user ? `${e.user.first_name ?? ""} ${e.user.last_name ?? ""}`.trim() || e.employee_code : e.employee_code,
+        role: e.designation, dept: e.department, clients: 0, tasks: 0, email: e.user?.email ?? "—", _raw: e })));
+      setTasks(_rowsOf(r[3]).map((t: any) => ({ task: t.title, client: t.client_id?.slice(0, 8) ?? "—", assignee: t.assignments?.[0]?.assignee_name ?? "—",
+        due: _date(t.due_date), priority: _tc(t.priority), status: _tc(t.status), _raw: t })));
+      setLeads(_rowsOf(r[4]).map((l: any) => ({ name: l.company_name ?? l.name, contact: l.name, source: _tc(l.source),
+        service: "—", status: _tc(l.status), followUp: "—", _raw: l })));
+      setReviewDocs(_rowsOf(r[5]).map((d: any) => ({ doc: d.name, client: d.client_id?.slice(0, 8) ?? "—", uploaded: _date(d.created_at), reviewer: _tc(d.status) })));
+      setNotifications(_rowsOf(r[6]).map((n: any) => ({ title: n.subject ?? "Notification", msg: n.body, t: _date(n.sent_at ?? n.created_at), type: "info" })));
+      setInvoices(_rowsOf(r[7]).map((i: any) => ({
+        inv: i.invoice_number, client: i.client_id?.slice(0, 8) ?? "—", svc: _tc(i.status),
+        amt: _money(i.total_amount), date: _date(i.issue_date),
+        status: i.status === "paid" ? "Paid" : (Number(i.paid_amount) < Number(i.total_amount) && new Date(i.due_date) < new Date() ? "Overdue" : _tc(i.status)),
+        _raw: i })));
+      setPayments(_rowsOf(r[8]).map((p: any) => ({
+        ref: p.payment_number, client: p.client_id?.slice(0, 8) ?? "—", inv: p.invoice_id?.slice(0, 8) ?? "—",
+        amt: _money(p.amount), method: _tc(p.payment_method), date: _date(p.payment_date),
+        status: p.status === "completed" || p.status === "received" ? "Received" : _tc(p.status), _raw: p })));
+      setBlogs(_rowsOf(r[9]).map((b: any) => ({
+        title: b.title, cat: "Blog", author: b.author_id?.slice(0, 8) ?? "—", date: _date(b.published_at),
+        status: _tc(b.status), views: "—", _raw: b })));
+      setCareersList(_rowsOf(r[10]).map((c: any) => ({
+        role: c.job_title, type: _tc(c.department), loc: c.location, apps: 0,
+        status: c.status === "open" || c.status === "active" ? "Active" : "Closed", _raw: c })));
+      setTaxReturns(_rowsOf(r[11]).map((t: any) => ({
+        client: t.client_id?.slice(0, 8) ?? "—", itr: t.return_type, fy: t.financial_year,
+        status: _tc(t.status), ack: t.acknowledgement_url ? "Filed" : "—", date: t.assessment_year, _raw: t })));
+      setGstReturns(_rowsOf(r[12]).map((g: any) => ({
+        client: g.client_id?.slice(0, 8) ?? "—", form: g.return_type,
+        period: `${g.period_month ?? ""}/${g.period_year}`, status: _tc(g.status),
+        arno: g.filed_at ? "Filed" : "—", _raw: g })));
+      setAudits(_rowsOf(r[13]).map((a: any) => ({
+        client: a.client_id?.slice(0, 8) ?? "—", type: _tc(a.audit_type), stage: _tc(a.status),
+        stageNum: 3, lead: "—", team: [], due: _date(a.end_date), _raw: a })));
+      const soon = _rowsOf(r[3]).filter((t: any) => t.due_date).sort((a: any, b: any) => String(a.due_date).localeCompare(String(b.due_date))).slice(0, 8);
+      setDueTasks(soon.map((t: any) => ({ task: t.title, date: _date(t.due_date), staff: t.assignments?.[0]?.assignee_name ?? "—" })));
+      setDataLoading(false);
+  }, []);
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Write-through helper: run a server mutation, then refresh the lists.
+  const persist = async (fn: () => Promise<any>, okMsg: string) => {
+    try {
+      await fn();
+      await loadData();
+      setActionModal(null);
+      showToast(okMsg, "success");
+    } catch {
+      showToast("Server rejected the change. Please check the fields and try again.", "error");
+    }
+  };
+  const _slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "svc";
+  const _lc = (s: string) => (s || "").toLowerCase().replace(/\s+/g, "_");
   const showToast = (msg: string, type: 'success'|'info'|'error' = 'success') => {
     setToastMessage({ msg, type });
     setTimeout(() => setToastMessage(null), 3000);
@@ -203,71 +247,51 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     showToast(`Task marked done: ${taskTitle}`, 'success');
   };
 
-  const handleAddClient = () => {
+  const handleAddClient = async () => {
     const name = formValues.clientName.trim();
-    if (!name) {
-      showToast('Please enter a client name.', 'error');
-      return;
-    }
+    const email = formValues.email.trim().toLowerCase();
+    if (!name) { showToast('Please enter a client name.', 'error'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Enter a valid login email for the client.', 'error'); return; }
 
+    // Optional format check — PAN/GSTIN are stored on the entity, not required to onboard.
     const pan = formValues.pan.trim().toUpperCase();
-    const gstin = formValues.gstin.trim().toUpperCase();
-    const panRegex = /^[A-Z]{5}\d{5}$/;
-    const gstinRegex = /^[A-Z0-9]{15}$/;
-    const nextErrors: { pan?: string; gstin?: string } = {};
+    if (pan && !/^[A-Z]{5}\d{5}$/.test(pan.slice(0, 10))) { /* lenient: ignore */ }
 
-    if (!panRegex.test(pan)) {
-      nextErrors.pan = 'PAN must be exactly 10 characters: 5 letters followed by 5 digits.';
+    try {
+      const res = await api.post<{ temporary_password?: string }>("/onboarding/clients", {
+        full_name: name, email, company_name: name, client_type: "private_limited",
+      });
+      setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" });
+      setFormErrors({});
+      setActionModal(null);
+      await loadData();
+      showToast(`Client created. Temp password: ${res?.temporary_password ?? "(sent)"}`, 'success');
+    } catch {
+      showToast('Could not create the client on the server. Check the email and try again.', 'error');
     }
-
-    if (!gstinRegex.test(gstin)) {
-      nextErrors.gstin = 'GSTIN must be exactly 15 characters.';
-    }
-
-    if (nextErrors.pan || nextErrors.gstin) {
-      setFormErrors(nextErrors);
-      showToast('Please correct the PAN or GSTIN format.', 'error');
-      return;
-    }
-
-    setClients(prev => [{
-      n: name,
-      ca: formValues.caName.trim() || 'Assigned CA',
-      pan,
-      gstin,
-      svc: Number(formValues.services) || 1,
-      status: formValues.status,
-    }, ...prev]);
-    setFormValues({ clientName: "", caName: "", pan: "", gstin: "", services: "3", status: "Active" });
-    setFormErrors({});
-    setActionModal(null);
-    showToast('Client added successfully.', 'success');
   };
 
-  const handleAddEmployee = () => {
+  const handleAddEmployee = async () => {
     const name = employeeFormValues.name.trim();
-    if (!name) {
-      showToast('Please enter an employee name.', 'error');
-      return;
-    }
+    const email = employeeFormValues.email.trim().toLowerCase();
+    if (!name) { showToast('Please enter an employee name.', 'error'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Enter a valid login email for the employee.', 'error'); return; }
 
-    const email = employeeFormValues.email.trim();
-    if (!email) {
-      showToast('Please enter an email address.', 'error');
-      return;
+    try {
+      const res = await api.post<{ temporary_password?: string }>("/onboarding/employees", {
+        full_name: name,
+        email,
+        designation: employeeFormValues.role || "Staff",
+        department: employeeFormValues.dept.trim() || "Operations",
+        role_code: "accountant",
+      });
+      setEmployeeFormValues({ name: "", role: "Staff", dept: "", email: "", clients: "2", tasks: "1" });
+      setActionModal(null);
+      await loadData();
+      showToast(`Employee created. Temp password: ${res?.temporary_password ?? "(sent)"}`, 'success');
+    } catch {
+      showToast('Could not create the employee on the server. Check the email and try again.', 'error');
     }
-
-    setEmployees(prev => [{
-      n: name,
-      role: employeeFormValues.role || 'Staff',
-      dept: employeeFormValues.dept.trim() || 'General',
-      clients: Number(employeeFormValues.clients) || 0,
-      tasks: Number(employeeFormValues.tasks) || 0,
-      email,
-    }, ...prev]);
-    setEmployeeFormValues({ name: "", role: "Staff", dept: "", email: "", clients: "2", tasks: "1" });
-    setActionModal(null);
-    showToast('Employee added successfully.', 'success');
   };
 
   const handleAddService = () => {
@@ -277,16 +301,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       return;
     }
 
-    setServices(prev => [{
-      svc: name,
-      cat: serviceFormValues.cat.trim() || 'General',
-      price: serviceFormValues.price.trim() || '₹0',
-      clients: Number(serviceFormValues.clients) || 0,
-      active: serviceFormValues.active,
-    }, ...prev]);
+    const department = (serviceFormValues.cat.trim() || 'General').slice(0, 50);
+    const price = Number((serviceFormValues.price || "").replace(/[^0-9.]/g, "")) || 0;
     setServiceFormValues({ svc: "", cat: "", price: "", clients: "10", active: true });
-    setActionModal(null);
-    showToast('Service added successfully.', 'success');
+    persist(() => resources.services.create({
+      name, code: _slug(name), department, base_price: String(price), billing_cycle: "monthly",
+    } as any), 'Service added successfully.');
   };
 
   const handleUpdateClient = () => {
@@ -316,25 +336,18 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       return;
     }
 
-    setClients(prev => prev.map(client => client.pan === actionModal?.item?.pan && client.gstin === actionModal?.item?.gstin ? {
-      ...client,
-      n: name,
-      ca: formValues.caName.trim() || 'Assigned CA',
-      pan,
-      gstin,
-      svc: Number(formValues.services) || 1,
-      status: formValues.status,
-    } : client));
-    setFormValues({ clientName: "", caName: "", pan: "", gstin: "", services: "3", status: "Active" });
+    const id = actionModal?.item?._raw?.id;
+    const newStatus = formValues.status === 'Active' ? 'active' : 'inactive';
+    setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" });
     setFormErrors({});
-    setActionModal(null);
-    showToast('Client updated successfully.', 'success');
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.clients.update(id, { status: newStatus }), 'Client updated successfully.');
   };
 
   const handleDeleteClient = () => {
-    setClients(prev => prev.filter(client => !(client.pan === actionModal?.item?.pan && client.gstin === actionModal?.item?.gstin)));
-    setActionModal(null);
-    showToast('Client deleted successfully.', 'success');
+    const id = actionModal?.item?._raw?.id;
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.clients.remove(id), 'Client deleted successfully.');
   };
 
   const handleUpdateEmployee = () => {
@@ -350,24 +363,18 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       return;
     }
 
-    setEmployees(prev => prev.map(employee => employee.email === actionModal?.item?.email ? {
-      ...employee,
-      n: name,
-      role: employeeFormValues.role || 'Staff',
-      dept: employeeFormValues.dept.trim() || 'General',
-      clients: Number(employeeFormValues.clients) || 0,
-      tasks: Number(employeeFormValues.tasks) || 0,
-      email,
-    } : employee));
+    const id = actionModal?.item?._raw?.id;
+    const designation = employeeFormValues.role || 'Staff';
+    const department = employeeFormValues.dept.trim() || 'General';
     setEmployeeFormValues({ name: "", role: "Staff", dept: "", email: "", clients: "2", tasks: "1" });
-    setActionModal(null);
-    showToast('Employee updated successfully.', 'success');
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.employees.update(id, { designation, department }), 'Employee updated successfully.');
   };
 
   const handleDeleteEmployee = () => {
-    setEmployees(prev => prev.filter(employee => employee.email !== actionModal?.item?.email));
-    setActionModal(null);
-    showToast('Employee deleted successfully.', 'success');
+    const id = actionModal?.item?._raw?.id;
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.employees.remove(id), 'Employee deleted successfully.');
   };
 
   const handleUpdateService = () => {
@@ -377,23 +384,17 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       return;
     }
 
-    setServices(prev => prev.map(service => service.svc === actionModal?.item?.svc ? {
-      ...service,
-      svc: name,
-      cat: serviceFormValues.cat.trim() || 'General',
-      price: serviceFormValues.price.trim() || '₹0',
-      clients: Number(serviceFormValues.clients) || 0,
-      active: serviceFormValues.active,
-    } : service));
+    const id = actionModal?.item?._raw?.id;
+    const department = (serviceFormValues.cat.trim() || 'General').slice(0, 50);
     setServiceFormValues({ svc: "", cat: "", price: "", clients: "10", active: true });
-    setActionModal(null);
-    showToast('Service updated successfully.', 'success');
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.services.update(id, { name, department }), 'Service updated successfully.');
   };
 
   const handleDeleteService = () => {
-    setServices(prev => prev.filter(service => service.svc !== actionModal?.item?.svc));
-    setActionModal(null);
-    showToast('Service deleted successfully.', 'success');
+    const id = actionModal?.item?._raw?.id;
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.services.remove(id), 'Service deleted successfully.');
   };
 
   const handleUpdateTask = () => {
@@ -403,24 +404,18 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       return;
     }
 
-    setTasks(prev => prev.map(task => task.task === actionModal?.item?.task ? {
-      ...task,
-      task: taskTitle,
-      client: taskFormValues.client.trim() || 'General Client',
-      assignee: taskFormValues.assignee.trim() || 'Unassigned',
-      due: taskFormValues.due.trim() || 'TBD',
-      priority: taskFormValues.priority,
-      status: taskFormValues.status,
-    } : task));
+    const id = actionModal?.item?._raw?.id;
+    const priority = _lc(taskFormValues.priority);   // low|medium|high|urgent
+    const status = _lc(taskFormValues.status);       // pending|in_progress|completed…
     setTaskFormValues({ task: "", client: "", assignee: "", due: "", priority: "Medium", status: "Pending" });
-    setActionModal(null);
-    showToast('Task updated successfully.', 'success');
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.tasks.update(id, { title: taskTitle, priority, status } as any), 'Task updated successfully.');
   };
 
   const handleDeleteTask = () => {
-    setTasks(prev => prev.filter(task => task.task !== actionModal?.item?.task));
-    setActionModal(null);
-    showToast('Task deleted successfully.', 'success');
+    const id = actionModal?.item?._raw?.id;
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.tasks.remove(id), 'Task deleted successfully.');
   };
 
   const handleDownloadReport = (reportName: string) => {
@@ -1005,7 +1000,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         <div>
           <div className="flex items-center justify-between mb-5">
             <div className="flex gap-2">{[`All (${clients.length})`,`Active (${clients.filter(client => client.status === 'Active').length})`,`Inactive (${clients.filter(client => client.status === 'Inactive').length})`].map(t => <button onClick={() => setActionModal({title: 'Create New Entry', type: 'form'})}  key={t} className="px-3 py-1.5 rounded-xl bg-[#102A43] border border-white/10 text-xs font-semibold text-white">{t}</button>)}</div>
-            <button onClick={() => { setFormValues({ clientName: "", caName: "", pan: "", gstin: "", services: "3", status: "Active" }); setFormErrors({}); setActionModal({title: 'Add Client', type: 'form'}); }}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Users size={13} /> Add Client</button>
+            <button onClick={() => { setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" }); setFormErrors({}); setActionModal({title: 'Add Client', type: 'form'}); }}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Users size={13} /> Add Client</button>
           </div>
           <div className="space-y-3">
             {clients.map(({n,ca,pan,gstin,svc,status}) => (
@@ -1115,7 +1110,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Audit Workflow": return (
         <div className="space-y-4">
-          {[{client:"ABC Manufacturing Ltd",type:"Statutory Audit FY24-25",stage:"Field Work",stageNum:3,lead:"CA Divya Rao",team:["Rahul S.","Sneha K."],due:"30 Sep 2025"},{client:"Green Pharma Pvt Ltd",type:"Tax Audit FY24-25",stage:"Planning",stageNum:1,lead:"CA Suresh Kumar",team:["Kavya R."],due:"30 Sep 2025"},{client:"Sharma & Co LLP",type:"Internal Audit Q1",stage:"Reporting",stageNum:5,lead:"CA Arjun Mehta",team:["Amit P."],due:"31 Jul 2025"}].map(({client,type,stage,stageNum,lead,team,due}) => (
+          {audits.map(({client,type,stage,stageNum,lead,team,due}: any) => (
             <div key={client+type} className="p-5 bg-[#102A43] rounded-2xl border border-white/10">
               <div className="flex items-center justify-between mb-3"><div><div className="font-bold text-white" style={{ fontFamily:"Manrope" }}>{client}</div><div className="text-xs text-[#94A3B8]">{type} · Due: {due}</div></div><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:"#EAF4F0",color:"#087F5B" }}>{stage}</span></div>
               <div className="flex gap-1 mb-3">{["Planning","Risk Assessment","Field Work","Evidence Review","Reporting","Sign-off"].map((s,i) => (<div key={s} className="flex-1 h-1.5 rounded-full" style={{ background:i<stageNum?"#087F5B":"#E2E8F0" }} />))}</div>
@@ -1127,7 +1122,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Tax-Return Tracking": return (
         <div className="space-y-3">
           <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:"892",color: "white"},{l:"Filed",v:"734",color:"#087F5B"},{l:"In Progress",v:"124",color:"#C8A45D"},{l:"Pending",v:"34",color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-[#102A43] rounded-2xl border border-white/10 text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#94A3B8]">{l}</div></div>))}</div>
-          {[{client:"Rajesh Mehta",itr:"ITR-1",fy:"FY 2024-25",status:"Filed",ack:"AC2025XXXXX",date:"15 Jul"},{client:"TechCorp India",itr:"ITR-6",fy:"FY 2024-25",status:"In Progress",ack:"—",date:"Due 31 Jul"},{client:"Sharma & Co LLP",itr:"ITR-5",fy:"FY 2024-25",status:"Pending",ack:"—",date:"Due 31 Jul"},{client:"Green Pharma",itr:"ITR-6",fy:"FY 2024-25",status:"Filed",ack:"AC2025YYYYY",date:"10 Jul"},{client:"Sunrise Retail",itr:"ITR-6",fy:"FY 2024-25",status:"Pending",ack:"—",date:"Due 31 Jul"}].map(({client,itr,fy,status,ack,date}) => (
+          {taxReturns.map(({client,itr,fy,status,ack,date}: any) => (
             <div key={client} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10">
               <div><div className="font-bold text-white text-sm" style={{ fontFamily:"Manrope" }}>{client} · {itr}</div><div className="text-xs text-[#94A3B8]">{fy} · Ack: {ack} · {date}</div></div>
               <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="In Progress"?"#FFF4E0":"#FFF0F0",color:status==="Filed"?"#087F5B":status==="In Progress"?"#C8A45D":"#e53e3e" }}>{status}</span>
@@ -1138,7 +1133,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "GST-Return Tracking": return (
         <div className="space-y-3">
           <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:"289",color: "white"},{l:"Filed",v:"251",color:"#087F5B"},{l:"Processing",v:"28",color:"#C8A45D"},{l:"Overdue",v:"10",color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-[#102A43] rounded-2xl border border-white/10 text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#94A3B8]">{l}</div></div>))}</div>
-          {[{client:"TechCorp India",form:"GSTR-3B",period:"Jun 2025",status:"Due Today",arno:"—"},{client:"TechCorp India",form:"GSTR-1",period:"Jun 2025",status:"Filed",arno:"ARN2025XXXX"},{client:"ABC Mfg Ltd",form:"GSTR-3B",period:"Jun 2025",status:"Filed",arno:"ARN2025YYYY"},{client:"Sharma & Co",form:"GSTR-3B",period:"Jun 2025",status:"Overdue",arno:"—"},{client:"Green Pharma",form:"GSTR-3B",period:"Jun 2025",status:"Processing",arno:"—"}].map(({client,form,period,status,arno}) => (
+          {gstReturns.map(({client,form,period,status,arno}: any) => (
             <div key={client+form} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10">
               <div><div className="font-bold text-white text-sm" style={{ fontFamily:"Manrope" }}>{client} · {form}</div><div className="text-xs text-[#94A3B8]">{period} · ARN: {arno}</div></div>
               <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="Overdue"||status==="Due Today"?"#FFF0F0":"#FFF4E0",color:status==="Filed"?"#087F5B":status==="Overdue"||status==="Due Today"?"#e53e3e":"#C8A45D" }}>{status}</span>
@@ -1152,13 +1147,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <div className="flex gap-3">{[{l:"Total",v:"₹42.8L"},{l:"Paid",v:"₹34.6L"},{l:"Outstanding",v:"₹8.2L"}].map(({l,v}) => <div key={l} className="px-4 py-2 bg-[#102A43] rounded-xl border border-white/10 text-center"><div className="font-extrabold text-sm text-[#087F5B]" style={{ fontFamily:"Manrope" }}>{v}</div><div className="text-xs text-[#94A3B8]">{l}</div></div>)}</div>
             <button onClick={() => setActionModal({title: 'Create New Entry', type: 'form'})}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><ReceiptText size={13} /> Create Invoice</button>
           </div>
-          <div className="space-y-3">{[{inv:"INV-2025-0041",client:"TechCorp India",svc:"GST Return Filing",amt:"₹4,500",date:"15 Jul",status:"Paid"},{inv:"INV-2025-0040",client:"Rajesh Mehta",svc:"ITR Filing",amt:"₹8,000",date:"05 Jul",status:"Paid"},{inv:"INV-2025-0039",client:"Sunrise Retail",svc:"Payroll Processing",amt:"₹6,000",date:"30 Jun",status:"Overdue"},{inv:"INV-2025-0038",client:"ABC Mfg",svc:"Virtual CFO Q1",amt:"₹25,000",date:"15 Jun",status:"Overdue"},{inv:"INV-2025-0037",client:"Green Pharma",svc:"Audit FY24-25",amt:"₹75,000",date:"01 Jun",status:"Paid"}].map(({inv,client,svc,amt,date,status}) => (<div key={inv} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10"><div><div className="font-bold text-white text-sm" style={{ fontFamily:"Manrope" }}>{inv} · {client}</div><div className="text-xs text-[#94A3B8]">{svc} · {date}</div></div><div className="flex items-center gap-3"><div className="font-bold text-white" style={{ fontFamily:"Manrope" }}>{amt}</div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Paid"?"#EAF4F0":"#FFF0F0",color:status==="Paid"?"#087F5B":"#e53e3e" }}>{status}</span><button onClick={() => setActionModal({title: 'View', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10">View</button></div></div>))}</div>
+          <div className="space-y-3">{invoices.map(({inv,client,svc,amt,date,status}: any) => (<div key={inv} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10"><div><div className="font-bold text-white text-sm" style={{ fontFamily:"Manrope" }}>{inv} · {client}</div><div className="text-xs text-[#94A3B8]">{svc} · {date}</div></div><div className="flex items-center gap-3"><div className="font-bold text-white" style={{ fontFamily:"Manrope" }}>{amt}</div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Paid"?"#EAF4F0":"#FFF0F0",color:status==="Paid"?"#087F5B":"#e53e3e" }}>{status}</span><button onClick={() => setActionModal({title: 'View', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10">View</button></div></div>))}</div>
         </div>
       );
       case "Payment Tracking": return (
         <div className="space-y-3">
           <div className="grid grid-cols-3 gap-4 mb-4">{[{l:"Received",v:"₹34.6L",color:"#087F5B"},{l:"Pending",v:"₹8.2L",color:"#e53e3e"},{l:"Transactions",v:"187",color: "white"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-[#102A43] rounded-2xl border border-white/10 text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#94A3B8] mt-1">{l}</div></div>))}</div>
-          {[{ref:"PAY-2025-187",client:"TechCorp India",inv:"INV-0041",amt:"₹4,500",method:"UPI",date:"15 Jul",status:"Received"},{ref:"PAY-2025-186",client:"Rajesh Mehta",inv:"INV-0040",amt:"₹8,000",method:"NEFT",date:"05 Jul",status:"Received"},{ref:"PAY-2025-185",client:"Green Pharma",inv:"INV-0037",amt:"₹75,000",method:"Cheque",date:"02 Jul",status:"Received"},{ref:"PEND-1",client:"Sunrise Retail",inv:"INV-0039",amt:"₹6,000",method:"—",date:"Due 30 Jun",status:"Overdue"},{ref:"PEND-2",client:"ABC Mfg",inv:"INV-0038",amt:"₹25,000",method:"—",date:"Due 15 Jun",status:"Overdue"}].map(({ref,client,inv,amt,method,date,status}) => (
+          {payments.map(({ref,client,inv,amt,method,date,status}: any) => (
             <div key={ref+client} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10">
               <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:status==="Received"?"#EAF4F0":"#FFF0F0" }}><CreditCard size={15} style={{ color:status==="Received"?"#087F5B":"#e53e3e" }} /></div><div><div className="font-bold text-white text-sm" style={{ fontFamily:"Manrope" }}>{client} · {inv}</div><div className="text-xs text-[#94A3B8]">{method} · {date}</div></div></div>
               <div className="flex items-center gap-2"><div className="font-bold" style={{ fontFamily:"Manrope",color:status==="Received"?"#087F5B":"#e53e3e" }}>{amt}</div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Received"?"#EAF4F0":"#FFF0F0",color:status==="Received"?"#087F5B":"#e53e3e" }}>{status}</span></div>
@@ -1169,7 +1164,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Notifications": return (
         <div className="space-y-3">
           <div className="flex items-center justify-between mb-2"><div className="text-sm text-[#94A3B8]">24 unread notifications</div><button onClick={() => showToast('Action completed successfully', 'success')}  className="text-xs font-semibold" style={{ color:"#087F5B" }}>Mark all read</button></div>
-          {[{title:"GSTR-3B Due Today – 289 clients",msg:"Action required: GSTR-3B for June 2025 is due today for 289 clients.",t:"Just now",type:"critical"},{title:"New Client Onboarded",msg:"ABC Trading Co has been successfully onboarded. 5 services activated.",t:"1 hr ago",type:"success"},{title:"Payment Received – ₹75,000",msg:"Green Pharma paid Invoice INV-2025-0037.",t:"2 hrs ago",type:"success"},{title:"Overdue: ITR – Sharma & Co",msg:"Income Tax Return for Sharma & Co LLP is 1 day overdue.",t:"3 hrs ago",type:"warning"},{title:"Staff Alert: Amit P. Over Capacity",msg:"Amit Patel has 27 tasks assigned, exceeding capacity of 25.",t:"5 hrs ago",type:"warning"},{title:"Document Uploaded – Review Pending",msg:"Rajesh Mehta uploaded Form 16. Assigned to Rahul S. for review.",t:"Yesterday",type:"info"}].map(({title,msg,t,type}) => (
+          {notifications.map(({title,msg,t,type}: any) => (
             <div key={title} className="flex items-start gap-4 p-4 rounded-2xl border" style={{ background:type==="critical"?"#FFF8F8":"#102A43",borderColor:type==="critical"?"rgba(229,62,62,0.2)":"rgba(0,0,0,0.05)" }}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background:type==="success"?"#EAF4F0":type==="critical"||type==="warning"?"#FFF0F0":"#EEF1F5" }}>{type==="success"?<CheckCircle size={15} style={{ color:"#087F5B" }} />:type==="critical"?<AlertTriangle size={15} style={{ color:"#e53e3e" }} />:type==="warning"?<Bell size={15} style={{ color:"#C8A45D" }} />:<Info size={15} style={{ color: "white" }} />}</div>
               <div className="flex-1"><div className="font-bold text-white text-sm mb-1" style={{ fontFamily:"Manrope" }}>{title}</div><p className="text-xs text-[#94A3B8] leading-relaxed">{msg}</p><div className="text-xs text-[#94A3B8] mt-1">{t}</div></div>
@@ -1191,13 +1186,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Blog Management": return (
         <div>
           <div className="flex items-center justify-between mb-5"><div className="text-sm text-[#94A3B8]">18 published · 4 drafts · 2 scheduled</div><button onClick={() => setActionModal({title: 'Create New Entry', type: 'form'})}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><BookOpen size={13} /> New Post</button></div>
-          <div className="space-y-3">{[{title:"Budget 2025: Key Changes for SMEs",cat:"Tax",author:"CA Arjun Mehta",date:"18 Jul 2025",status:"Published",views:"1,240"},{title:"GST Annual Return FY24: Complete Guide",cat:"GST",author:"CA Priya Nair",date:"15 Jul 2025",status:"Published",views:"2,108"},{title:"How to Choose the Right ITR Form",cat:"Income Tax",author:"Rahul S.",date:"—",status:"Draft",views:"—"},{title:"ESOP Taxation for Startup Employees",cat:"Startup",author:"CA Suresh Kumar",date:"25 Jul 2025",status:"Scheduled",views:"—"},{title:"Director KYC: Step-by-Step Process",cat:"Corporate",author:"Amit P.",date:"10 Jul 2025",status:"Published",views:"876"}].map(({title,cat,author,date,status,views}) => (<div key={title} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10"><div><div className="font-bold text-white text-sm" style={{ fontFamily:"Manrope" }}>{title}</div><div className="text-xs text-[#94A3B8]">{cat} · {author} · {date} {views!=="—"?`· ${views} views`:""}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Published"?"#EAF4F0":status==="Scheduled"?"#FFF4E0":"#EEF1F5",color:status==="Published"?"#087F5B":status==="Scheduled"?"#C8A45D":"#52606D" }}>{status}</span><button onClick={() => setActionModal({title: 'Edit', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10">Edit</button></div></div>))}</div>
+          <div className="space-y-3">{blogs.map(({title,cat,author,date,status,views}: any) => (<div key={title} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10"><div><div className="font-bold text-white text-sm" style={{ fontFamily:"Manrope" }}>{title}</div><div className="text-xs text-[#94A3B8]">{cat} · {author} · {date} {views!=="—"?`· ${views} views`:""}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Published"?"#EAF4F0":status==="Scheduled"?"#FFF4E0":"#EEF1F5",color:status==="Published"?"#087F5B":status==="Scheduled"?"#C8A45D":"#52606D" }}>{status}</span><button onClick={() => setActionModal({title: 'Edit', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10">Edit</button></div></div>))}</div>
         </div>
       );
       case "Careers Management": return (
         <div>
           <div className="flex items-center justify-between mb-5"><div className="text-sm text-[#94A3B8]">5 open positions · 48 total applications</div><button onClick={() => setActionModal({title: 'Create New Entry', type: 'form'})}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Briefcase size={13} /> Post Job</button></div>
-          <div className="space-y-3">{[{role:"Senior CA – Audit & Assurance",type:"Full-time",loc:"Hyderabad",apps:14,status:"Active"},{role:"GST Consultant",type:"Full-time",loc:"Hyderabad / Remote",apps:22,status:"Active"},{role:"Payroll Executive",type:"Full-time",loc:"Bengaluru",apps:8,status:"Active"},{role:"Article Assistant (CA)",type:"Internship",loc:"Hyderabad",apps:31,status:"Active"},{role:"Virtual CFO – Part Time",type:"Part-time",loc:"Remote",apps:5,status:"Closed"}].map(({role,type,loc,apps,status}) => (<div key={role} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10"><div><div className="font-bold text-white text-sm" style={{ fontFamily:"Manrope" }}>{role}</div><div className="text-xs text-[#94A3B8]">{type} · {loc} · {apps} applications</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#102A43",color:status==="Active"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => setActionModal({title: 'View Apps', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10">View Apps</button><button onClick={() => setActionModal({title: 'Edit', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10">Edit</button></div></div>))}</div>
+          <div className="space-y-3">{careersList.map(({role,type,loc,apps,status}: any) => (<div key={role} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10"><div><div className="font-bold text-white text-sm" style={{ fontFamily:"Manrope" }}>{role}</div><div className="text-xs text-[#94A3B8]">{type} · {loc} · {apps} applications</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#102A43",color:status==="Active"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => setActionModal({title: 'View Apps', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10">View Apps</button><button onClick={() => setActionModal({title: 'Edit', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10">Edit</button></div></div>))}</div>
         </div>
       );
       case "Website CMS": return (
@@ -1386,6 +1381,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 <div>
                   <label className="block text-xs font-semibold text-white mb-1">Assigned CA</label>
                   <input type="text" value={formValues.caName} onChange={(e) => setFormValues(prev => ({ ...prev, caName: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="CA name" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#94A3B8] mb-1.5">Login Email <span className="text-red-500">*</span></label>
+                  <input type="email" value={formValues.email} onChange={(e) => setFormValues(prev => ({ ...prev, email: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="client@company.com" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

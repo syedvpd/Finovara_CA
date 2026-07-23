@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import HTMLResponse, ORJSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.v1 import health
@@ -97,6 +97,43 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestContextMiddleware)
 
     register_exception_handlers(app)
+
+    # Friendly landing at the API root so a human who opens the backend URL sees
+    # a clean "operational" page instead of a bare 404.
+    @app.get("/", include_in_schema=False)
+    async def root() -> HTMLResponse:
+        return HTMLResponse(
+            """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Finovara API</title>
+<style>
+  *{margin:0;box-sizing:border-box}
+  body{min-height:100vh;display:grid;place-items:center;background:#102A43;
+    color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+  .card{text-align:center;padding:48px 40px}
+  .logo{width:56px;height:56px;border-radius:14px;margin:0 auto 20px;
+    display:grid;place-items:center;font-weight:800;font-size:26px;
+    background:linear-gradient(135deg,#087F5B,#065a40)}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
+  .sub{color:rgba(255,255,255,.6);font-size:13px;margin-top:6px}
+  .pill{display:inline-flex;align-items:center;gap:8px;margin-top:22px;
+    padding:8px 16px;border-radius:999px;background:rgba(8,127,91,.15);
+    border:1px solid rgba(8,127,91,.4);color:#3ddc97;font-size:13px;font-weight:600}
+  .dot{width:8px;height:8px;border-radius:50%;background:#3ddc97}
+  a{color:#C8A45D;text-decoration:none;font-weight:600;font-size:13px}
+  .foot{margin-top:24px;font-size:12px;color:rgba(255,255,255,.4)}
+</style></head><body><div class="card">
+  <div class="logo">F</div>
+  <h1>Finovara Advisory API</h1>
+  <div class="sub">Chartered Accountants LLP &middot; secure services backend</div>
+  <div class="pill"><span class="dot"></span> Service operational</div>
+  <div class="foot">This is the API endpoint. Visit the
+    <a href="https://finovara-ca.vercel.app">Finovara portal &rarr;</a></div>
+</div></body></html>""",
+            # This page needs its inline styles; the global API CSP forbids them.
+            # setdefault in the security middleware leaves this explicit header intact.
+            headers={"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"},
+        )
 
     app.include_router(health.router)
     app.include_router(api_router, prefix=settings.api_v1_prefix)
