@@ -116,9 +116,16 @@ export function BookPage() {
             <h2 className="text-xl font-bold text-[#102A43] mb-6" style={{ fontFamily: "Manrope" }}>Choose Date & Time</h2>
             <div className="mb-6">
               <label className="text-xs font-semibold text-[#94A3B8] mb-2 block uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Preferred Date</label>
-              <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} min={new Date().toISOString().split('T')[0]}
+              <input type="date" value={selectedDate}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val && val < new Date().toISOString().split('T')[0]) return;
+                  setSelectedDate(val);
+                }}
+                onKeyDown={e => e.preventDefault()}
                 className="w-full px-4 py-3 rounded-xl border border-white/10 bg-[#102A43] text-sm outline-none focus:ring-2 focus:ring-[#087F5B]/30"
-                style={{ fontFamily: "Inter", color: "white" }} />
+                style={{ fontFamily: "Inter", color: "white", colorScheme: "dark" }} />
             </div>
             <div className="mb-8">
               <label className="text-xs font-semibold text-[#94A3B8] mb-2 block uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Available Slots</label>
@@ -149,33 +156,33 @@ export function BookPage() {
             <h2 className="text-xl font-bold text-[#102A43] mb-6" style={{ fontFamily: "Manrope" }}>Your Details</h2>
             <div className="space-y-4 mb-6">
               <div>
-                <label className="text-xs font-semibold text-[#94A3B8] mb-1.5 flex items-center gap-1 uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Full Name <span className="text-red-500 text-base leading-none">*</span></label>
+                <label className="text-xs font-semibold text-[#102A43] mb-1.5 flex items-center gap-1 uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Full Name <span className="text-red-500 text-base leading-none">*</span></label>
                 <div className="relative">
-                  <input value={formData.name} onChange={e => { setFormData({...formData, name: e.target.value}); setErrors({...errors, name: ''}); }} placeholder="Rahul Sharma" className={`w-full px-4 py-3 rounded-xl border transition-all ${errors.name ? 'border-red-500 bg-red-50 focus:ring-red-500/20' : 'border-white/10 bg-[#102A43] focus:ring-[#087F5B]/30 hover:border-white/10'} text-sm outline-none focus:ring-2`} style={{ fontFamily: "Inter" }} />
+                  <input value={formData.name} onChange={e => { setFormData({...formData, name: e.target.value}); setErrors({...errors, name: ''}); }} placeholder="e.g. Rahul Sharma" className={`w-full px-4 py-3 rounded-xl border transition-all ${errors.name ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400 focus:ring-red-500/20' : 'border-[#CBD5E1] bg-white text-[#102A43] placeholder-[#94A3B8] focus:ring-[#087F5B]/30 hover:border-[#087F5B]/40'} text-sm outline-none focus:ring-2`} style={{ fontFamily: "Inter" }} />
                 </div>
                 {errors.name && <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1.5 animate-in fade-in"><AlertCircle size={14} /> {errors.name}</p>}
               </div>
               <div>
-                <label className="text-xs font-semibold text-[#94A3B8] mb-1.5 flex items-center gap-1 uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Email Address <span className="text-red-500 text-base leading-none">*</span></label>
+                <label className="text-xs font-semibold text-[#102A43] mb-1.5 flex items-center gap-1 uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Email Address <span className="text-red-500 text-base leading-none">*</span></label>
                 <div className="relative">
-                  <input type="email" value={formData.email} onChange={e => { setFormData({...formData, email: e.target.value}); setErrors({...errors, email: ''}); }} placeholder="rahul@company.com" className={`w-full px-4 py-3 rounded-xl border transition-all ${errors.email ? 'border-red-500 bg-red-50 focus:ring-red-500/20' : 'border-white/10 bg-[#102A43] focus:ring-[#087F5B]/30 hover:border-white/10'} text-sm outline-none focus:ring-2`} style={{ fontFamily: "Inter" }} />
+                  <input type="email" value={formData.email} onChange={e => { setFormData({...formData, email: e.target.value}); setErrors({...errors, email: ''}); }} placeholder="e.g. rahul@company.com" className={`w-full px-4 py-3 rounded-xl border transition-all ${errors.email ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400 focus:ring-red-500/20' : 'border-[#CBD5E1] bg-white text-[#102A43] placeholder-[#94A3B8] focus:ring-[#087F5B]/30 hover:border-[#087F5B]/40'} text-sm outline-none focus:ring-2`} style={{ fontFamily: "Inter" }} />
                 </div>
                 {errors.email && <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1.5 animate-in fade-in"><AlertCircle size={14} /> {errors.email}</p>}
               </div>
               <div>
-                <label className="text-xs font-semibold text-[#94A3B8] mb-1.5 flex items-center gap-1 uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Phone Number <span className="text-red-500 text-base leading-none">*</span></label>
+                <label className="text-xs font-semibold text-[#102A43] mb-1.5 flex items-center gap-1 uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Phone Number <span className="text-red-500 text-base leading-none">*</span></label>
                 <div className="relative">
-                  <input type="tel" value={formData.phone} onChange={e => { setFormData({...formData, phone: e.target.value.replace(/[^\d\s\+\-]/g, '')}); setErrors({...errors, phone: ''}); }} placeholder="+91 98765 43210" className={`w-full px-4 py-3 rounded-xl border transition-all ${errors.phone ? 'border-red-500 bg-red-50 focus:ring-red-500/20' : 'border-white/10 bg-[#102A43] focus:ring-[#087F5B]/30 hover:border-white/10'} text-sm outline-none focus:ring-2`} style={{ fontFamily: "Inter" }} />
+                  <input type="tel" value={formData.phone} onChange={e => { setFormData({...formData, phone: e.target.value.replace(/[^\d\s\+\-]/g, '')}); setErrors({...errors, phone: ''}); }} placeholder="e.g. +91 98765 43210" className={`w-full px-4 py-3 rounded-xl border transition-all ${errors.phone ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400 focus:ring-red-500/20' : 'border-[#CBD5E1] bg-white text-[#102A43] placeholder-[#94A3B8] focus:ring-[#087F5B]/30 hover:border-[#087F5B]/40'} text-sm outline-none focus:ring-2`} style={{ fontFamily: "Inter" }} />
                 </div>
                 {errors.phone && <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1.5 animate-in fade-in"><AlertCircle size={14} /> {errors.phone}</p>}
               </div>
               <div>
-                <label className="text-xs font-semibold text-[#94A3B8] mb-1.5 block uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Company / Organisation</label>
-                <input value={formData.company} onChange={e => { setFormData({...formData, company: e.target.value}); setErrors({...errors, company: ''}); }} placeholder="Sharma Enterprises Pvt Ltd" className="w-full px-4 py-3 rounded-xl border border-white/10 bg-[#102A43] text-sm outline-none focus:ring-2 focus:ring-[#087F5B]/30 hover:border-white/10 transition-all" style={{ fontFamily: "Inter" }} />
+                <label className="text-xs font-semibold text-[#102A43] mb-1.5 block uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Company / Organisation</label>
+                <input value={formData.company} onChange={e => { setFormData({...formData, company: e.target.value}); setErrors({...errors, company: ''}); }} placeholder="e.g. Sharma Enterprises Pvt Ltd" className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] bg-white text-[#102A43] placeholder-[#94A3B8] text-sm outline-none focus:ring-2 focus:ring-[#087F5B]/30 hover:border-[#087F5B]/40 transition-all" style={{ fontFamily: "Inter" }} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-[#94A3B8] mb-1.5 block uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Additional Notes</label>
-                <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} rows={3} placeholder="Any specific questions or context for the advisor..." className="w-full px-4 py-3 rounded-xl border border-white/10 bg-[#102A43] text-sm outline-none focus:ring-2 focus:ring-[#087F5B]/30 resize-none hover:border-white/10 transition-all" style={{ fontFamily: "Inter" }} />
+                <label className="text-xs font-semibold text-[#102A43] mb-1.5 block uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Additional Notes</label>
+                <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} rows={3} placeholder="e.g. I need help with GST filing and tax planning for FY 2025-26" className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] bg-white text-[#102A43] placeholder-[#94A3B8] text-sm outline-none focus:ring-2 focus:ring-[#087F5B]/30 resize-none hover:border-[#087F5B]/40 transition-all" style={{ fontFamily: "Inter" }} />
               </div>
             </div>
             {/* Summary */}

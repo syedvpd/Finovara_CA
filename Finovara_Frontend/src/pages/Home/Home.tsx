@@ -427,7 +427,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
             </p>
           </div>
           <div className="relative">
-            <div className="absolute top-8 left-0 right-0 h-0.5 hidden lg:block" style={{ background: "linear-gradient(90deg, transparent, #EEF1F5, #087F5B30, #EEF1F5, transparent)" }} />
+            <div className="absolute top-8 left-0 right-0 h-1 hidden lg:block" style={{ background: "linear-gradient(90deg, transparent, #087F5B80, #087F5B, #087F5B80, transparent)" }} />
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
               {WORKFLOW.map(({ step, title, desc }, i) => (
                 <div key={step} className="flex flex-col items-center text-center group">
