@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { Shield, Lock, Users, FileText, Clock, AlertCircle, Globe, Star, CheckCircle, Loader2, ArrowLeft, Mail, Key } from "lucide-react";
+import { Shield, Lock, Users, FileText, Clock, AlertCircle, Globe, Star, CheckCircle, Loader2, ArrowLeft, Mail, Key, Eye, EyeOff, Smartphone } from "lucide-react";
 import { Page } from "../../types/index";
 import { useAuth, landingPage } from "../../context";
 import { sendOtp, requestPasswordReset } from "../../services/auth";
@@ -22,6 +22,7 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // --- Soft Validation Logic ---
   const validateField = (field: 'email' | 'password' | 'otp', value: string) => {
@@ -176,9 +177,9 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
   };
 
   const getInputStyles = (field: 'email' | 'password' | 'otp') => {
-    const base = "w-full px-4 py-3.5 rounded-xl border bg-white text-sm outline-none transition-all duration-300 text-[#102A43] font-medium ";
-    if (errors[field]) return base + "border-red-500 bg-red-50 focus:ring-4 focus:ring-red-500/20 focus:border-red-500";
-    return base + "border-[#CBD5E1] focus:ring-4 focus:ring-[#087F5B]/20 focus:border-[#087F5B] hover:border-[#94A3B8]";
+    const base = "w-full pl-12 pr-4 h-[56px] rounded-[14px] border bg-white text-[15px] outline-none transition-all duration-300 text-[#102A43] font-medium placeholder:text-gray-400 ";
+    if (errors[field]) return base + "border-[#EF4444] bg-red-50/30 focus:ring-4 focus:ring-[#EF4444]/15 focus:border-[#EF4444]";
+    return base + "border-[#D6E2F0] focus:ring-4 focus:ring-[#059669]/15 focus:border-[#059669] hover:border-[#059669] hover:shadow-[0_0_8px_rgba(5,150,105,0.15)]";
   };
 
   return (
@@ -223,38 +224,47 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
               <form onSubmit={handleLoginSubmit} noValidate className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="space-y-5 mb-6">
                   {/* Email Field */}
-                  <div className="relative">
-                    <label htmlFor="email" className="text-xs font-bold text-white mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
-                      Email Address <span className="text-red-500 text-base leading-none">*</span>
+                  <div className="relative group">
+                    <label htmlFor="email" className="text-xs font-bold text-[#475569] mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
+                      Email Address <span className="text-[#EF4444] text-base leading-none">*</span>
                     </label>
-                    <input 
-                      id="email" type="email" value={email} 
-                      onChange={e => handleChange('email', e.target.value)}
-                      onBlur={() => handleBlur('email')}
-                      placeholder="your@email.com"
-                      className={getInputStyles('email')}
-                    />
+                    <div className="relative">
+                      <Mail size={20} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 pointer-events-none ${errors.email ? 'text-[#EF4444]' : 'text-gray-400 group-focus-within:text-[#059669]'}`} />
+                      <input 
+                        id="email" type="email" value={email} 
+                        onChange={e => handleChange('email', e.target.value)}
+                        onBlur={() => handleBlur('email')}
+                        placeholder="your@email.com"
+                        className={getInputStyles('email')}
+                      />
+                    </div>
                     {errors.email && (
-                      <p className="text-red-500 text-xs mt-2 font-bold flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 transition-all">
+                      <p className="text-[#EF4444] text-xs mt-2 font-medium flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 transition-all">
                         <AlertCircle size={14} /> {errors.email}
                       </p>
                     )}
                   </div>
 
                   {/* Password Field */}
-                  <div className="relative">
-                    <label htmlFor="password" className="text-xs font-bold text-white mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
-                      Password <span className="text-red-500 text-base leading-none">*</span>
+                  <div className="relative group">
+                    <label htmlFor="password" className="text-xs font-bold text-[#475569] mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
+                      Password <span className="text-[#EF4444] text-base leading-none">*</span>
                     </label>
-                    <input 
-                      id="password" type="password" value={password} 
-                      onChange={e => handleChange('password', e.target.value)}
-                      onBlur={() => handleBlur('password')}
-                      placeholder="Enter your password"
-                      className={getInputStyles('password')}
-                    />
+                    <div className="relative">
+                      <Lock size={20} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 pointer-events-none ${errors.password ? 'text-[#EF4444]' : 'text-gray-400 group-focus-within:text-[#059669]'}`} />
+                      <input 
+                        id="password" type={showPassword ? "text" : "password"} value={password} 
+                        onChange={e => handleChange('password', e.target.value)}
+                        onBlur={() => handleBlur('password')}
+                        placeholder="Enter your password"
+                        className={`${getInputStyles('password')} pr-12`}
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#059669] transition-colors focus:outline-none">
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
                     {errors.password && (
-                      <p className="text-red-500 text-xs mt-2 font-bold flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 transition-all">
+                      <p className="text-[#EF4444] text-xs mt-2 font-medium flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 transition-all">
                         <AlertCircle size={14} /> {errors.password}
                       </p>
                     )}
@@ -262,34 +272,36 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
                 </div>
 
                 <div className="flex items-center justify-between mb-6">
-                  <label className="flex items-center gap-2.5 text-sm font-medium text-[#94A3B8] cursor-pointer group" style={{ fontFamily: "Inter" }}>
-                    <div className="relative flex items-center">
-                      <input type="checkbox" className="peer w-4 h-4 appearance-none border-2 border-white/10 rounded-md checked:bg-[#087F5B] checked:border-[#087F5B] transition-all cursor-pointer group-hover:border-[#087F5B]/50" />
-                      <CheckCircle size={12} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" />
+                  <label className="flex items-center gap-3 text-sm font-medium text-[#64748B] cursor-pointer group select-none" style={{ fontFamily: "Inter" }}>
+                    <div className="relative flex items-center justify-center w-5 h-5">
+                      <input type="checkbox" className="peer w-full h-full appearance-none border-2 border-[#CBD5E1] rounded-[6px] checked:bg-[#059669] checked:border-[#059669] transition-all duration-300 cursor-pointer group-hover:border-[#059669] focus:outline-none focus:ring-2 focus:ring-[#059669]/20 focus:ring-offset-1" />
+                      <CheckCircle size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-all duration-300 scale-50 peer-checked:scale-100" />
                     </div>
                     Remember me
                   </label>
-                  <button type="button" onClick={() => resetView('forgot')} className="text-sm font-bold text-[#087F5B] hover:text-white transition-colors" style={{ fontFamily: "Inter" }}>
+                  <button type="button" onClick={() => resetView('forgot')} className="text-sm font-medium text-[#059669] relative group overflow-hidden" style={{ fontFamily: "Inter" }}>
                     Forgot Password?
+                    <span className="absolute left-0 bottom-0 w-full h-[1.5px] bg-[#059669] transform origin-left scale-x-0 transition-transform duration-250 ease-out group-hover:scale-x-100"></span>
                   </button>
                 </div>
 
                 <button type="submit" disabled={isSubmitting || !email.trim() || !password}
-                  className={`w-full flex items-center justify-center gap-3 py-3.5 rounded-xl text-white font-extrabold text-sm mb-5 transition-all duration-300 ${isSubmitting || !email.trim() || !password ? 'opacity-50 cursor-not-allowed saturate-50' : 'hover:-translate-y-1 hover:shadow-xl hover:shadow-[#087F5B]/30'}`}
-                  style={{ background: "linear-gradient(135deg, #087F5B, #065a40)", fontFamily: "Inter" }}>
-                  {isSubmitting ? <><Loader2 size={18} className="animate-spin" /> Signing In...</> : <>Sign In</>}
+                  className={`w-full h-[56px] flex items-center justify-center gap-3 rounded-[14px] text-white font-semibold text-base mb-5 transition-all duration-300 ${isSubmitting || !email.trim() || !password ? 'bg-gray-300 cursor-not-allowed shadow-none' : 'bg-gradient-to-r from-[#0F766E] to-[#059669] shadow-md hover:shadow-xl hover:shadow-[#059669]/25 hover:-translate-y-[2px] hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] cursor-pointer'}`}
+                  style={{ fontFamily: "Inter" }}>
+                  {isSubmitting ? <Loader2 size={24} className="animate-spin" /> : <>Sign In</>}
                 </button>
               </form>
 
               <div className="flex items-center gap-4 mb-5 opacity-60">
-                <div className="flex-1 h-px bg-black/10" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-[#94A3B8]" style={{ fontFamily: "Inter" }}>or</span>
-                <div className="flex-1 h-px bg-black/10" />
+                <div className="flex-1 h-px bg-gray-300" />
+                <span className="text-xs font-semibold uppercase tracking-widest text-[#64748B]" style={{ fontFamily: "Inter" }}>or</span>
+                <div className="flex-1 h-px bg-gray-300" />
               </div>
 
               <button type="button" onClick={() => resetView('otp')}
-                className="w-full py-3.5 rounded-xl border-2 border-white/10 text-white font-extrabold text-sm transition-all duration-300 hover:border-[#087F5B] hover:bg-[#102A43]" 
+                className="w-full h-[56px] flex items-center justify-center gap-3 rounded-[14px] border-2 border-[#059669] bg-transparent text-[#059669] font-semibold text-base transition-all duration-300 hover:bg-gradient-to-r hover:from-[#0F766E] hover:to-[#059669] hover:border-transparent hover:text-white hover:shadow-lg hover:shadow-[#059669]/25 hover:-translate-y-[1px] hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-[#059669]/20" 
                 style={{ fontFamily: "Inter" }}>
+                <Smartphone size={20} className="mb-0.5" />
                 Sign in with OTP
               </button>
             </>
