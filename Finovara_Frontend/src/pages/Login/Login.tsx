@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { Shield, Lock, Users, FileText, Clock, AlertCircle, Globe, Star, CheckCircle, Loader2, ArrowLeft, Mail, Key, Eye, EyeOff, Smartphone } from "lucide-react";
 import { Page } from "../../types/index";
 import { useAuth, landingPage } from "../../context";
@@ -9,8 +9,22 @@ type AuthView = 'login' | 'otp' | 'forgot';
 
 export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
   const { login, verifyOtp } = useAuth();
-  const [view, setView] = useState<AuthView>('login');
+  const [view, setView] = useState<AuthView>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const v = params.get('view');
+    return (v === 'otp' || v === 'forgot') ? (v as AuthView) : 'login';
+  });
   const [authError, setAuthError] = useState<string>("");
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const v = params.get('view');
+      setView((v === 'otp' || v === 'forgot') ? (v as AuthView) : 'login');
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -81,6 +95,14 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
     setResetSent(false);
     setIsSubmitting(false);
     setAuthError("");
+
+    const url = new URL(window.location.href);
+    if (newView === 'login') {
+      url.searchParams.delete('view');
+    } else {
+      url.searchParams.set('view', newView);
+    }
+    window.history.pushState({}, '', url);
   };
 
   const errText = (err: unknown, fallback: string) =>
@@ -193,7 +215,7 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
           {view !== 'login' && (
             <button 
               onClick={() => resetView('login')}
-              className="absolute -top-12 left-0 flex items-center gap-2 text-[#94A3B8] hover:text-white text-sm font-bold transition-colors group"
+              className="absolute -top-12 left-0 flex items-center gap-2 text-[#94A3B8] hover:text-[#102A43] text-sm font-bold transition-colors group"
               style={{ fontFamily: "Inter" }}
             >
               <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Login
