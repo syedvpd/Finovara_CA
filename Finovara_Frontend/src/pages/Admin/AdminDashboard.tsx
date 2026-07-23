@@ -69,6 +69,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [taskFormValues, setTaskFormValues] = useState({
     task: "",
     client: "",
+    clientId: "",
+    taskType: "general",
     assignee: "",
     due: "",
     priority: "Medium",
@@ -77,6 +79,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [leadFormValues, setLeadFormValues] = useState({
     name: "",
     contact: "",
+    email: "",
     source: "Website",
     service: "",
     status: "Hot" as 'Hot' | 'Warm' | 'Cold' | 'Converted',
@@ -430,7 +433,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     const id = actionModal?.item?._raw?.id;
     const priority = _lc(taskFormValues.priority);   // low|medium|high|urgent
     const status = _lc(taskFormValues.status);       // pending|in_progress|completed…
-    setTaskFormValues({ task: "", client: "", assignee: "", due: "", priority: "Medium", status: "Pending" });
+    setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "Pending" });
     if (!id) { setActionModal(null); return; }
     persist(() => resources.tasks.update(id, { title: taskTitle, priority, status } as any), 'Task updated successfully.');
   };
@@ -542,43 +545,36 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
   const handleAddTask = () => {
     const taskTitle = taskFormValues.task.trim();
-    if (!taskTitle) {
-      showToast('Please enter a task title.', 'error');
-      return;
-    }
-
-    setTasks(prev => [{
-      task: taskTitle,
-      client: taskFormValues.client.trim() || 'General Client',
-      assignee: taskFormValues.assignee.trim() || 'Unassigned',
-      due: taskFormValues.due.trim() || 'TBD',
-      priority: taskFormValues.priority,
-      status: taskFormValues.status,
-    }, ...prev]);
-    setTaskFormValues({ task: "", client: "", assignee: "", due: "", priority: "Medium", status: "Pending" });
-    setActionModal(null);
-    showToast('Task assigned successfully.', 'success');
+    if (!taskTitle) { showToast('Please enter a task title.', 'error'); return; }
+    const picked = clients.find((c) => c._raw?.id === taskFormValues.clientId);
+    if (!picked) { showToast('Please select a client for this task.', 'error'); return; }
+    const body: any = {
+      title: taskTitle,
+      task_type: taskFormValues.taskType,
+      priority: _lc(taskFormValues.priority),
+      client_id: picked._raw.id,
+      branch_id: picked._raw.branch_id,
+    };
+    if (taskFormValues.due) body.due_date = taskFormValues.due;
+    setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "Pending" });
+    persist(() => resources.tasks.create(body), 'Task created successfully.');
   };
 
   const handleAddLead = () => {
-    const name = leadFormValues.name.trim();
-    const service = leadFormValues.service.trim();
-    if (!name || !service) {
-      showToast('Please enter a lead name and service.', 'error');
-      return;
-    }
-
-    setLeads(prev => [{
-      name,
-      contact: leadFormValues.contact.trim() || 'Contact pending',
-      source: leadFormValues.source,
-      service,
-      status: leadFormValues.status,
-      followUp: leadFormValues.followUp,
-    }, ...prev]);
-    setLeadFormValues({ name: "", contact: "", source: "Website", service: "", status: "Hot", followUp: "Today" });
-    setActionModal(null);
-    showToast('Lead added successfully.', 'success');
+    const company = leadFormValues.name.trim();
+    const contact = leadFormValues.contact.trim();
+    const email = leadFormValues.email.trim().toLowerCase();
+    if (!company) { showToast('Please enter the lead / company name.', 'error'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Please enter a valid email for the lead.', 'error'); return; }
+    const body: any = {
+      name: contact || company,
+      email,
+      company_name: company,
+      source: _lc(leadFormValues.source),
+      notes: leadFormValues.service.trim() || undefined,
+    };
+    setLeadFormValues({ name: "", contact: "", email: "", source: "Website", service: "", status: "Hot", followUp: "Today" });
+    persist(() => resources.leads.create(body), 'Lead added successfully.');
   };
 
   const handleMarkAllRead = () => {
@@ -1148,7 +1144,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         <div className="space-y-3">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm text-[#94A3B8]">{tasks.length} open tasks across {new Set(tasks.map(task => task.assignee)).size} staff members</div>
-            <button onClick={() => { setTaskFormValues({ task: "", client: "", assignee: "", due: "", priority: "Medium", status: "Pending" }); setActionModal({title: 'Assign Task', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><ClipboardList size={13} /> Assign Task</button>
+            <button onClick={() => { setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "Pending" }); setActionModal({title: 'Assign Task', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><ClipboardList size={13} /> Assign Task</button>
           </div>
           {tasks.map(({task,client,assignee,due,priority,status}) => (
             <div key={task} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10">
@@ -1334,7 +1330,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         <div>
           <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
             <div className="flex gap-3">{[{l:"Total Leads",v:leads.length},{l:"This Month",v:leads.filter(lead => lead.followUp !== "Done").length},{l:"Converted",v:leads.filter(lead => lead.status === "Converted").length}].map(({l,v}) => <div key={l} className="px-4 py-2 bg-[#102A43] rounded-xl border border-white/10 text-center"><div className="font-extrabold text-sm text-[#087F5B]" style={{ fontFamily:"Manrope" }}>{v}</div><div className="text-xs text-[#94A3B8]">{l}</div></div>)}</div>
-            <button onClick={() => { setLeadFormValues({ name: "", contact: "", source: "Website", service: "", status: "Hot", followUp: "Today" }); setActionModal({title: 'Add Lead', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Target size={13} /> Add Lead</button>
+            <button onClick={() => { setLeadFormValues({ name: "", contact: "", email: "", source: "Website", service: "", status: "Hot", followUp: "Today" }); setActionModal({title: 'Add Lead', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Target size={13} /> Add Lead</button>
           </div>
           <div className="space-y-3">{leads.map(({name,contact,source,service,status,followUp}) => (<div key={`${name}-${contact}`} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10"><div><div className="font-bold text-white text-sm" style={{ fontFamily:"Manrope" }}>{name} · {contact}</div><div className="text-xs text-[#94A3B8]">{source} · {service} · Follow-up: {followUp}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Hot"?"#FFF0F0":status==="Warm"?"#FFF4E0":status==="Converted"?"#EAF4F0":"#EEF1F5",color:status==="Hot"?"#e53e3e":status==="Warm"?"#C8A45D":status==="Converted"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => setActionModal({title: 'Update', type: 'form'})} className="text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10">Update</button></div></div>))}</div>
         </div>
@@ -1421,9 +1417,24 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   <label className="block text-xs font-semibold text-white mb-1">Task Title *</label>
                   <input type="text" value={taskFormValues.task} onChange={(e) => setTaskFormValues(prev => ({ ...prev, task: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Enter task title" />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-white mb-1">Client</label>
-                  <input type="text" value={taskFormValues.client} onChange={(e) => setTaskFormValues(prev => ({ ...prev, client: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Client name" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-white mb-1">Client *</label>
+                    <select value={taskFormValues.clientId} onChange={(e) => setTaskFormValues(prev => ({ ...prev, clientId: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
+                      <option value="">Select client…</option>
+                      {clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-white mb-1">Type</label>
+                    <select value={taskFormValues.taskType} onChange={(e) => setTaskFormValues(prev => ({ ...prev, taskType: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
+                      <option value="general">General</option>
+                      <option value="audit">Audit</option>
+                      <option value="gst">GST</option>
+                      <option value="tax">Tax</option>
+                      <option value="payroll">Payroll</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1431,8 +1442,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                     <input type="text" value={taskFormValues.assignee} onChange={(e) => setTaskFormValues(prev => ({ ...prev, assignee: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Staff name" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-white mb-1">Due</label>
-                    <input type="text" value={taskFormValues.due} onChange={(e) => setTaskFormValues(prev => ({ ...prev, due: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="20 Jul" />
+                    <label className="block text-xs font-semibold text-white mb-1">Due Date</label>
+                    <input type="date" value={taskFormValues.due} onChange={(e) => setTaskFormValues(prev => ({ ...prev, due: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -1460,9 +1471,15 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   <label className="block text-xs font-semibold text-white mb-1">Lead Name *</label>
                   <input type="text" value={leadFormValues.name} onChange={(e) => setLeadFormValues(prev => ({ ...prev, name: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Enter lead name" />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-white mb-1">Contact Person</label>
-                  <input type="text" value={leadFormValues.contact} onChange={(e) => setLeadFormValues(prev => ({ ...prev, contact: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Contact name" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-white mb-1">Contact Person</label>
+                    <input type="text" value={leadFormValues.contact} onChange={(e) => setLeadFormValues(prev => ({ ...prev, contact: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Contact name" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-white mb-1">Email *</label>
+                    <input type="email" value={leadFormValues.email} onChange={(e) => setLeadFormValues(prev => ({ ...prev, email: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="lead@company.com" />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
