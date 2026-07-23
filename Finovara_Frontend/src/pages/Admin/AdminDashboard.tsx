@@ -15,6 +15,12 @@ import { Page } from "../../types/index";
 import { useAuth } from "../../context";
 import { resources } from "../../services";
 import { api } from "../../lib/api";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell, PieChart, Pie, Legend, LabelList } from "recharts";
+
+// Chart palette — validated for CVD separation; status hues carry meaning
+// (paid=emerald, pending=amber, overdue=red) and always ship with labels.
+const CHART = { emerald: "#0CA678", amber: "#E8952A", red: "#E5484D", blue: "#4C8DF5", slate: "#64748B" };
+const _num = (v: unknown) => Number(v ?? 0) || 0;
 
 // Formatting + safe backend→UI mapping helpers for the admin lists.
 const _money = (v: unknown) => `₹${Number(v ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
@@ -636,15 +642,35 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     }
   }, [userRole, activeTab, tabs]);
 
+  // --- derived metrics + chart data from the live lists ---------------------
+  const outstanding = invoices.reduce((s, i) => s + Math.max(_num(i._raw?.total_amount) - _num(i._raw?.paid_amount), 0), 0);
+  const paidTotal = invoices.reduce((s, i) => s + _num(i._raw?.paid_amount), 0);
+  const revenue = invoices.reduce((s, i) => s + _num(i._raw?.total_amount), 0);
+  const overdueTasks = tasks.filter((t) => t._raw?.status !== "completed" && t._raw?.due_date && new Date(t._raw.due_date) < new Date()).length;
+  const pendingFilings = taxReturns.filter((t) => _lc(t.status) !== "filed").length + gstReturns.filter((g) => _lc(g.status) !== "filed").length;
+
+  const _byStatus = (rows: any[], key = "status") => {
+    const m: Record<string, number> = {};
+    for (const r of rows) { const k = _tc(r._raw?.[key] ?? r[key]) || "Other"; m[k] = (m[k] || 0) + 1; }
+    return Object.entries(m).map(([name, value]) => ({ name, value }));
+  };
+  const taskStatusData = _byStatus(tasks);
+  const invoiceSplit = [
+    { name: "Paid", value: Math.round(paidTotal) },
+    { name: "Outstanding", value: Math.round(outstanding) },
+  ].filter((d) => d.value > 0);
+  const INV_COLORS = [CHART.emerald, CHART.amber];
+  const _inr = (v: number) => v >= 1e7 ? `₹${(v / 1e7).toFixed(1)}Cr` : v >= 1e5 ? `₹${(v / 1e5).toFixed(1)}L` : `₹${v.toLocaleString("en-IN")}`;
+
   const kpiCards = [
-    { label: "Total Clients",     value: "1,542", change: "+12%",  icon: Users,        color: "#087F5B", bg: "#EAF4F0" },
-    { label: "Active Services",   value: "4,218", change: "+8%",   icon: CheckCircle,  color: "#087F5B", bg: "#EAF4F0" },
-    { label: "Pending Filings",   value: "87",    change: "-5%",   icon: ClipboardList,color: "#C8A45D", bg: "#FFF4E0" },
-    { label: "Overdue Tasks",     value: "14",    change: "+2",    icon: AlertTriangle,color: "#e53e3e", bg: "#FFF0F0" },
-    { label: "Monthly Revenue",   value: "₹42L",  change: "+18%",  icon: TrendingUp,   color: "#087F5B", bg: "#EAF4F0" },
-    { label: "Outstanding Invoices",value:"₹8.2L", change: "-3%",  icon: ReceiptText,  color: "#C8A45D", bg: "#FFF4E0" },
-    { label: "Open Queries",      value: "31",    change: "+4",    icon: HelpCircle,   color: "white", bg: "#EEF1F5" },
-    { label: "Docs Awaiting Review",value:"23",   change: "+7",    icon: Folder,       color: "#C8A45D", bg: "#FFF4E0" },
+    { label: "Total Clients",       value: String(clients.length),        change: "live", icon: Users,        color: "#087F5B", bg: "#EAF4F0" },
+    { label: "Services",            value: String(services.length),       change: "live", icon: CheckCircle,  color: "#087F5B", bg: "#EAF4F0" },
+    { label: "Pending Filings",     value: String(pendingFilings),        change: "live", icon: ClipboardList,color: "#C8A45D", bg: "#FFF4E0" },
+    { label: "Overdue Tasks",       value: String(overdueTasks),          change: "live", icon: AlertTriangle,color: "#e53e3e", bg: "#FFF0F0" },
+    { label: "Revenue (billed)",    value: _inr(revenue),                 change: "live", icon: TrendingUp,   color: "#087F5B", bg: "#EAF4F0" },
+    { label: "Outstanding Invoices",value: _inr(outstanding),             change: "live", icon: ReceiptText,  color: "#C8A45D", bg: "#FFF4E0" },
+    { label: "Open Leads",          value: String(leads.length),          change: "live", icon: HelpCircle,   color: "white",   bg: "#EEF1F5" },
+    { label: "Docs Awaiting Review",value: String(reviewDocs.length),     change: "live", icon: Folder,       color: "#C8A45D", bg: "#FFF4E0" },
   ];
 
   const renderContent = () => {
@@ -662,6 +688,40 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 <div className="text-xs text-[#94A3B8] mt-1" style={{ fontFamily: "Inter" }}>{label}</div>
               </div>
             ))}
+          </div>
+          <div className="grid lg:grid-cols-2 gap-6 mb-6">
+            <div className="bg-[#102A43] rounded-2xl p-5 border border-white/10">
+              <div className="font-bold text-white mb-0.5" style={{ fontFamily: "Manrope" }}>Tasks by Status</div>
+              <div className="text-xs text-[#94A3B8] mb-3">{tasks.length} tasks total</div>
+              {taskStatusData.length ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={taskStatusData} margin={{ top: 12, right: 8, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fill: "#94A3B8", fontSize: 11 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} interval={0} />
+                    <YAxis allowDecimals={false} tick={{ fill: "#94A3B8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12 }} />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]} fill={CHART.emerald} maxBarSize={46}>
+                      <LabelList dataKey="value" position="top" fill="#cbd5e1" fontSize={11} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <div className="text-sm text-[#94A3B8] py-12 text-center">No task data yet.</div>}
+            </div>
+            <div className="bg-[#102A43] rounded-2xl p-5 border border-white/10">
+              <div className="font-bold text-white mb-0.5" style={{ fontFamily: "Manrope" }}>Receivables</div>
+              <div className="text-xs text-[#94A3B8] mb-3">Paid vs outstanding &middot; {_inr(revenue)} billed</div>
+              {invoiceSplit.length ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={invoiceSplit} dataKey="value" nameKey="name" innerRadius={54} outerRadius={80} paddingAngle={2} stroke="#102A43" strokeWidth={2}>
+                      {invoiceSplit.map((_e, i) => <Cell key={i} fill={INV_COLORS[i]} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: any) => _inr(Number(v))} contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12 }} />
+                    <Legend formatter={(v) => <span style={{ color: "#cbd5e1", fontSize: 12 }}>{v}</span>} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : <div className="text-sm text-[#94A3B8] py-12 text-center">No invoice data yet.</div>}
+            </div>
           </div>
           <div className="grid lg:grid-cols-2 gap-6">
             <div className="bg-[#102A43] rounded-2xl p-5 border border-white/10">
