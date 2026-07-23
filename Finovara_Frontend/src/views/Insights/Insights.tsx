@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { publicApi, Blog } from "../../services/public";

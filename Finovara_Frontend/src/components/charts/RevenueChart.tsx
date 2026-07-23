@@ -1,3 +1,5 @@
+"use client";
+
 import { BarChart2, TrendingUp } from "lucide-react";
 
 export function RevenueChart({ data }: { data?: any }) {

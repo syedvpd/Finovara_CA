@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Menu, X, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Phone, Mail,
@@ -15,10 +17,12 @@ import { INDUSTRIES, INDUSTRY_DETAILS } from "../../utils/constants";
 
 export function IndustriesPage({ setPage }: { setPage: (p: Page) => void }) {
   const [activeIndustry, setActiveIndustry] = useState<string>(() => {
-    const saved = window.sessionStorage.getItem("activeIndustry");
-    if (saved) {
-      window.sessionStorage.removeItem("activeIndustry");
-      return saved;
+    if (typeof window !== "undefined") {
+      const saved = window.sessionStorage.getItem("activeIndustry");
+      if (saved) {
+        window.sessionStorage.removeItem("activeIndustry");
+        return saved;
+      }
     }
     return INDUSTRIES[0].label;
   });

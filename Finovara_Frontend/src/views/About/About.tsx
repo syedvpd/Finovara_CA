@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Menu, X, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Phone, Mail,

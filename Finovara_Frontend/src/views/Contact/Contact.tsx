@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useRef, ChangeEvent, FocusEvent, FormEvent } from "react";
 import { publicApi } from "../../services/public";
 import { ApiError } from "../../lib/api";

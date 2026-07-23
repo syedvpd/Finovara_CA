@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { FileText, Download, Loader2 } from "lucide-react";
 import { publicApi, DownloadItem } from "../../services/public";

@@ -1,3 +1,5 @@
+"use client";
+
 import { InputHTMLAttributes } from "react";
 
 interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {

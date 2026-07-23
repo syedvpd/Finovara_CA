@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Menu, X, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Phone, Mail,
@@ -15,10 +17,12 @@ import { SERVICES } from "../../utils/constants";
 
 export function ServicesPage({ setPage }: { setPage: (p: Page) => void }) {
   const [selected, setSelected] = useState(() => {
-    const saved = window.sessionStorage.getItem("activeService");
-    if (saved) {
-      window.sessionStorage.removeItem("activeService");
-      return parseInt(saved, 10) || 0;
+    if (typeof window !== "undefined") {
+      const saved = window.sessionStorage.getItem("activeService");
+      if (saved) {
+        window.sessionStorage.removeItem("activeService");
+        return parseInt(saved, 10) || 0;
+      }
     }
     return 0;
   });

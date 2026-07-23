@@ -1,3 +1,5 @@
+"use client";
+
 import { ArrowLeft, ShieldCheck, FileText } from "lucide-react";
 import { Page } from "../../types/index";
 

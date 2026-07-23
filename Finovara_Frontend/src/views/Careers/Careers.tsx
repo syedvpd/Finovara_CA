@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useRef, useEffect, ChangeEvent, FocusEvent, FormEvent } from "react";
 import {
   ChevronDown, MapPin, Briefcase, FileText, CheckCircle, AlertCircle, Loader2, Send, X, Users, Globe, Award, TrendingUp, Check, Trash2, UploadCloud, ArrowRight

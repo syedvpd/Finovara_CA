@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useCallback } from "react";
 import {
   X, Phone, Mail, Shield, Clock, FileText, BarChart2, Users, CheckCircle,

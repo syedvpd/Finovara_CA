@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, FormEvent, useEffect } from "react";
 import { Shield, Lock, Users, FileText, Clock, AlertCircle, Globe, Star, CheckCircle, Loader2, ArrowLeft, Mail, Key, Eye, EyeOff, Smartphone } from "lucide-react";
 import { Page } from "../../types/index";

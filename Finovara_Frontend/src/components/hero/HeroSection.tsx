@@ -1,3 +1,5 @@
+"use client";
+
 import { Calendar, ChevronRight, Lock, UploadCloud } from "lucide-react";
 import { Page } from "../../types/index";
 
