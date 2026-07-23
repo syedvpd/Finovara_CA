@@ -8,7 +8,7 @@
  * ({success,data,meta}) and are unwrapped here so callers get plain data.
  */
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 const CSRF_COOKIE = "fv_csrf";
 const CSRF_HEADER = "X-CSRF-Token";
 const UNSAFE = new Set(["POST", "PUT", "PATCH", "DELETE"]);
