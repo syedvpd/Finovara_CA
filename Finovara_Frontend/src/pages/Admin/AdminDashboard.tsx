@@ -80,6 +80,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     name: "",
     contact: "",
     email: "",
+    phone: "",
     source: "Website",
     service: "",
     status: "Hot" as 'Hot' | 'Warm' | 'Cold' | 'Converted',
@@ -564,16 +565,19 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     const company = leadFormValues.name.trim();
     const contact = leadFormValues.contact.trim();
     const email = leadFormValues.email.trim().toLowerCase();
+    const phone = leadFormValues.phone.replace(/[\s-]/g, "");
     if (!company) { showToast('Please enter the lead / company name.', 'error'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Please enter a valid email for the lead.', 'error'); return; }
+    if (!/^\+?[0-9]{7,15}$/.test(phone)) { showToast('Please enter a valid phone number for the lead.', 'error'); return; }
     const body: any = {
       name: contact || company,
       email,
+      phone,
       company_name: company,
       source: _lc(leadFormValues.source),
       notes: leadFormValues.service.trim() || undefined,
     };
-    setLeadFormValues({ name: "", contact: "", email: "", source: "Website", service: "", status: "Hot", followUp: "Today" });
+    setLeadFormValues({ name: "", contact: "", email: "", phone: "", source: "Website", service: "", status: "Hot", followUp: "Today" });
     persist(() => resources.leads.create(body), 'Lead added successfully.');
   };
 
@@ -1330,7 +1334,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         <div>
           <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
             <div className="flex gap-3">{[{l:"Total Leads",v:leads.length},{l:"This Month",v:leads.filter(lead => lead.followUp !== "Done").length},{l:"Converted",v:leads.filter(lead => lead.status === "Converted").length}].map(({l,v}) => <div key={l} className="px-4 py-2 bg-[#102A43] rounded-xl border border-white/10 text-center"><div className="font-extrabold text-sm text-[#087F5B]" style={{ fontFamily:"Manrope" }}>{v}</div><div className="text-xs text-[#94A3B8]">{l}</div></div>)}</div>
-            <button onClick={() => { setLeadFormValues({ name: "", contact: "", email: "", source: "Website", service: "", status: "Hot", followUp: "Today" }); setActionModal({title: 'Add Lead', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Target size={13} /> Add Lead</button>
+            <button onClick={() => { setLeadFormValues({ name: "", contact: "", email: "", phone: "", source: "Website", service: "", status: "Hot", followUp: "Today" }); setActionModal({title: 'Add Lead', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Target size={13} /> Add Lead</button>
           </div>
           <div className="space-y-3">{leads.map(({name,contact,source,service,status,followUp}) => (<div key={`${name}-${contact}`} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10"><div><div className="font-bold text-white text-sm" style={{ fontFamily:"Manrope" }}>{name} · {contact}</div><div className="text-xs text-[#94A3B8]">{source} · {service} · Follow-up: {followUp}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Hot"?"#FFF0F0":status==="Warm"?"#FFF4E0":status==="Converted"?"#EAF4F0":"#EEF1F5",color:status==="Hot"?"#e53e3e":status==="Warm"?"#C8A45D":status==="Converted"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => setActionModal({title: 'Update', type: 'form'})} className="text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10">Update</button></div></div>))}</div>
         </div>
@@ -1480,6 +1484,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                     <label className="block text-xs font-semibold text-white mb-1">Email *</label>
                     <input type="email" value={leadFormValues.email} onChange={(e) => setLeadFormValues(prev => ({ ...prev, email: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="lead@company.com" />
                   </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-white mb-1">Phone *</label>
+                  <input type="tel" value={leadFormValues.phone} onChange={(e) => setLeadFormValues(prev => ({ ...prev, phone: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="9876543210" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
