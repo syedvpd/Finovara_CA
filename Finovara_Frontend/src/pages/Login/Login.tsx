@@ -309,44 +309,50 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
 
           {view === 'otp' && (
             <>
-              <h1 className="text-2xl font-extrabold text-white mb-2 animate-in fade-in slide-in-from-right-4" style={{ fontFamily: "Manrope" }}>Sign in with OTP</h1>
-              <p className="text-[#94A3B8] text-sm mb-6 animate-in fade-in slide-in-from-right-4" style={{ fontFamily: "Inter" }}>We'll send a secure one-time password to your email.</p>
+              <h1 className="text-2xl font-extrabold text-[#102A43] mb-2 animate-in fade-in slide-in-from-right-4" style={{ fontFamily: "Manrope" }}>Sign in with OTP</h1>
+              <p className="text-[#475569] text-sm mb-6 animate-in fade-in slide-in-from-right-4" style={{ fontFamily: "Inter" }}>We'll send a secure one-time password to your email.</p>
 
               <form onSubmit={handleOtpSubmit} noValidate className="animate-in fade-in slide-in-from-right-8 duration-500">
                 <div className="space-y-5 mb-6">
-                  <div className="relative">
-                    <label htmlFor="otp-email" className="text-xs font-bold text-white mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
-                      Email Address <span className="text-red-500 text-base leading-none">*</span>
+                  <div className="relative group">
+                    <label htmlFor="otp-email" className="text-xs font-bold text-[#475569] mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
+                      Email Address <span className="text-[#EF4444] text-base leading-none">*</span>
                     </label>
-                    <input 
-                      id="otp-email" type="email" value={email} 
-                      onChange={e => handleChange('email', e.target.value)}
-                      onBlur={() => handleBlur('email')}
-                      placeholder="your@email.com"
-                      className={getInputStyles('email')}
-                      disabled={otpSent}
-                    />
+                    <div className="relative">
+                      <Mail size={20} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 pointer-events-none ${errors.email ? 'text-[#EF4444]' : 'text-gray-400 group-focus-within:text-[#059669]'}`} />
+                      <input 
+                        id="otp-email" type="email" value={email} 
+                        onChange={e => handleChange('email', e.target.value)}
+                        onBlur={() => handleBlur('email')}
+                        placeholder="your@email.com"
+                        className={getInputStyles('email')}
+                        disabled={otpSent}
+                      />
+                    </div>
                     {errors.email && (
-                      <p className="text-red-500 text-xs mt-2 font-bold flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 transition-all">
+                      <p className="text-[#EF4444] text-xs mt-2 font-medium flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 transition-all">
                         <AlertCircle size={14} /> {errors.email}
                       </p>
                     )}
                   </div>
 
                   {otpSent && (
-                    <div className="relative animate-in fade-in slide-in-from-top-4 duration-300">
-                      <label htmlFor="otp" className="text-xs font-bold text-white mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
-                        6-Digit OTP <span className="text-red-500 text-base leading-none">*</span>
+                    <div className="relative group animate-in fade-in slide-in-from-top-4 duration-300">
+                      <label htmlFor="otp" className="text-xs font-bold text-[#475569] mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
+                        6-Digit OTP <span className="text-[#EF4444] text-base leading-none">*</span>
                       </label>
-                      <input 
-                        id="otp" type="text" value={otp} maxLength={6}
-                        onChange={e => handleChange('otp', e.target.value)}
-                        onBlur={() => handleBlur('otp')}
-                        placeholder="000000"
-                        className={`${getInputStyles('otp')} tracking-[0.5em] text-center font-bold text-lg`}
-                      />
+                      <div className="relative">
+                        <Key size={20} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 pointer-events-none ${errors.otp ? 'text-[#EF4444]' : 'text-gray-400 group-focus-within:text-[#059669]'}`} />
+                        <input 
+                          id="otp" type="text" value={otp} maxLength={6}
+                          onChange={e => handleChange('otp', e.target.value)}
+                          onBlur={() => handleBlur('otp')}
+                          placeholder="000000"
+                          className={`${getInputStyles('otp')} tracking-[0.5em] text-center font-bold text-lg`}
+                        />
+                      </div>
                       {errors.otp && (
-                        <p className="text-red-500 text-xs mt-2 font-bold flex items-center justify-center gap-1.5 animate-in fade-in slide-in-from-top-1 transition-all">
+                        <p className="text-[#EF4444] text-xs mt-2 font-medium flex items-center justify-center gap-1.5 animate-in fade-in slide-in-from-top-1 transition-all">
                           <AlertCircle size={14} /> {errors.otp}
                         </p>
                       )}
@@ -369,39 +375,42 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
 
           {view === 'forgot' && (
             <>
-              <h1 className="text-2xl font-extrabold text-white mb-2 animate-in fade-in slide-in-from-left-4" style={{ fontFamily: "Manrope" }}>Reset Password</h1>
-              <p className="text-[#94A3B8] text-sm mb-6 animate-in fade-in slide-in-from-left-4" style={{ fontFamily: "Inter" }}>Enter your email address and we'll send you a link to reset your password.</p>
+              <h1 className="text-2xl font-extrabold text-[#102A43] mb-2 animate-in fade-in slide-in-from-left-4" style={{ fontFamily: "Manrope" }}>Reset Password</h1>
+              <p className="text-[#475569] text-sm mb-6 animate-in fade-in slide-in-from-left-4" style={{ fontFamily: "Inter" }}>Enter your email address and we'll send you a link to reset your password.</p>
 
               {resetSent ? (
                 <div className="bg-[#EAF4F0] border border-[#087F5B]/20 rounded-xl p-6 text-center animate-in fade-in slide-in-from-top-4">
-                  <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-[#087F5B]">
+                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-[#087F5B]">
                     <Mail size={24} />
                   </div>
-                  <h3 className="font-extrabold text-white mb-2" style={{ fontFamily: "Manrope" }}>Check your inbox</h3>
-                  <p className="text-[#94A3B8] text-sm mb-6" style={{ fontFamily: "Inter" }}>
+                  <h3 className="font-extrabold text-[#102A43] mb-2" style={{ fontFamily: "Manrope" }}>Check your inbox</h3>
+                  <p className="text-[#475569] text-sm mb-6" style={{ fontFamily: "Inter" }}>
                     We've sent a password reset link to <br/>
-                    <span className="font-bold text-white">{email}</span>
+                    <span className="font-bold text-[#102A43]">{email}</span>
                   </p>
-                  <button type="button" onClick={() => resetView('login')} className="text-sm font-bold text-[#087F5B] hover:underline" style={{ fontFamily: "Inter" }}>
+                  <button type="button" onClick={() => resetView('login')} className="text-sm font-bold text-[#059669] hover:underline" style={{ fontFamily: "Inter" }}>
                     Back to Login
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleForgotSubmit} noValidate className="animate-in fade-in slide-in-from-left-8 duration-500">
                   <div className="space-y-5 mb-6">
-                    <div className="relative">
-                      <label htmlFor="forgot-email" className="text-xs font-bold text-white mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
-                        Email Address <span className="text-red-500 text-base leading-none">*</span>
+                    <div className="relative group">
+                      <label htmlFor="forgot-email" className="text-xs font-bold text-[#475569] mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
+                        Email Address <span className="text-[#EF4444] text-base leading-none">*</span>
                       </label>
-                      <input 
-                        id="forgot-email" type="email" value={email} 
-                        onChange={e => handleChange('email', e.target.value)}
-                        onBlur={() => handleBlur('email')}
-                        placeholder="your@email.com"
-                        className={getInputStyles('email')}
-                      />
+                      <div className="relative">
+                        <Mail size={20} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 pointer-events-none ${errors.email ? 'text-[#EF4444]' : 'text-gray-400 group-focus-within:text-[#059669]'}`} />
+                        <input 
+                          id="forgot-email" type="email" value={email} 
+                          onChange={e => handleChange('email', e.target.value)}
+                          onBlur={() => handleBlur('email')}
+                          placeholder="your@email.com"
+                          className={getInputStyles('email')}
+                        />
+                      </div>
                       {errors.email && (
-                        <p className="text-red-500 text-xs mt-2 font-bold flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 transition-all">
+                        <p className="text-[#EF4444] text-xs mt-2 font-medium flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 transition-all">
                           <AlertCircle size={14} /> {errors.email}
                         </p>
                       )}
@@ -423,9 +432,9 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
           )}
 
           {/* Registration Link (Shown on all views at bottom) */}
-          <p className="text-center text-sm font-medium text-[#94A3B8] mt-6" style={{ fontFamily: "Inter" }}>
+          <p className="text-center text-sm font-medium text-[#64748B] mt-6" style={{ fontFamily: "Inter" }}>
             New client?{" "}
-            <button type="button" onClick={() => setPage("contact")} className="font-bold text-[#087F5B] hover:text-white transition-colors hover:underline">
+            <button type="button" onClick={() => setPage("contact")} className="font-bold text-[#059669] hover:text-[#0F766E] transition-colors hover:underline">
               Request Portal Access
             </button>
           </p>
