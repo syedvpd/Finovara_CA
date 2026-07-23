@@ -88,8 +88,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [dataLoading, setDataLoading] = useState(true);
 
   // Load real data and map backend rows into the compact shapes the tabs render.
-  useEffect(() => {
-    (async () => {
+  const loadData = useCallback(async () => {
       setDataLoading(true);
       const r = await Promise.allSettled([
         resources.clients.list({ page_size: 100 }),
@@ -152,8 +151,22 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       const soon = _rowsOf(r[3]).filter((t: any) => t.due_date).sort((a: any, b: any) => String(a.due_date).localeCompare(String(b.due_date))).slice(0, 8);
       setDueTasks(soon.map((t: any) => ({ task: t.title, date: _date(t.due_date), staff: t.assignments?.[0]?.assignee_name ?? "—" })));
       setDataLoading(false);
-    })();
   }, []);
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Write-through helper: run a server mutation, then refresh the lists.
+  const persist = async (fn: () => Promise<any>, okMsg: string) => {
+    try {
+      await fn();
+      await loadData();
+      setActionModal(null);
+      showToast(okMsg, "success");
+    } catch {
+      showToast("Server rejected the change. Please check the fields and try again.", "error");
+    }
+  };
+  const _slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "svc";
+  const _lc = (s: string) => (s || "").toLowerCase().replace(/\s+/g, "_");
   const showToast = (msg: string, type: 'success'|'info'|'error' = 'success') => {
     setToastMessage({ msg, type });
     setTimeout(() => setToastMessage(null), 3000);
@@ -307,16 +320,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       return;
     }
 
-    setServices(prev => [{
-      svc: name,
-      cat: serviceFormValues.cat.trim() || 'General',
-      price: serviceFormValues.price.trim() || '₹0',
-      clients: Number(serviceFormValues.clients) || 0,
-      active: serviceFormValues.active,
-    }, ...prev]);
+    const department = (serviceFormValues.cat.trim() || 'General').slice(0, 50);
+    const price = Number((serviceFormValues.price || "").replace(/[^0-9.]/g, "")) || 0;
     setServiceFormValues({ svc: "", cat: "", price: "", clients: "10", active: true });
-    setActionModal(null);
-    showToast('Service added successfully.', 'success');
+    persist(() => resources.services.create({
+      name, code: _slug(name), department, base_price: String(price), billing_cycle: "monthly",
+    } as any), 'Service added successfully.');
   };
 
   const handleUpdateClient = () => {
@@ -346,25 +355,18 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       return;
     }
 
-    setClients(prev => prev.map(client => client.pan === actionModal?.item?.pan && client.gstin === actionModal?.item?.gstin ? {
-      ...client,
-      n: name,
-      ca: formValues.caName.trim() || 'Assigned CA',
-      pan,
-      gstin,
-      svc: Number(formValues.services) || 1,
-      status: formValues.status,
-    } : client));
+    const id = actionModal?.item?._raw?.id;
+    const newStatus = formValues.status === 'Active' ? 'active' : 'inactive';
     setFormValues({ clientName: "", caName: "", pan: "", gstin: "", services: "3", status: "Active" });
     setFormErrors({});
-    setActionModal(null);
-    showToast('Client updated successfully.', 'success');
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.clients.update(id, { status: newStatus }), 'Client updated successfully.');
   };
 
   const handleDeleteClient = () => {
-    setClients(prev => prev.filter(client => !(client.pan === actionModal?.item?.pan && client.gstin === actionModal?.item?.gstin)));
-    setActionModal(null);
-    showToast('Client deleted successfully.', 'success');
+    const id = actionModal?.item?._raw?.id;
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.clients.remove(id), 'Client deleted successfully.');
   };
 
   const handleUpdateEmployee = () => {
@@ -380,24 +382,18 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       return;
     }
 
-    setEmployees(prev => prev.map(employee => employee.email === actionModal?.item?.email ? {
-      ...employee,
-      n: name,
-      role: employeeFormValues.role || 'Staff',
-      dept: employeeFormValues.dept.trim() || 'General',
-      clients: Number(employeeFormValues.clients) || 0,
-      tasks: Number(employeeFormValues.tasks) || 0,
-      email,
-    } : employee));
+    const id = actionModal?.item?._raw?.id;
+    const designation = employeeFormValues.role || 'Staff';
+    const department = employeeFormValues.dept.trim() || 'General';
     setEmployeeFormValues({ name: "", role: "Staff", dept: "", email: "", clients: "2", tasks: "1" });
-    setActionModal(null);
-    showToast('Employee updated successfully.', 'success');
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.employees.update(id, { designation, department }), 'Employee updated successfully.');
   };
 
   const handleDeleteEmployee = () => {
-    setEmployees(prev => prev.filter(employee => employee.email !== actionModal?.item?.email));
-    setActionModal(null);
-    showToast('Employee deleted successfully.', 'success');
+    const id = actionModal?.item?._raw?.id;
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.employees.remove(id), 'Employee deleted successfully.');
   };
 
   const handleUpdateService = () => {
@@ -407,23 +403,17 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       return;
     }
 
-    setServices(prev => prev.map(service => service.svc === actionModal?.item?.svc ? {
-      ...service,
-      svc: name,
-      cat: serviceFormValues.cat.trim() || 'General',
-      price: serviceFormValues.price.trim() || '₹0',
-      clients: Number(serviceFormValues.clients) || 0,
-      active: serviceFormValues.active,
-    } : service));
+    const id = actionModal?.item?._raw?.id;
+    const department = (serviceFormValues.cat.trim() || 'General').slice(0, 50);
     setServiceFormValues({ svc: "", cat: "", price: "", clients: "10", active: true });
-    setActionModal(null);
-    showToast('Service updated successfully.', 'success');
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.services.update(id, { name, department }), 'Service updated successfully.');
   };
 
   const handleDeleteService = () => {
-    setServices(prev => prev.filter(service => service.svc !== actionModal?.item?.svc));
-    setActionModal(null);
-    showToast('Service deleted successfully.', 'success');
+    const id = actionModal?.item?._raw?.id;
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.services.remove(id), 'Service deleted successfully.');
   };
 
   const handleUpdateTask = () => {
@@ -433,24 +423,18 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       return;
     }
 
-    setTasks(prev => prev.map(task => task.task === actionModal?.item?.task ? {
-      ...task,
-      task: taskTitle,
-      client: taskFormValues.client.trim() || 'General Client',
-      assignee: taskFormValues.assignee.trim() || 'Unassigned',
-      due: taskFormValues.due.trim() || 'TBD',
-      priority: taskFormValues.priority,
-      status: taskFormValues.status,
-    } : task));
+    const id = actionModal?.item?._raw?.id;
+    const priority = _lc(taskFormValues.priority);   // low|medium|high|urgent
+    const status = _lc(taskFormValues.status);       // pending|in_progress|completed…
     setTaskFormValues({ task: "", client: "", assignee: "", due: "", priority: "Medium", status: "Pending" });
-    setActionModal(null);
-    showToast('Task updated successfully.', 'success');
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.tasks.update(id, { title: taskTitle, priority, status } as any), 'Task updated successfully.');
   };
 
   const handleDeleteTask = () => {
-    setTasks(prev => prev.filter(task => task.task !== actionModal?.item?.task));
-    setActionModal(null);
-    showToast('Task deleted successfully.', 'success');
+    const id = actionModal?.item?._raw?.id;
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.tasks.remove(id), 'Task deleted successfully.');
   };
 
   const handleDownloadReport = (reportName: string) => {
