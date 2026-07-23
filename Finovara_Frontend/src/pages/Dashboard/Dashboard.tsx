@@ -143,12 +143,12 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
     }
   };
 
-  const empty = (msg: string) => <div className="text-sm text-[#94A3B8] py-6 text-center">{msg}</div>;
+  const empty = (msg: string) => <div className="text-sm text-[#52606D] py-6 text-center">{msg}</div>;
 
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="flex items-center justify-center py-16 text-[#94A3B8] gap-2">
+        <div className="flex items-center justify-center py-16 text-[#52606D] gap-2">
           <Loader2 size={18} className="animate-spin" /> Loading your data…
         </div>
       );
@@ -158,10 +158,10 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
         <div className="space-y-4">
           {services.length === 0 && empty("No active services yet.")}
           {services.map((s) => (
-            <div key={s.id} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10">
+            <div key={s.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#EAF4F0" }}><CheckCircle size={16} style={{ color: "#087F5B" }} /></div>
-                <div><div className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{s.service?.name ?? serviceNames[s.service_id] ?? "Service"}</div><div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>Since {fmtDate(s.start_date)}</div></div>
+                <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{s.service?.name ?? serviceNames[s.service_id] ?? "Service"}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>Since {fmtDate(s.start_date)}</div></div>
               </div>
               <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "#EAF4F0", color: "#087F5B" }}>{titleCase(s.status)}</span>
             </div>
@@ -174,10 +174,10 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
           {pendingTasks.map((t) => {
             const u = t.priority === "high" || t.priority === "urgent" ? "High" : t.priority === "medium" ? "Medium" : "Low";
             return (
-              <div key={t.id} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10">
+              <div key={t.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: u === "High" ? "#FFF0F0" : u === "Medium" ? "#FFF4E0" : "#EAF4F0" }}><AlertCircle size={16} style={{ color: u === "High" ? "#e53e3e" : u === "Medium" ? "#C8A45D" : "#087F5B" }} /></div>
-                  <div><div className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{t.title}</div><div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>{t.due_date ? `Due ${fmtDate(t.due_date)}` : titleCase(t.status)}</div></div>
+                  <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{t.title}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{t.due_date ? `Due ${fmtDate(t.due_date)}` : titleCase(t.status)}</div></div>
                 </div>
                 <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: u === "High" ? "#FFF0F0" : u === "Medium" ? "#FFF4E0" : "#EAF4F0", color: u === "High" ? "#e53e3e" : u === "Medium" ? "#C8A45D" : "#087F5B" }}>{u}</span>
               </div>
@@ -189,12 +189,12 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
         <div className="space-y-4">
           {upcomingDue.length === 0 && empty("No upcoming due dates.")}
           {upcomingDue.map((t) => (
-            <div key={t.id} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10">
+            <div key={t.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#EAF4F0" }}><Calendar size={16} style={{ color: "#087F5B" }} /></div>
-                <div><div className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{t.title}</div><div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>{titleCase(t.task_type)}</div></div>
+                <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{t.title}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{titleCase(t.task_type)}</div></div>
               </div>
-              <span className="text-sm font-bold text-white" style={{ fontFamily: "Manrope" }}>{fmtDate(t.due_date)}</span>
+              <span className="text-sm font-bold text-[#102A43]" style={{ fontFamily: "Manrope" }}>{fmtDate(t.due_date)}</span>
             </div>
           ))}
         </div>
@@ -203,10 +203,10 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
         <div className="space-y-4">
           {documents.length === 0 && empty("No documents uploaded yet.")}
           {documents.map((d) => (
-            <div key={d.id} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10">
+            <div key={d.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#EAF4F0" }}><FileText size={16} style={{ color: "#087F5B" }} /></div>
-                <div><div className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{d.name}</div><div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>{fmtSize(d.file_size)} · {fmtDate(d.created_at)} · {titleCase(d.status)}</div></div>
+                <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{d.name}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{fmtSize(d.file_size)} · {fmtDate(d.created_at)} · {titleCase(d.status)}</div></div>
               </div>
               <button onClick={() => handleDownloadFile(d)} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#EAF4F0] transition-colors" style={{ color: "#087F5B" }}><Download size={13} /> Download</button>
             </div>
@@ -216,13 +216,13 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
       case "Missing Documents": return (
         <div className="space-y-4">
           {docRequests.filter((r) => r.status !== "fulfilled" && r.status !== "completed").length === 0 && (
-            <div className="p-5 text-center text-sm font-semibold text-[#087F5B] bg-[#EAF4F0] rounded-2xl border border-white/10">All requested documents have been provided!</div>
+            <div className="p-5 text-center text-sm font-semibold text-[#087F5B] bg-[#EAF4F0] rounded-2xl border border-[#E2E8F0]">All requested documents have been provided!</div>
           )}
           {docRequests.filter((r) => r.status !== "fulfilled" && r.status !== "completed").map((r) => (
             <div key={r.id} className="flex items-center justify-between p-4 rounded-2xl border" style={{ background: "#FFF8F8", borderColor: "rgba(229,62,62,0.15)" }}>
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#FFF0F0" }}><AlertTriangle size={16} style={{ color: "#e53e3e" }} /></div>
-                <div><div className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{r.title ?? r.name ?? r.document_name ?? "Requested document"}</div><div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>{r.due_date ? `Due ${fmtDate(r.due_date)}` : titleCase(r.status)}</div></div>
+                <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{r.title ?? r.name ?? r.document_name ?? "Requested document"}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{r.due_date ? `Due ${fmtDate(r.due_date)}` : titleCase(r.status)}</div></div>
               </div>
             </div>
           ))}
@@ -239,13 +239,13 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
               const answered = (q.responses?.length ?? 0) > 0 || q.status === "resolved" || q.status === "answered";
               const reply = q.responses?.[q.responses.length - 1]?.response_text ?? q.responses?.[q.responses.length - 1]?.body;
               return (
-                <div key={q.id} className="p-5 bg-[#102A43] rounded-2xl border border-white/10">
+                <div key={q.id} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
                   <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{q.subject}</div>
+                    <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{q.subject}</div>
                     <span className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: answered ? "#EAF4F0" : "#FFF4E0", color: answered ? "#087F5B" : "#C8A45D" }}>{answered ? "Answered" : titleCase(q.status) || "Pending"}</span>
                   </div>
-                  {q.query_text && <p className="text-xs text-[#94A3B8] leading-relaxed mb-1" style={{ fontFamily: "Inter" }}>{q.query_text}</p>}
-                  {reply && <p className="text-xs text-white leading-relaxed" style={{ fontFamily: "Inter" }}><b>Response:</b> {reply}</p>}
+                  {q.query_text && <p className="text-xs text-[#52606D] leading-relaxed mb-1" style={{ fontFamily: "Inter" }}>{q.query_text}</p>}
+                  {reply && <p className="text-xs text-[#102A43] leading-relaxed" style={{ fontFamily: "Inter" }}><b>Response:</b> {reply}</p>}
                   {!answered && <p className="text-xs text-[#C8A45D] italic mt-1">Our team is reviewing this query.</p>}
                 </div>
               );
@@ -257,10 +257,10 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
         <div className="space-y-4">
           {reports.length === 0 && empty("No reports available yet.")}
           {reports.map((r) => (
-            <div key={r.id} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10">
+            <div key={r.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#EAF4F0" }}><BarChart2 size={16} style={{ color: "#087F5B" }} /></div>
-                <div><div className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{r.title}</div><div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>{titleCase(r.report_type)} · {titleCase(r.status)}{r.generated_at ? ` · ${fmtDate(r.generated_at)}` : ""}</div></div>
+                <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{r.title}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{titleCase(r.report_type)} · {titleCase(r.status)}{r.generated_at ? ` · ${fmtDate(r.generated_at)}` : ""}</div></div>
               </div>
               <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: r.status === "completed" ? "#EAF4F0" : "#FFF4E0", color: r.status === "completed" ? "#087F5B" : "#C8A45D" }}>{titleCase(r.status)}</span>
             </div>
@@ -273,13 +273,13 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
           {invoices.map((inv) => {
             const paid = inv.status === "paid" || Number(inv.outstanding_amount ?? 0) <= 0;
             return (
-              <div key={inv.id} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10">
+              <div key={inv.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#EAF4F0" }}><ReceiptText size={16} style={{ color: "#087F5B" }} /></div>
-                  <div><div className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{inv.invoice_number}</div><div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>Issued {fmtDate(inv.issue_date)} · Due {fmtDate(inv.due_date)}</div></div>
+                  <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{inv.invoice_number}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>Issued {fmtDate(inv.issue_date)} · Due {fmtDate(inv.due_date)}</div></div>
                 </div>
                 <div className="text-right">
-                  <div className="font-bold text-white text-sm" style={{ fontFamily: "Manrope" }}>{money(inv.total_amount)}</div>
+                  <div className="font-bold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{money(inv.total_amount)}</div>
                   <span className="text-xs font-bold" style={{ color: paid ? "#087F5B" : "#e53e3e" }}>{paid ? "Paid" : titleCase(inv.status)}</span>
                 </div>
               </div>
@@ -291,10 +291,10 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
         <div className="space-y-4">
           {payments.length === 0 && empty("No payments recorded yet.")}
           {payments.map((p) => (
-            <div key={p.id} className="flex items-center justify-between p-4 bg-[#102A43] rounded-2xl border border-white/10">
+            <div key={p.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#EAF4F0" }}><CreditCard size={16} style={{ color: "#087F5B" }} /></div>
-                <div><div className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{p.payment_number}</div><div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>{titleCase(p.payment_method)} · {fmtDate(p.payment_date)}</div></div>
+                <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{p.payment_number}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{titleCase(p.payment_method)} · {fmtDate(p.payment_date)}</div></div>
               </div>
               <div className="font-bold text-[#087F5B] text-sm" style={{ fontFamily: "Manrope" }}>{money(p.amount)}</div>
             </div>
@@ -305,14 +305,14 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
         <div className="space-y-4">
           {notifications.length === 0 && empty("No notifications.")}
           {notifications.map((n) => (
-            <div key={n.id} className="flex items-start gap-4 p-4 bg-[#102A43] rounded-2xl border border-white/10">
+            <div key={n.id} className="flex items-start gap-4 p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EEF1F5" }}>
                 <Bell size={16} style={{ color: "#C8A45D" }} />
               </div>
               <div className="flex-1">
-                <div className="font-semibold text-white text-sm mb-1" style={{ fontFamily: "Manrope" }}>{n.subject ?? "Notification"}</div>
-                <p className="text-xs text-[#94A3B8] leading-relaxed" style={{ fontFamily: "Inter" }}>{n.body}</p>
-                <div className="text-xs text-[#94A3B8] mt-1" style={{ fontFamily: "Inter" }}>{fmtDate(n.sent_at ?? n.created_at)}</div>
+                <div className="font-semibold text-[#102A43] text-sm mb-1" style={{ fontFamily: "Manrope" }}>{n.subject ?? "Notification"}</div>
+                <p className="text-xs text-[#52606D] leading-relaxed" style={{ fontFamily: "Inter" }}>{n.body}</p>
+                <div className="text-xs text-[#52606D] mt-1" style={{ fontFamily: "Inter" }}>{fmtDate(n.sent_at ?? n.created_at)}</div>
               </div>
             </div>
           ))}
@@ -322,12 +322,12 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
         <div className="space-y-4">
           {tasks.filter((t) => t.task_type === "filing" || /return|filing|itr|gst|tds/i.test(t.title ?? "")).length === 0 && empty("No filings tracked yet.")}
           {tasks.filter((t) => t.task_type === "filing" || /return|filing|itr|gst|tds/i.test(t.title ?? "")).map((t) => (
-            <div key={t.id} className="p-4 bg-[#102A43] rounded-2xl border border-white/10">
+            <div key={t.id} className="p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-center justify-between mb-2">
-                <div className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{t.title}</div>
+                <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{t.title}</div>
                 <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: t.status === "completed" ? "#EAF4F0" : "#FFF4E0", color: t.status === "completed" ? "#087F5B" : "#C8A45D" }}>{titleCase(t.status)}</span>
               </div>
-              <div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>{t.due_date ? `Due ${fmtDate(t.due_date)}` : ""}</div>
+              <div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{t.due_date ? `Due ${fmtDate(t.due_date)}` : ""}</div>
             </div>
           ))}
         </div>
@@ -343,8 +343,8 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
                 const open = openVaultCategory === label;
                 return (
                   <button key={label} onClick={() => setOpenVaultCategory(open ? null : label)}
-                    className={`flex items-center gap-4 p-4 rounded-2xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${open ? "border-[#087F5B] shadow-lg" : "bg-[#102A43] border-white/10 hover:border-[#087F5B]/20"}`}
-                    style={open ? { background: "linear-gradient(135deg, #102A43, #0d3355)" } : {}}>
+                    className={`flex items-center gap-4 p-4 rounded-2xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${open ? "border-[#087F5B] shadow-lg" : "bg-white border-[#E2E8F0] hover:border-[#087F5B]/20"}`}
+                    style={open ? { background: "#F7F9FC" } : {}}>
                     <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: open ? "rgba(255,255,255,0.1)" : "#EAF4F0" }}>
                       <Folder size={20} style={{ color: open ? "#C8A45D" : "#087F5B" }} />
                     </div>
@@ -358,14 +358,14 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
               })}
             </div>
             {openVaultCategory && (
-              <div className="bg-[#102A43] rounded-2xl border border-white/10 p-5">
-                <h4 className="font-bold text-white mb-4" style={{ fontFamily: "Manrope" }}>{openVaultCategory}</h4>
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5">
+                <h4 className="font-bold text-[#102A43] mb-4" style={{ fontFamily: "Manrope" }}>{openVaultCategory}</h4>
                 <div className="space-y-2">
                   {(vaultCategoryFiles[openVaultCategory] || []).map((file) => (
-                    <div key={file.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
+                    <div key={file.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-[#E2E8F0]">
                       <div className="flex items-center gap-3">
                         <FileText size={15} style={{ color: "#087F5B" }} />
-                        <span className="text-sm font-medium text-white" style={{ fontFamily: "Inter" }}>{file.name}</span>
+                        <span className="text-sm font-medium text-[#102A43]" style={{ fontFamily: "Inter" }}>{file.name}</span>
                       </div>
                       <button onClick={() => handleDownloadFile(file)} className="flex items-center gap-1 text-xs font-semibold p-1.5 rounded hover:bg-[#EAF4F0]" style={{ color: "#087F5B" }}><Download size={13} /></button>
                     </div>
@@ -378,14 +378,14 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
       }
       case "Assigned Consultant": return (
         <div className="max-w-sm">
-          <div className="bg-[#102A43] rounded-2xl p-6 border border-white/10">
+          <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0]">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-xl text-white mb-4" style={{ background: "linear-gradient(135deg, #102A43, #087F5B)", fontFamily: "Manrope" }}>FC</div>
-            <div className="font-bold text-white text-xl mb-1" style={{ fontFamily: "Manrope" }}>Your Finovara Team</div>
+            <div className="font-bold text-[#102A43] text-xl mb-1" style={{ fontFamily: "Manrope" }}>Your Finovara Team</div>
             <div className="text-sm mb-4" style={{ color: "#087F5B", fontFamily: "Inter" }}>Relationship Manager assigned</div>
             {[{ icon: Phone, v: "+91 22 6789 0123" }, { icon: Mail, v: "hello@finovara.in" }, { icon: Clock, v: "Mon–Sat, 10am–6pm" }].map(({ icon: Icon, v }) => (
               <div key={v} className="flex items-center gap-2 mb-2">
                 <Icon size={14} style={{ color: "#087F5B" }} />
-                <span className="text-sm text-[#94A3B8]" style={{ fontFamily: "Inter" }}>{v}</span>
+                <span className="text-sm text-[#52606D]" style={{ fontFamily: "Inter" }}>{v}</span>
               </div>
             ))}
             <button onClick={() => { setActiveTab("Open Queries"); }} className="mt-4 w-full py-3 rounded-xl text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)", fontFamily: "Inter" }}>Raise a Query</button>
@@ -394,11 +394,11 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
       );
       case "Security": return (
         <div>
-          <div className="mb-6 p-5 rounded-2xl flex items-center gap-4" style={{ background: "linear-gradient(135deg, #102A43, #0d3355)" }}>
+          <div className="mb-6 p-5 rounded-2xl flex items-center gap-4" style={{ background: "#F7F9FC" }}>
             <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(8,127,91,0.25)" }}><Shield size={24} style={{ color: "#087F5B" }} /></div>
             <div>
-              <div className="font-bold text-white text-lg" style={{ fontFamily: "Manrope" }}>Enterprise Security</div>
-              <div className="text-xs text-white/50" style={{ fontFamily: "Inter" }}>Your account is protected with bank-grade, multi-layer security controls.</div>
+              <div className="font-bold text-[#102A43] text-lg" style={{ fontFamily: "Manrope" }}>Enterprise Security</div>
+              <div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>Your account is protected with bank-grade, multi-layer security controls.</div>
             </div>
             <div className="ml-auto flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "#EAF4F0", color: "#087F5B" }}>All Active ✓</div>
           </div>
@@ -414,14 +414,14 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
               { icon: Star, label: "Encrypted Sensitive Data", desc: "AES-256 at rest and in transit.", status: "AES-256" },
               { icon: CheckCircle, label: "Password-Reset Protection", desc: "Verified resets with anomaly detection.", status: "Protected" },
             ].map(({ icon: Icon, label, desc, status }) => (
-              <div key={label} className="flex items-start gap-4 p-5 bg-[#102A43] rounded-2xl border border-white/10">
+              <div key={label} className="flex items-start gap-4 p-5 bg-white rounded-2xl border border-[#E2E8F0]">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EAF4F0" }}><Icon size={18} style={{ color: "#087F5B" }} /></div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="font-bold text-white text-sm" style={{ fontFamily: "Manrope" }}>{label}</div>
+                    <div className="font-bold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{label}</div>
                     <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "#EAF4F0", color: "#087F5B" }}>{status}</span>
                   </div>
-                  <p className="text-xs text-[#94A3B8] leading-relaxed" style={{ fontFamily: "Inter" }}>{desc}</p>
+                  <p className="text-xs text-[#52606D] leading-relaxed" style={{ fontFamily: "Inter" }}>{desc}</p>
                 </div>
               </div>
             ))}
@@ -450,33 +450,33 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
   ];
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden relative" style={{ background: "#102A43" }}>
+    <div className="h-screen flex flex-col overflow-hidden relative" style={{ background: "#F7F9FC" }}>
       {toastMessage && (
         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl border border-white/10" style={{ background: "#102A43" }}>
+          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl border border-[#E2E8F0]" style={{ background: "#F7F9FC" }}>
             {toastMessage.type === "success" && <CheckCircle size={18} style={{ color: "#087F5B" }} />}
             {toastMessage.type === "info" && <Info size={18} style={{ color: "#3B82F6" }} />}
             {toastMessage.type === "error" && <AlertCircle size={18} style={{ color: "#e53e3e" }} />}
-            <span className="text-sm font-semibold text-white" style={{ fontFamily: "Inter" }}>{toastMessage.msg}</span>
+            <span className="text-sm font-semibold text-[#102A43]" style={{ fontFamily: "Inter" }}>{toastMessage.msg}</span>
           </div>
         </div>
       )}
 
       {actionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#0d2137] rounded-2xl shadow-2xl p-6 w-full max-w-md border border-white/10 animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md border border-[#E2E8F0] animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center mb-5">
-              <h3 className="text-lg font-bold text-white">{actionModal.title}</h3>
-              <button onClick={() => setActionModal(null)} className="text-[#94A3B8] hover:text-white"><X size={20} /></button>
+              <h3 className="text-lg font-bold text-[#102A43]">{actionModal.title}</h3>
+              <button onClick={() => setActionModal(null)} className="text-[#52606D] hover:text-[#102A43]"><X size={20} /></button>
             </div>
             <div className="space-y-4 mb-5 text-left">
               <div>
-                <label className="block text-xs font-semibold text-white mb-1">Subject *</label>
-                <input type="text" value={modalForm.subject} onChange={(e) => setModalForm((p) => ({ ...p, subject: e.target.value }))} className="w-full px-3 py-2 border border-white/10 bg-[#102A43] text-white rounded-xl text-sm focus:outline-none focus:border-[#087F5B]" placeholder="Enter query subject…" />
+                <label className="block text-xs font-semibold text-[#102A43] mb-1">Subject *</label>
+                <input type="text" value={modalForm.subject} onChange={(e) => setModalForm((p) => ({ ...p, subject: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] bg-white text-[#102A43] rounded-xl text-sm focus:outline-none focus:border-[#087F5B]" placeholder="Enter query subject…" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-white mb-1">Description</label>
-                <textarea rows={4} value={modalForm.description} onChange={(e) => setModalForm((p) => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 border border-white/10 bg-[#102A43] text-white rounded-xl text-sm focus:outline-none focus:border-[#087F5B]" placeholder="Describe your query…"></textarea>
+                <label className="block text-xs font-semibold text-[#102A43] mb-1">Description</label>
+                <textarea rows={4} value={modalForm.description} onChange={(e) => setModalForm((p) => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] bg-white text-[#102A43] rounded-xl text-sm focus:outline-none focus:border-[#087F5B]" placeholder="Describe your query…"></textarea>
               </div>
             </div>
             <button onClick={handleSubmitQuery} disabled={submitting} className="w-full py-3 rounded-xl text-white font-semibold text-sm flex justify-center items-center gap-2 disabled:opacity-60" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
@@ -486,24 +486,24 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
         </div>
       )}
 
-      <div className="flex-shrink-0 border-b bg-white/5 z-10 relative shadow-sm" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
+      <div className="flex-shrink-0 border-b bg-white z-10 relative shadow-sm" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
               <span className="text-white font-bold text-lg" style={{ fontFamily: "Manrope" }}>F</span>
             </div>
             <div>
-              <span className="font-bold text-white" style={{ fontFamily: "Manrope" }}>Finovara</span>
-              <span className="block text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>Client Portal</span>
+              <span className="font-bold text-[#102A43]" style={{ fontFamily: "Manrope" }}>Finovara</span>
+              <span className="block text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>Client Portal</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <div className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{displayName}</div>
-              <div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>{profile?.email ?? session?.email ?? ""}</div>
+              <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{displayName}</div>
+              <div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{profile?.email ?? session?.email ?? ""}</div>
             </div>
             <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm text-white shadow-md" style={{ background: "linear-gradient(135deg, #102A43, #087F5B)" }}>{initials}</div>
-            <button onClick={handleLogout} className="flex items-center gap-1.5 text-xs font-semibold text-[#94A3B8] hover:text-[#e53e3e] transition-colors" style={{ fontFamily: "Inter" }}>
+            <button onClick={handleLogout} className="flex items-center gap-1.5 text-xs font-semibold text-[#52606D] hover:text-[#e53e3e] transition-colors" style={{ fontFamily: "Inter" }}>
               <LogOut size={14} /> Logout
             </button>
           </div>
@@ -512,16 +512,16 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 gap-6">
         <aside className="w-64 flex-shrink-0 hidden lg:flex flex-col h-full pb-2">
-          <div className="bg-white/5 rounded-2xl border border-white/10 flex flex-col h-full overflow-hidden shadow-sm">
-            <div className="flex-shrink-0 p-5 border-b" style={{ background: "linear-gradient(135deg, #102A43, #0d3355)", borderColor: "rgba(255,255,255,0.1)" }}>
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] flex flex-col h-full overflow-hidden shadow-sm">
+            <div className="flex-shrink-0 p-5 border-b" style={{ background: "#F7F9FC", borderColor: "rgba(255,255,255,0.1)" }}>
               <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#C8A45D", fontFamily: "Inter" }}>Open Items</div>
-              <div className="text-4xl font-extrabold text-white" style={{ fontFamily: "Manrope" }}>{loading ? "—" : pendingTasks.length}</div>
-              <div className="text-xs text-white/50 mt-1" style={{ fontFamily: "Inter" }}>Pending tasks</div>
+              <div className="text-4xl font-extrabold text-[#102A43]" style={{ fontFamily: "Manrope" }}>{loading ? "—" : pendingTasks.length}</div>
+              <div className="text-xs text-[#52606D] mt-1" style={{ fontFamily: "Inter" }}>Pending tasks</div>
             </div>
             <nav className="flex-1 overflow-y-auto p-2">
               {tabs.map(({ label, icon: Icon }) => (
                 <button key={label} onClick={() => setActiveTab(label)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm font-medium transition-all mb-0.5 ${activeTab === label ? "text-white shadow-sm" : "text-[#94A3B8] hover:bg-[#102A43] hover:text-white"}`}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm font-medium transition-all mb-0.5 ${activeTab === label ? "text-white shadow-sm" : "text-[#52606D] hover:bg-[#EEF1F5] hover:text-[#102A43]"}`}
                   style={activeTab === label ? { background: "linear-gradient(135deg, #087F5B, #065a40)", fontFamily: "Inter" } : { fontFamily: "Inter" }}>
                   <Icon size={15} />{label}
                 </button>
@@ -533,7 +533,7 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
         <div className="lg:hidden w-full flex-shrink-0 flex overflow-x-auto gap-2 pb-1">
           {tabs.map(({ label, icon: Icon }) => (
             <button key={label} onClick={() => setActiveTab(label)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold flex-shrink-0 transition-all ${activeTab === label ? "text-white shadow-sm" : "bg-white/5 text-[#94A3B8] border border-white/10"}`}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold flex-shrink-0 transition-all ${activeTab === label ? "text-white shadow-sm" : "bg-white text-[#52606D] border border-[#E2E8F0]"}`}
               style={activeTab === label ? { background: "linear-gradient(135deg, #087F5B, #065a40)", fontFamily: "Inter" } : { fontFamily: "Inter" }}>
               <Icon size={13} />{label}
             </button>
@@ -541,8 +541,8 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
         </div>
 
         <main className="flex-1 flex flex-col min-w-0 h-full pb-2">
-          <div className="bg-white/5 rounded-2xl border border-white/10 p-6 flex flex-col h-full shadow-sm overflow-hidden relative">
-            <h2 className="flex-shrink-0 text-xl font-extrabold text-white mb-6" style={{ fontFamily: "Manrope" }}>{activeTab}</h2>
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 flex flex-col h-full shadow-sm overflow-hidden relative">
+            <h2 className="flex-shrink-0 text-xl font-extrabold text-[#102A43] mb-6" style={{ fontFamily: "Manrope" }}>{activeTab}</h2>
             <div className="flex-1 overflow-y-auto pr-2">{renderContent()}</div>
           </div>
         </main>
