@@ -151,9 +151,10 @@ export function IndustriesPage({ setPage }: { setPage: (p: Page) => void }) {
           <h2 className="text-3xl font-extrabold text-white mb-4" style={{ fontFamily: "Manrope" }}>Don't See Your Industry?</h2>
           <p className="text-white/80 mb-8" style={{ fontFamily: "Inter" }}>We work with businesses across all sectors. Contact us to discuss your specific needs.</p>
           <button onClick={() => setPage("contact")}
-            className="px-8 py-4 rounded-xl bg-white/5 text-[#087F5B] font-semibold hover:shadow-xl transition-all cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-[#087F5B] font-semibold text-base shadow-lg hover:shadow-xl hover:bg-gray-50 hover:-translate-y-0.5 transition-all cursor-pointer"
             style={{ fontFamily: "Inter" }}>
             Get in Touch
+            <ArrowRight size={18} />
           </button>
         </div>
       </section>
