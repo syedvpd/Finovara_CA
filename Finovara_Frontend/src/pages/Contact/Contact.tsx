@@ -193,10 +193,10 @@ export function ContactPage({ setPage }: { setPage: (p: Page) => void }) {
   const isFieldValid = (field: keyof FormTouched) => touched[field] && !errors[field];
   
   const getInputStyles = (field: keyof FormTouched) => {
-    const base = "w-full px-4 py-3 rounded-xl border bg-[#102A43] text-sm outline-none transition-all duration-300 text-white font-medium ";
-    if (errors[field]) return base + "border-red-500 bg-red-50 focus:ring-4 focus:ring-red-500/20 focus:border-red-500";
-    if (isFieldValid(field)) return base + "border-green-500 focus:ring-4 focus:ring-[#087F5B]/20 focus:border-[#087F5B] bg-white/5";
-    return base + "border-white/10 focus:ring-4 focus:ring-[#087F5B]/20 focus:border-[#087F5B] hover:border-white/10 bg-white/5";
+    const base = "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all duration-300 font-medium placeholder-[#94A3B8] ";
+    if (errors[field]) return base + "border-red-500 bg-red-50 text-[#102A43] focus:ring-4 focus:ring-red-500/20 focus:border-red-500";
+    if (isFieldValid(field)) return base + "border-green-500 bg-[#102A43] text-white focus:ring-4 focus:ring-[#087F5B]/20 focus:border-[#087F5B]";
+    return base + "border-[#CBD5E1] bg-[#102A43] text-white focus:ring-4 focus:ring-[#087F5B]/20 focus:border-[#087F5B] hover:border-[#94A3B8]";
   };
 
   const isFormValid = Object.keys(validateAll()).length === 0;
@@ -306,8 +306,8 @@ export function ContactPage({ setPage }: { setPage: (p: Page) => void }) {
                   </label>
                   <div className="relative">
                     <select ref={inputRefs.service} id="service" name="service" value={formData.service} onChange={handleChange} onBlur={handleBlur} className={`${getInputStyles('service')} appearance-none cursor-pointer`} aria-invalid={!!errors.service} aria-describedby="service-error">
-                      <option value="" disabled>Select a service</option>
-                      {SERVICES.map(s => <option key={s.title} value={s.title}>{s.title}</option>)}
+                      <option value="" disabled style={{ background: '#fff', color: '#102A43' }}>Select a service</option>
+                      {SERVICES.map(s => <option key={s.title} value={s.title} style={{ background: '#fff', color: '#102A43' }}>{s.title}</option>)}
                     </select>
                     <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" />
                   </div>
