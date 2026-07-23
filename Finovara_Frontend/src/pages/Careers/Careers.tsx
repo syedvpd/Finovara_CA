@@ -388,22 +388,22 @@ export function CareersPage({ setPage }: { setPage: (p: Page) => void }) {
         </div>
       </section>
 
-      <section className="py-16" style={{ background: "#ffffff" }}>
+      <section className="py-16" style={{ background: "#F8FAFC" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <Reveal direction="up">
-          <h2 className="text-3xl font-extrabold text-white mb-8" style={{ fontFamily: "Manrope" }}>Why Join Us</h2>
+          <h2 className="text-3xl font-extrabold text-[#102A43] mb-8" style={{ fontFamily: "Manrope" }}>Why Join Us</h2>
           </Reveal>
           <Reveal direction="up" delay={0.2}>
           <div className="grid md:grid-cols-4 gap-6">
             {benefits.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="bg-white/5 rounded-2xl p-6 border border-white/10 hover:border-[#087F5B] hover:shadow-[0_0_40px_rgba(8,127,91,0.3)] transition-all duration-300 hover:-translate-y-4 relative overflow-hidden group cursor-pointer">
-                <div className="absolute inset-0 border-[3px] border-transparent group-hover:border-[#087F5B]/60 rounded-2xl transition-all duration-300"></div>
+              <div key={title} className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-md hover:border-[#087F5B] hover:shadow-[0_8px_30px_rgba(8,127,91,0.2)] transition-all duration-300 hover:-translate-y-2 relative overflow-hidden group cursor-pointer">
+                <div className="absolute inset-0 border-[3px] border-transparent group-hover:border-[#087F5B]/40 rounded-2xl transition-all duration-300"></div>
                 <div className="relative z-10">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-[#102A43] group-hover:bg-[#EAF4F0] transition-colors group-hover:scale-110">
-                    <Icon size={22} className="text-[#94A3B8] group-hover:text-[#087F5B] transition-colors" />
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-[#EAF4F0] group-hover:scale-110 transition-transform">
+                    <Icon size={22} className="text-[#087F5B]" />
                   </div>
-                  <h4 className="font-bold text-white mb-2" style={{ fontFamily: "Manrope" }}>{title}</h4>
-                  <p className="text-sm text-[#94A3B8] font-medium leading-relaxed" style={{ fontFamily: "Inter" }}>{desc}</p>
+                  <h4 className="font-bold text-[#102A43] mb-2" style={{ fontFamily: "Manrope" }}>{title}</h4>
+                  <p className="text-sm text-[#475569] font-medium leading-relaxed" style={{ fontFamily: "Inter" }}>{desc}</p>
                 </div>
               </div>
             ))}

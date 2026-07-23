@@ -34,7 +34,7 @@ export function FaqsPage() {
               </button>
               {openFaq === i && (
                 <div className="px-6 pb-5">
-                  <p className="text-[#94A3B8] leading-relaxed" style={{ fontFamily: "Inter" }}>{faq.a}</p>
+                  <p className="text-[#334155] leading-relaxed" style={{ fontFamily: "Inter" }}>{faq.a}</p>
                 </div>
               )}
             </div>
