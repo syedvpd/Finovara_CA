@@ -1340,7 +1340,7 @@ function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => void }) {
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <button onClick={() => setPage("book")}
-              className="flex items-center gap-2 px-8 py-4 rounded-xl bg-white/5 font-semibold text-[#087F5B] text-base hover:shadow-xl transition-all hover:-translate-y-0.5"
+              className="flex items-center gap-2 px-8 py-4 rounded-xl border-2 border-white/30 text-white font-semibold text-base hover:bg-white/10 transition-all"
               style={{ fontFamily: "Inter" }}>
               <Calendar size={18} />
               Book Free Consultation
@@ -1796,9 +1796,10 @@ function IndustriesPage({ setPage }: { setPage: (p: Page) => void }) {
           <h2 className="text-3xl font-extrabold text-white mb-4" style={{ fontFamily: "Manrope" }}>Don't See Your Industry?</h2>
           <p className="text-white/80 mb-8" style={{ fontFamily: "Inter" }}>We work with businesses across all sectors. Contact us to discuss your specific needs.</p>
           <button onClick={() => setPage("contact")}
-            className="px-8 py-4 rounded-xl bg-white/5 text-[#087F5B] font-semibold hover:shadow-xl transition-all"
+            className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-[#087F5B] font-semibold text-base shadow-lg hover:shadow-xl hover:bg-gray-50 hover:-translate-y-0.5 transition-all cursor-pointer"
             style={{ fontFamily: "Inter" }}>
             Get in Touch
+            <ArrowRight size={18} />
           </button>
         </div>
       </section>

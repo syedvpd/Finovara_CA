@@ -723,7 +723,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <button onClick={() => setPage("book")}
-              className="flex items-center gap-2 px-8 py-4 rounded-xl bg-white/5 font-semibold text-[#087F5B] text-base hover:shadow-xl transition-all hover:-translate-y-0.5 cursor-pointer"
+              className="flex items-center gap-2 px-8 py-4 rounded-xl border-2 border-white/30 text-white font-semibold text-base hover:bg-white/10 transition-all cursor-pointer"
               style={{ fontFamily: "Inter" }}>
               <Calendar size={18} />
               Book Free Consultation
