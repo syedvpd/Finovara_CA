@@ -37,7 +37,7 @@ export function AboutPage({ setPage }: { setPage: (p: Page) => void }) {
   ];
 
   return (
-    <div className="pt-16" style={{ background: "#ffffff" }}>
+    <div style={{ background: "#ffffff" }}>
       {/* Hero */}
       <section className="py-20" style={{ background: "#102A43" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-16 items-center">

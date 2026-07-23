@@ -57,7 +57,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 border border-[#E2E8F0] bg-white backdrop-blur-sm">
               <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#087F5B" }} />
-              <span className="text-xs font-semibold uppercase tracking-widest text-white/70" style={{ fontFamily: "Inter" }}>
+              <span className="text-xs font-semibold uppercase tracking-widest text-black" style={{ fontFamily: "Inter" }}>
                 Chartered Accountants & Financial Advisors
               </span>
             </div>
@@ -261,7 +261,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
                 </div>
               </div>
               {/* Floating badge */}
-              <div className="absolute -bottom-4 -left-4 bg-white/5 rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3">
+              <div className="mt-4 bg-white/5 rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "#EAF4F0" }}>
                   <Shield size={16} style={{ color: "#087F5B" }} />
                 </div>
@@ -723,7 +723,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <button onClick={() => setPage("book")}
-              className="flex items-center gap-2 px-8 py-4 rounded-xl bg-white/5 font-semibold text-[#087F5B] text-base hover:shadow-xl transition-all hover:-translate-y-0.5 cursor-pointer"
+              className="flex items-center gap-2 px-8 py-4 rounded-xl bg-white/5 font-semibold text-white text-base hover:shadow-xl transition-all hover:-translate-y-0.5 cursor-pointer"
               style={{ fontFamily: "Inter" }}>
               <Calendar size={18} />
               Book Free Consultation
