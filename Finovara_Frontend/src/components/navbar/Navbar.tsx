@@ -48,20 +48,21 @@ export function Navbar({ currentPage, setPage }: { currentPage: Page; setPage: (
           </button>
 
           {/* Desktop Nav */}
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="hidden lg:flex flex-1 items-center justify-center gap-1">
             {NAV_ITEMS.map((item) => (
               <div key={item.label} className="relative"
                 onMouseEnter={() => item.children && setDropdown(item.label)}
                 onMouseLeave={() => setDropdown(null)}>
                 {item.isButton ? (
                   <button onClick={() => setPage(item.page)}
-                    className={`ml-2 mr-1 text-sm font-semibold px-4 py-2 rounded-lg border transition-all ${
+                    className={`ml-6 text-sm font-semibold px-7 py-2.5 rounded-lg border-2 transition-all flex items-center gap-2 ${
                       currentPage === item.page
-                        ? "bg-[#C8A45D] text-[#102A43] border-transparent"
-                        : "border-[#C8A45D] text-[#C8A45D] hover:bg-[#C8A45D] hover:text-[#102A43]"
+                        ? "bg-[#C8A45D] text-[#102A43] border-[#C8A45D] shadow-lg"
+                        : "border-[#C8A45D] text-[#C8A45D] hover:bg-[#C8A45D] hover:text-[#102A43] hover:shadow-lg"
                     }`}
-                    style={{ fontFamily: "Inter" }}>
-                    {item.label}
+                    style={{ fontFamily: "Inter", letterSpacing: "0.03em" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><path d="M17 11l2 2 4-4"/></svg>
+                     Login
                   </button>
                 ) : (
                   <button

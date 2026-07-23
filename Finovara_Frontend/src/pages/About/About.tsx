@@ -39,7 +39,7 @@ export function AboutPage({ setPage }: { setPage: (p: Page) => void }) {
   return (
     <div style={{ background: "#ffffff" }}>
       {/* Hero */}
-      <section className="py-20" style={{ background: "#102A43" }}>
+      <section className="py-14" style={{ background: "#102A43" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-16 items-center">
           <div>
             <p className="text-sm font-semibold uppercase tracking-widest mb-4" style={{ color: "#C8A45D", fontFamily: "Inter" }}>About Finovara</p>
@@ -70,7 +70,7 @@ export function AboutPage({ setPage }: { setPage: (p: Page) => void }) {
       </section>
 
       {/* Vision Mission */}
-      <section className="py-20 bg-white/5">
+      <section className="py-12" style={{ background: "#F8FAFC" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 grid md:grid-cols-2 gap-8">
           <div className="rounded-3xl p-8 border border-white/10" style={{ background: "#EAF4F0" }}>
             <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ background: "#087F5B" }}>
@@ -94,10 +94,10 @@ export function AboutPage({ setPage }: { setPage: (p: Page) => void }) {
       </section>
 
       {/* Core Values */}
-      <section className="py-20" style={{ background: "#ffffff" }}>
+      <section className="py-12" style={{ background: "#ffffff" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <Reveal direction="up">
-          <div className="text-center mb-12">
+          <div className="text-center mb-10">
             <h2 className="text-4xl font-extrabold text-black" style={{ fontFamily: "Manrope" }}>Core Values</h2>
           </div>
           </Reveal>
@@ -119,9 +119,9 @@ export function AboutPage({ setPage }: { setPage: (p: Page) => void }) {
       </section>
 
       {/* Leadership Team */}
-      <section className="py-20 bg-white/5">
+      <section className="py-12" style={{ background: "#F8FAFC" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
+          <div className="text-center mb-10">
             <p className="text-sm font-semibold uppercase tracking-widest mb-3" style={{ color: "#087F5B", fontFamily: "Inter" }}>Leadership</p>
             <h2 className="text-4xl font-extrabold text-[#102A43]" style={{ fontFamily: "Manrope" }}>Our Senior Partners</h2>
           </div>
@@ -146,9 +146,9 @@ export function AboutPage({ setPage }: { setPage: (p: Page) => void }) {
       </section>
 
       {/* Offices */}
-      <section className="py-20" style={{ background: "#ffffff" }}>
+      <section className="py-12" style={{ background: "#ffffff" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
+          <div className="text-center mb-10">
             <h2 className="text-4xl font-extrabold text-[#102A43] mb-4" style={{ fontFamily: "Manrope" }}>Our Offices</h2>
             <p className="text-[#94A3B8] max-w-2xl mx-auto" style={{ fontFamily: "Inter" }}>
               Strategically located to serve businesses across India with local expertise and global standards.
@@ -178,7 +178,7 @@ export function AboutPage({ setPage }: { setPage: (p: Page) => void }) {
           </div>
 
           {/* Branch Offices */}
-          <h3 className="text-xl font-extrabold text-white mb-6 text-center" style={{ fontFamily: "Manrope" }}>Branch Offices</h3>
+          <h3 className="text-xl font-extrabold text-[#102A43] mb-6 text-center" style={{ fontFamily: "Manrope" }}>Branch Offices</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
             {[
               "Hyderabad",

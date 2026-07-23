@@ -24,6 +24,10 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
   const [activeService, setActiveService] = useState(0);
+  const [dotStep, setDotStep] = useState(0);
+  const [bouncingStep, setBouncingStep] = useState<number | null>(null);
+  const processRef = useRef<HTMLDivElement>(null);
+  const [processStarted, setProcessStarted] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -38,6 +42,43 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
     const t = setInterval(() => setActiveTestimonial(p => (p + 1) % TESTIMONIALS.length), 5000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setProcessStarted(true); },
+      { threshold: 0.3 }
+    );
+    if (processRef.current) observer.observe(processRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!processStarted) return;
+    const total = WORKFLOW.length - 1;
+    let current = 0;
+    let timeout: ReturnType<typeof setTimeout>;
+
+    const runCycle = () => {
+      current = 0;
+      setDotStep(0);
+      setBouncingStep(0);
+      setTimeout(() => setBouncingStep(null), 500);
+
+      const interval = setInterval(() => {
+        current += 1;
+        setDotStep(current);
+        setBouncingStep(current);
+        setTimeout(() => setBouncingStep(null), 500);
+        if (current >= total) {
+          clearInterval(interval);
+          timeout = setTimeout(runCycle, 1200);
+        }
+      }, 900);
+    };
+
+    runCycle();
+    return () => clearTimeout(timeout);
+  }, [processStarted]);
 
   return (
     <div>
@@ -89,7 +130,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
                 className="flex items-center gap-2 px-7 py-4 rounded-xl font-semibold text-base transition-all border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
                 style={{ fontFamily: "Inter" }}>
                 <Lock size={16} />
-                Client Login
+                
               </button>
               <button onClick={() => setPage("login")}
                 className="flex items-center gap-2 px-7 py-4 rounded-xl font-semibold text-base transition-all border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
@@ -426,13 +467,51 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
               A transparent, structured workflow that keeps you informed at every step.
             </p>
           </div>
-          <div className="relative">
-            <div className="absolute top-8 left-0 right-0 h-1 hidden lg:block" style={{ background: "linear-gradient(90deg, transparent, #087F5B80, #087F5B, #087F5B80, transparent)" }} />
+          <div ref={processRef} className="relative">
+            {/* Static track line */}
+            <div className="absolute top-8 left-[6.25%] right-[6.25%] h-1 hidden lg:block rounded-full" style={{ background: "#E2E8F0" }} />
+            {/* Animated fill line */}
+            <div
+              className="absolute top-8 left-[6.25%] h-1 hidden lg:block rounded-full transition-all duration-700 ease-in-out"
+              style={{
+                background: "linear-gradient(90deg, #087F5B, #2F9E44)",
+                width: processStarted ? `${(dotStep / (WORKFLOW.length - 1)) * 87.5}%` : "0%",
+              }}
+            />
+            {/* Moving dot — hidden when exactly on a node */}
+            {processStarted && (() => {
+              const pct = (dotStep / (WORKFLOW.length - 1)) * 87.5;
+              const isOnNode = WORKFLOW.some((_, i) => Math.abs(pct - (i / (WORKFLOW.length - 1)) * 87.5) < 0.01);
+              return !isOnNode ? (
+                <div
+                  className="absolute top-[22px] hidden lg:block w-4 h-4 rounded-full border-2 border-white shadow-lg z-20 transition-all duration-700 ease-in-out"
+                  style={{
+                    background: "#087F5B",
+                    left: `calc(6.25% + ${pct}% - 8px)`,
+                    boxShadow: "0 0 0 4px rgba(8,127,91,0.25)",
+                  }}
+                />
+              ) : null;
+            })()}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
               {WORKFLOW.map(({ step, title, desc }, i) => (
-                <div key={step} className="flex flex-col items-center text-center group">
-                  <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mb-4 border-2 border-[#087F5B]/20 bg-white shadow-sm group-hover:border-[#087F5B] group-hover:shadow-md transition-all z-10"
-                    style={{ background: i % 2 === 0 ? "white" : "#F8FAFC" }}>
+                <div
+                  key={step}
+                  className="flex flex-col items-center text-center"
+                  style={{
+                    transform: bouncingStep === i ? "scale(1.15) translateY(-8px)" : "scale(1) translateY(0)",
+                    transition: "transform 0.45s cubic-bezier(0.34,1.56,0.64,1)",
+                  }}
+                >
+                  <div
+                    className="relative w-16 h-16 rounded-2xl flex items-center justify-center mb-4 border-2 shadow-sm z-10"
+                    style={{
+                      background: i <= dotStep ? "white" : "#F8FAFC",
+                      borderColor: i <= dotStep ? "#087F5B" : "rgba(8,127,91,0.2)",
+                      boxShadow: i <= dotStep ? "0 4px 12px rgba(8,127,91,0.2)" : undefined,
+                      transition: "border-color 0.3s, box-shadow 0.3s",
+                    }}
+                  >
                     <span className="font-bold text-lg" style={{ fontFamily: "Manrope", color: "#087F5B" }}>{step}</span>
                   </div>
                   <h4 className="font-bold text-sm text-gray-900 mb-1" style={{ fontFamily: "Manrope" }}>{title}</h4>
@@ -499,13 +578,13 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {FEATURED_ASSIGNMENTS.map((assignment, i) => (
-              <div key={i} className="bg-white rounded-3xl p-8 border border-gray-200 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+              <div key={i} className="flex flex-col bg-white rounded-3xl p-8 border border-gray-200 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
                 <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mb-6" style={{ background: "linear-gradient(135deg, #087F5B15, #087F5B30)", color: "#087F5B", fontFamily: "Inter" }}>
                   {assignment.tag}
                 </span>
-                <h3 className="text-xl font-bold text-gray-900 mb-4" style={{ fontFamily: "Manrope" }}>{assignment.title}</h3>
-                <p className="text-gray-600 mb-8 leading-relaxed text-sm" style={{ fontFamily: "Inter" }}>{assignment.desc}</p>
-                <div className="pt-6 border-t border-gray-200 mt-auto">
+                <h3 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "Manrope" }}>{assignment.title}</h3>
+                <p className="text-gray-600 leading-relaxed text-sm flex-1" style={{ fontFamily: "Inter" }}>{assignment.desc}</p>
+                <div className="pt-6 border-t border-gray-200 mt-6">
                   <div className="text-xs text-gray-500 mb-1" style={{ fontFamily: "Inter" }}>Key Outcome</div>
                   <div className="font-bold text-[#087F5B]" style={{ fontFamily: "Manrope" }}>{assignment.metric}</div>
                 </div>
