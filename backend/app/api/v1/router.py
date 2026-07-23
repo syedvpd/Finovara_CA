@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     crm,
     documents,
     employees,
+    onboarding,
     operations,
     payroll,
     reference,
@@ -34,6 +35,7 @@ api_router.include_router(security.router, prefix="/auth", tags=["Authentication
 api_router.include_router(users.router, prefix="/users", tags=["Users"])
 api_router.include_router(branches.router, prefix="/branches", tags=["Branches"])
 api_router.include_router(employees.router, prefix="/employees", tags=["Employees"])
+api_router.include_router(onboarding.router, prefix="/onboarding", tags=["Admin · Onboarding"])
 
 # CRM
 api_router.include_router(crm.leads_router, prefix="/leads", tags=["CRM · Leads"])

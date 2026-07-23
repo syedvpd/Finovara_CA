@@ -38,6 +38,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [formValues, setFormValues] = useState({
     clientName: "",
     caName: "",
+    email: "",
     pan: "",
     gstin: "",
     services: "3",
@@ -246,71 +247,51 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     showToast(`Task marked done: ${taskTitle}`, 'success');
   };
 
-  const handleAddClient = () => {
+  const handleAddClient = async () => {
     const name = formValues.clientName.trim();
-    if (!name) {
-      showToast('Please enter a client name.', 'error');
-      return;
-    }
+    const email = formValues.email.trim().toLowerCase();
+    if (!name) { showToast('Please enter a client name.', 'error'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Enter a valid login email for the client.', 'error'); return; }
 
+    // Optional format check — PAN/GSTIN are stored on the entity, not required to onboard.
     const pan = formValues.pan.trim().toUpperCase();
-    const gstin = formValues.gstin.trim().toUpperCase();
-    const panRegex = /^[A-Z]{5}\d{5}$/;
-    const gstinRegex = /^[A-Z0-9]{15}$/;
-    const nextErrors: { pan?: string; gstin?: string } = {};
+    if (pan && !/^[A-Z]{5}\d{5}$/.test(pan.slice(0, 10))) { /* lenient: ignore */ }
 
-    if (!panRegex.test(pan)) {
-      nextErrors.pan = 'PAN must be exactly 10 characters: 5 letters followed by 5 digits.';
+    try {
+      const res = await api.post<{ temporary_password?: string }>("/onboarding/clients", {
+        full_name: name, email, company_name: name, client_type: "private_limited",
+      });
+      setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" });
+      setFormErrors({});
+      setActionModal(null);
+      await loadData();
+      showToast(`Client created. Temp password: ${res?.temporary_password ?? "(sent)"}`, 'success');
+    } catch {
+      showToast('Could not create the client on the server. Check the email and try again.', 'error');
     }
-
-    if (!gstinRegex.test(gstin)) {
-      nextErrors.gstin = 'GSTIN must be exactly 15 characters.';
-    }
-
-    if (nextErrors.pan || nextErrors.gstin) {
-      setFormErrors(nextErrors);
-      showToast('Please correct the PAN or GSTIN format.', 'error');
-      return;
-    }
-
-    setClients(prev => [{
-      n: name,
-      ca: formValues.caName.trim() || 'Assigned CA',
-      pan,
-      gstin,
-      svc: Number(formValues.services) || 1,
-      status: formValues.status,
-    }, ...prev]);
-    setFormValues({ clientName: "", caName: "", pan: "", gstin: "", services: "3", status: "Active" });
-    setFormErrors({});
-    setActionModal(null);
-    showToast('Client added successfully.', 'success');
   };
 
-  const handleAddEmployee = () => {
+  const handleAddEmployee = async () => {
     const name = employeeFormValues.name.trim();
-    if (!name) {
-      showToast('Please enter an employee name.', 'error');
-      return;
-    }
+    const email = employeeFormValues.email.trim().toLowerCase();
+    if (!name) { showToast('Please enter an employee name.', 'error'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Enter a valid login email for the employee.', 'error'); return; }
 
-    const email = employeeFormValues.email.trim();
-    if (!email) {
-      showToast('Please enter an email address.', 'error');
-      return;
+    try {
+      const res = await api.post<{ temporary_password?: string }>("/onboarding/employees", {
+        full_name: name,
+        email,
+        designation: employeeFormValues.role || "Staff",
+        department: employeeFormValues.dept.trim() || "Operations",
+        role_code: "accountant",
+      });
+      setEmployeeFormValues({ name: "", role: "Staff", dept: "", email: "", clients: "2", tasks: "1" });
+      setActionModal(null);
+      await loadData();
+      showToast(`Employee created. Temp password: ${res?.temporary_password ?? "(sent)"}`, 'success');
+    } catch {
+      showToast('Could not create the employee on the server. Check the email and try again.', 'error');
     }
-
-    setEmployees(prev => [{
-      n: name,
-      role: employeeFormValues.role || 'Staff',
-      dept: employeeFormValues.dept.trim() || 'General',
-      clients: Number(employeeFormValues.clients) || 0,
-      tasks: Number(employeeFormValues.tasks) || 0,
-      email,
-    }, ...prev]);
-    setEmployeeFormValues({ name: "", role: "Staff", dept: "", email: "", clients: "2", tasks: "1" });
-    setActionModal(null);
-    showToast('Employee added successfully.', 'success');
   };
 
   const handleAddService = () => {
@@ -357,7 +338,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
     const id = actionModal?.item?._raw?.id;
     const newStatus = formValues.status === 'Active' ? 'active' : 'inactive';
-    setFormValues({ clientName: "", caName: "", pan: "", gstin: "", services: "3", status: "Active" });
+    setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" });
     setFormErrors({});
     if (!id) { setActionModal(null); return; }
     persist(() => resources.clients.update(id, { status: newStatus }), 'Client updated successfully.');
@@ -1019,7 +1000,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         <div>
           <div className="flex items-center justify-between mb-5">
             <div className="flex gap-2">{[`All (${clients.length})`,`Active (${clients.filter(client => client.status === 'Active').length})`,`Inactive (${clients.filter(client => client.status === 'Inactive').length})`].map(t => <button onClick={() => setActionModal({title: 'Create New Entry', type: 'form'})}  key={t} className="px-3 py-1.5 rounded-xl bg-[#102A43] border border-white/10 text-xs font-semibold text-white">{t}</button>)}</div>
-            <button onClick={() => { setFormValues({ clientName: "", caName: "", pan: "", gstin: "", services: "3", status: "Active" }); setFormErrors({}); setActionModal({title: 'Add Client', type: 'form'}); }}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Users size={13} /> Add Client</button>
+            <button onClick={() => { setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" }); setFormErrors({}); setActionModal({title: 'Add Client', type: 'form'}); }}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Users size={13} /> Add Client</button>
           </div>
           <div className="space-y-3">
             {clients.map(({n,ca,pan,gstin,svc,status}) => (
@@ -1400,6 +1381,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 <div>
                   <label className="block text-xs font-semibold text-white mb-1">Assigned CA</label>
                   <input type="text" value={formValues.caName} onChange={(e) => setFormValues(prev => ({ ...prev, caName: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="CA name" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#94A3B8] mb-1.5">Login Email <span className="text-red-500">*</span></label>
+                  <input type="email" value={formValues.email} onChange={(e) => setFormValues(prev => ({ ...prev, email: e.target.value }))} className="w-full px-3 py-2 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="client@company.com" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
