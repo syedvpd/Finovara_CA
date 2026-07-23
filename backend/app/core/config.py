@@ -29,8 +29,10 @@ class Settings(BaseSettings):
 
     # --- Database ------------------------------------------------------------
     database_url: PostgresDsn
-    database_pool_size: int = 10
-    database_max_overflow: int = 20
+    # Small pool: the Supabase free-tier pooler has a low connection ceiling,
+    # and an oversized pool saturates it and trips Supavisor's circuit breaker.
+    database_pool_size: int = 5
+    database_max_overflow: int = 5
     database_pool_recycle: int = 1800
     database_echo: bool = False
     database_use_pgbouncer: bool = False

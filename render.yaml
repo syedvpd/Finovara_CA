@@ -9,7 +9,9 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health/ready
+    # Liveness (no DB): a transient DB blip must not make Render kill + restart
+    # the service, which would hammer the pooler and trip its circuit breaker.
+    healthCheckPath: /health/live
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.7"
@@ -28,12 +30,15 @@ services:
       - key: RATE_LIMIT_ENABLED
         value: "false"
       - key: TRUSTED_HOSTS
-        value: "*"
+        value: "*.onrender.com"
       # --- set these as SECRETS in the Render dashboard (sync:false) ---
       - key: DATABASE_URL
         sync: false
+      # false = use the Session pooler (port 5432) with normal pooling. The
+      # transaction pooler (6543 / true) opens a new connection per request and
+      # churns the free-tier pooler; session mode holds a small persistent pool.
       - key: DATABASE_USE_PGBOUNCER
-        value: "true"
+        value: "false"
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
