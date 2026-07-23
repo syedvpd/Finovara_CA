@@ -96,8 +96,8 @@ export function BookPage() {
               {SERVICES.map(({ icon: Icon, title }) => (
                 <button key={title} onClick={() => setSelectedService(title)}
                   className={`flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all text-sm font-medium ${selectedService === title ? "border-[#087F5B] bg-[#EAF4F0]" : "border-white/10 hover:border-[#087F5B]/30 bg-[#102A43]"}`}
-                  style={{ fontFamily: "Inter", color: selectedService === title ? "#087F5B" : "#102A43" }}>
-                  <Icon size={16} style={{ color: selectedService === title ? "#087F5B" : "#52606D", flexShrink: 0 }} />
+                  style={{ fontFamily: "Inter", color: selectedService === title ? "#087F5B" : "white" }}>
+                  <Icon size={16} style={{ color: selectedService === title ? "#087F5B" : "white", flexShrink: 0 }} />
                   {title}
                 </button>
               ))}

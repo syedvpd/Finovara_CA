@@ -702,7 +702,7 @@ function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => void }) {
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 border border-white/10 bg-white/5 backdrop-blur-sm">
               <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#087F5B" }} />
-              <span className="text-xs font-semibold uppercase tracking-widest text-white/70" style={{ fontFamily: "Inter" }}>
+              <span className="text-xs font-semibold uppercase tracking-widest text-black" style={{ fontFamily: "Inter" }}>
                 Chartered Accountants & Financial Advisors
               </span>
             </div>
@@ -906,7 +906,7 @@ function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => void }) {
                 </div>
               </div>
               {/* Floating badge */}
-              <div className="absolute -bottom-4 -left-4 bg-white/5 rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3">
+              <div className="mt-4 bg-white/5 rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "#EAF4F0" }}>
                   <Shield size={16} style={{ color: "#087F5B" }} />
                 </div>
@@ -1340,7 +1340,7 @@ function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => void }) {
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <button onClick={() => setPage("book")}
-              className="flex items-center gap-2 px-8 py-4 rounded-xl border-2 border-white/30 text-white font-semibold text-base hover:bg-white/10 transition-all"
+              className="flex items-center gap-2 px-8 py-4 rounded-xl bg-white/5 font-semibold text-white text-base hover:shadow-xl transition-all hover:-translate-y-0.5"
               style={{ fontFamily: "Inter" }}>
               <Calendar size={18} />
               Book Free Consultation
@@ -1377,7 +1377,7 @@ function AboutPage({ setPage }: { setPage: (p: Page) => void }) {
   ];
 
   return (
-    <div className="pt-16">
+    <div>
       {/* Hero */}
       <section className="py-20" style={{ background: "linear-gradient(135deg, #102A43, #0d3355)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-16 items-center">
@@ -2396,8 +2396,8 @@ function BookPage() {
               {SERVICES.map(({ icon: Icon, title }) => (
                 <button key={title} onClick={() => setSelectedService(title)}
                   className={`flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all text-sm font-medium ${selectedService === title ? "border-[#087F5B] bg-[#EAF4F0]" : "border-white/10 hover:border-[#087F5B]/30 bg-[#102A43]"}`}
-                  style={{ fontFamily: "Inter", color: selectedService === title ? "#087F5B" : "#102A43" }}>
-                  <Icon size={16} style={{ color: selectedService === title ? "#087F5B" : "#52606D", flexShrink: 0 }} />
+                  style={{ fontFamily: "Inter", color: selectedService === title ? "#087F5B" : "white" }}>
+                  <Icon size={16} style={{ color: selectedService === title ? "#087F5B" : "white", flexShrink: 0 }} />
                   {title}
                 </button>
               ))}
