@@ -1,11 +1,11 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
-pydantic==2.10.4
-pydantic-settings==2.7.1
+pydantic>=2.11
+pydantic-settings>=2.8
 email-validator==2.2.0
 
 sqlalchemy[asyncio]==2.0.36
-asyncpg==0.30.0
+asyncpg>=0.30.0
 alembic==1.14.0
 
 redis[hiredis]==5.2.1
@@ -18,7 +18,7 @@ passlib==1.7.4
 
 python-multipart==0.0.20
 python-dateutil==2.9.0.post0
-orjson==3.10.13
+ujson>=5.10.0
 structlog==24.4.0
 
 supabase==2.11.0

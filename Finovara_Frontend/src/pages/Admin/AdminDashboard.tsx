@@ -6,7 +6,7 @@ import {
   Building2, Globe, Star, Quote, Download, Send, Lock, Bell, Folder,
   TrendingUp, Award, Zap, Calendar, MessageCircle, ExternalLink, Play,
   BookOpen, Search, Filter, Heart, Linkedin, Twitter, Instagram, Youtube,
-  Facebook, ChevronLeft, PieChart, DollarSign, FileCheck, UserCheck,
+  Facebook, ChevronLeft, PieChart as PieChartIcon, DollarSign, FileCheck, UserCheck,
   AlertCircle, Info, ArrowUpRight, Target, Layers, Cpu, Lightbulb, Flag,
   CreditCard, ClipboardList, UploadCloud, AlertTriangle, HelpCircle,
   ReceiptText, User2, LogOut
@@ -16,6 +16,7 @@ import { useAuth } from "../../context";
 import { resources } from "../../services";
 import { api } from "../../lib/api";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell, PieChart, Pie, Legend, LabelList } from "recharts";
+const _PieChartIcon = PieChartIcon;
 
 // Chart palette — validated for CVD separation; status hues carry meaning
 // (paid=emerald, pending=amber, overdue=red) and always ship with labels.
@@ -577,7 +578,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     { name: "Audit Manager",        desc: "Audit teams and assignments",                  color: "#C8A45D", bg: "#FFF4E0", icon: FileCheck },
     { name: "Tax Manager",          desc: "Tax services and filings",                     color: "#087F5B", bg: "#EAF4F0", icon: FileText },
     { name: "GST Consultant",       desc: "GST clients and returns",                      color: "white", bg: "#EEF1F5", icon: BarChart2 },
-    { name: "Partner Accountant",   desc: "Books, reconciliations and reports",           color: "#C8A45D", bg: "#FFF4E0", icon: PieChart },
+    { name: "Partner Accountant",   desc: "Books, reconciliations and reports",           color: "#C8A45D", bg: "#FFF4E0", icon: _PieChartIcon },
     { name: "Payroll Executive",    desc: "Payroll module and professional work",          color: "#087F5B", bg: "#EAF4F0", icon: Users },
     { name: "Relationship Manager", desc: "Client communication assignments",              color: "white", bg: "#EEF1F5", icon: HelpCircle },
     { name: "Accounts Admin",       desc: "Filings, invoices and payments",               color: "#C8A45D", bg: "#FFF4E0", icon: ReceiptText },
@@ -614,7 +615,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     { label: "Invoice Management",        icon: ReceiptText },
     { label: "Payment Tracking",          icon: CreditCard },
     { label: "Notifications",             icon: Bell },
-    { label: "Reports",                   icon: PieChart },
+    { label: "Reports",                   icon: _PieChartIcon },
     { label: "Blog Management",           icon: BookOpen },
     { label: "Careers Management",        icon: Award },
     { label: "Website CMS",               icon: Globe },
@@ -630,7 +631,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     { label: "Monthly Revenue",           icon: TrendingUp },
     { label: "Outstanding Invoices",      icon: ReceiptText },
     { label: "Staff Workload",            icon: Briefcase },
-    { label: "Service-wise Client Count", icon: PieChart },
+    { label: "Service-wise Client Count", icon: _PieChartIcon },
   ];
 
   const tabs = allTabDefs.filter(t => (roleTabMap[userRole] || []).includes(t.label));
@@ -1040,7 +1041,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             { svc: "Startup Advisory",    clients: 54,  growth: "+18", pct: 4,  color: "#087F5B", bg: "#EAF4F0" },
           ].map(({ svc, clients, growth, pct, color, bg }) => (
             <div key={svc} className="flex items-center gap-4 p-4 bg-[#102A43] rounded-2xl border border-white/10">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg }}><PieChart size={15} style={{ color }} /></div>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg }}><_PieChartIcon size={15} style={{ color }} /></div>
               <div className="flex-1">
                 <div className="flex justify-between mb-1">
                   <span className="font-semibold text-white text-sm" style={{ fontFamily: "Manrope" }}>{svc}</span>

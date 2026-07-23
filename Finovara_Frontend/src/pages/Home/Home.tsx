@@ -29,6 +29,27 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
   const processRef = useRef<HTMLDivElement>(null);
   const [processStarted, setProcessStarted] = useState(false);
 
+  // Dynamic data
+  const [liveTestimonials, setLiveTestimonials] = useState<any[]>([]);
+  const [liveBlogs, setLiveBlogs] = useState<any[]>([]);
+  const [liveDownloads, setLiveDownloads] = useState<any[]>([]);
+
+  useEffect(() => {
+    import("../../services/public").then(({ publicApi }) => {
+      publicApi.testimonials().then(d => { if (d.length) setLiveTestimonials(d); }).catch(() => {});
+      publicApi.blogs().then(d => { if (d.length) setLiveBlogs(d.slice(0, 3)); }).catch(() => {});
+      publicApi.downloads().then(d => { if (d.length) setLiveDownloads(d.slice(0, 4)); }).catch(() => {});
+    });
+  }, []);
+
+  const displayTestimonials = liveTestimonials.length
+    ? liveTestimonials.map(t => ({ name: t.author_name, role: t.author_title ?? "", text: t.content, avatar: t.author_name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), rating: t.rating ?? 5 }))
+    : TESTIMONIALS;
+
+  const displayBlogs = liveBlogs.length
+    ? liveBlogs.map(b => ({ title: b.title, tag: b.category_id ?? "Article", date: b.published_at ? new Date(b.published_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "", excerpt: b.excerpt ?? "", readTime: b.read_time_minutes ? `${b.read_time_minutes} min read` : "", cover: b.cover_image_url, _raw: b }))
+    : INSIGHTS.map(i => ({ ...i, cover: null, _raw: i }));
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setStatsStarted(true); },
@@ -39,9 +60,9 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
   }, []);
 
   useEffect(() => {
-    const t = setInterval(() => setActiveTestimonial(p => (p + 1) % TESTIMONIALS.length), 5000);
+    const t = setInterval(() => setActiveTestimonial(p => (p + 1) % displayTestimonials.length), 5000);
     return () => clearInterval(t);
-  }, []);
+  }, [displayTestimonials.length]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -605,25 +626,25 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
             <div className="bg-gray-50 rounded-3xl p-8 md:p-12 border border-gray-200">
               <Quote size={40} style={{ color: "#087F5B" }} className="mb-6 opacity-30" />
               <p className="text-xl md:text-2xl text-gray-900 leading-relaxed mb-8 font-medium" style={{ fontFamily: "Playfair Display", fontStyle: "italic" }}>
-                "{TESTIMONIALS[activeTestimonial].text}"
+                "{displayTestimonials[activeTestimonial]?.text}"
               </p>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)", fontFamily: "Manrope" }}>
-                  {TESTIMONIALS[activeTestimonial].avatar}
+                  {displayTestimonials[activeTestimonial]?.avatar}
                 </div>
                 <div>
-                  <div className="font-bold text-gray-900" style={{ fontFamily: "Manrope" }}>{TESTIMONIALS[activeTestimonial].name}</div>
-                  <div className="text-sm text-gray-600" style={{ fontFamily: "Inter" }}>{TESTIMONIALS[activeTestimonial].role}</div>
+                  <div className="font-bold text-gray-900" style={{ fontFamily: "Manrope" }}>{displayTestimonials[activeTestimonial]?.name}</div>
+                  <div className="text-sm text-gray-600" style={{ fontFamily: "Inter" }}>{displayTestimonials[activeTestimonial]?.role}</div>
                 </div>
                 <div className="ml-auto flex gap-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
+                  {Array.from({ length: displayTestimonials[activeTestimonial]?.rating ?? 5 }).map((_, i) => (
                     <Star key={i} size={16} fill="#C8A45D" style={{ color: "#C8A45D" }} />
                   ))}
                 </div>
               </div>
             </div>
             <div className="flex justify-center gap-2 mt-6">
-              {TESTIMONIALS.map((_, i) => (
+              {displayTestimonials.map((_, i) => (
                 <button key={i} onClick={() => setActiveTestimonial(i)}
                   className="rounded-full transition-all"
                   style={{ width: i === activeTestimonial ? 24 : 8, height: 8, background: i === activeTestimonial ? "#087F5B" : "#E2E8F0" }} />
@@ -653,27 +674,25 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
             </button>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
-            {INSIGHTS.map((article) => (
-              <div key={article.title} className="group bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-xl transition-all hover:-translate-y-1">
+            {displayBlogs.map((article, idx) => (
+              <div key={article.title + idx} className="group bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-xl transition-all hover:-translate-y-1">
                 <div className="h-48 overflow-hidden bg-[#EEF1F5]">
                   <img
-                    src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=200&fit=crop&auto=format"
+                    src={article.cover || "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=200&fit=crop&auto=format"}
                     alt={article.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>
                 <div className="p-6">
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="text-xs font-semibold px-3 py-1 rounded-full" style={{ background: "#EAF4F0", color: "#087F5B", fontFamily: "Inter" }}>
-                      {article.tag}
-                    </span>
+                    <span className="text-xs font-semibold px-3 py-1 rounded-full" style={{ background: "#EAF4F0", color: "#087F5B", fontFamily: "Inter" }}>{article.tag}</span>
                     <span className="text-xs text-gray-500" style={{ fontFamily: "Inter" }}>{article.date}</span>
                   </div>
                   <h3 className="font-bold text-gray-900 mb-2 text-lg leading-tight" style={{ fontFamily: "Manrope" }}>{article.title}</h3>
                   <p className="text-sm text-gray-600 leading-relaxed mb-4" style={{ fontFamily: "Inter" }}>{article.excerpt}</p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500" style={{ fontFamily: "Inter" }}>{article.readTime}</span>
-                    <button onClick={() => setSelectedArticle(article)} className="flex items-center gap-1 text-xs font-semibold text-[#087F5B] hover:underline" style={{ fontFamily: "Inter" }}>
+                    <button onClick={() => setSelectedArticle(article._raw ?? article)} className="flex items-center gap-1 text-xs font-semibold text-[#087F5B] hover:underline" style={{ fontFamily: "Inter" }}>
                       Read More <ArrowRight size={12} />
                     </button>
                   </div>
@@ -692,19 +711,16 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
             <h2 className="text-4xl font-extrabold text-gray-900" style={{ fontFamily: "Manrope" }}>Tools & Downloads</h2>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { icon: Download, title: "Firm Profile", desc: "Complete overview of Finovara services and expertise", badge: "PDF" },
-              { icon: FileCheck, title: "Compliance Checklist", desc: "Monthly compliance calendar for FY 2024-25", badge: "Checklist" },
-              { icon: FileText, title: "Tax Guide 2025", desc: "Comprehensive guide to new tax regime changes", badge: "Guide" },
-              { icon: BookOpen, title: "Startup Handbook", desc: "Step-by-step incorporation and compliance guide", badge: "Handbook" },
-            ].map(({ icon: Icon, title, desc, badge }) => (
-              <div key={title} onClick={() => handleDownloadResource(title)} className="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-[#087F5B] hover:shadow-lg transition-all cursor-pointer">
-                <div className="absolute top-4 right-4 text-xs font-bold px-2 py-1 rounded-full" style={{ background: "#EAF4F0", color: "#087F5B", fontFamily: "Inter" }}>
-                  {badge}
-                </div>
-                <Icon size={28} style={{ color: "#087F5B" }} className="mb-4" />
-                <h4 className="font-bold text-gray-900 mb-2" style={{ fontFamily: "Manrope" }}>{title}</h4>
-                <p className="text-sm text-gray-600" style={{ fontFamily: "Inter" }}>{desc}</p>
+            {(liveDownloads.length ? liveDownloads : [
+              { id: "1", title: "Firm Profile", description: "Complete overview of Finovara services and expertise", file_url: null },
+              { id: "2", title: "Compliance Checklist", description: "Monthly compliance calendar for FY 2024-25", file_url: null },
+              { id: "3", title: "Tax Guide 2025", description: "Comprehensive guide to new tax regime changes", file_url: null },
+              { id: "4", title: "Startup Handbook", description: "Step-by-step incorporation and compliance guide", file_url: null },
+            ]).map((item) => (
+              <div key={item.id} onClick={() => item.file_url && window.open(item.file_url, "_blank", "noopener")} className="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-[#087F5B] hover:shadow-lg transition-all cursor-pointer">
+                <Download size={28} style={{ color: "#087F5B" }} className="mb-4" />
+                <h4 className="font-bold text-gray-900 mb-2" style={{ fontFamily: "Manrope" }}>{item.title}</h4>
+                <p className="text-sm text-gray-600" style={{ fontFamily: "Inter" }}>{item.description}</p>
                 <button className="flex items-center gap-1 mt-4 text-xs font-semibold text-[#087F5B]" style={{ fontFamily: "Inter" }}>
                   Download Free <Download size={12} />
                 </button>
