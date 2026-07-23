@@ -93,6 +93,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [taxReturns, setTaxReturns] = useState<any[]>([]);
   const [gstReturns, setGstReturns] = useState<any[]>([]);
   const [audits, setAudits] = useState<any[]>([]);
+  const [queries, setQueries] = useState<any[]>([]);
+  const [engagements, setEngagements] = useState<any[]>([]);
+  const [contactRequests, setContactRequests] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   // Load real data and map backend rows into the compact shapes the tabs render.
@@ -113,6 +116,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         resources.taxReturns.list({ page_size: 100 }),
         resources.gstReturns.list({ page_size: 100 }),
         resources.audits.list({ page_size: 100 }),
+        resources.queries.list({ page_size: 100 }),
+        resources.engagements.list({ page_size: 100 }),
+        resources.contactRequests.list({ page_size: 100 }),
       ]);
 
       setClients(_rowsOf(r[0]).map((c: any) => {
@@ -153,6 +159,16 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         client: g.client_id?.slice(0, 8) ?? "—", form: g.return_type,
         period: `${g.period_month ?? ""}/${g.period_year}`, status: _tc(g.status),
         arno: g.filed_at ? "Filed" : "—", _raw: g })));
+      setQueries(_rowsOf(r[14]).map((q: any) => ({
+        q: q.subject ?? q.title ?? "Query", client: q.client_id?.slice(0, 8) ?? "—",
+        age: q.created_at ? (() => { const d = Math.floor((Date.now() - new Date(q.created_at).getTime()) / 36e5); return d < 24 ? `${d} hr` : `${Math.floor(d/24)} day`; })() : "—",
+        staff: q.assigned_to?.slice(0, 8) ?? "—", priority: _tc(q.priority ?? "medium"), _raw: q })));
+      setEngagements(_rowsOf(r[15]));
+      setContactRequests(_rowsOf(r[16]).map((c: any) => ({
+        name: c.name, email: c.email, phone: c.phone ?? "—",
+        service: c.subject ?? "—", msg: c.message ?? "",
+        date: _date(c.created_at), status: c.status ?? "new", _raw: c,
+      })));
       setAudits(_rowsOf(r[13]).map((a: any) => ({
         client: a.client_id?.slice(0, 8) ?? "—", type: _tc(a.audit_type), stage: _tc(a.status),
         stageNum: 3, lead: "—", team: [], due: _date(a.end_date), _raw: a })));
@@ -587,8 +603,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   ];
 
   const roleTabMap: Record<string, string[]> = {
-    "Super Admin":          ["Dashboard","Client Management","Employee Management","Service Management","Task Assignment","Compliance Calendar","Document Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Payment Tracking","Notifications","Reports","Blog Management","Careers Management","Website CMS","Lead Management","Role-Based Access","Total Clients","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review","Open Queries","Monthly Revenue","Outstanding Invoices","Staff Workload","Service-wise Client Count"],
-    "Managing Partner":     ["Dashboard","Client Management","Reports","Monthly Revenue","Outstanding Invoices","Payment Tracking","Notifications","Staff Workload","Service-wise Client Count","Lead Management","Employee Management","Service Management"],
+    "Super Admin":          ["Dashboard","Portal Access Requests","Client Management","Employee Management","Service Management","Task Assignment","Compliance Calendar","Document Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Payment Tracking","Notifications","Reports","Blog Management","Careers Management","Website CMS","Lead Management","Role-Based Access","Total Clients","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review","Open Queries","Monthly Revenue","Outstanding Invoices","Staff Workload","Service-wise Client Count"],
+    "Managing Partner":     ["Dashboard","Portal Access Requests","Client Management","Reports","Monthly Revenue","Outstanding Invoices","Payment Tracking","Notifications","Staff Workload","Service-wise Client Count","Lead Management","Employee Management","Service Management"],
     "Chartered Accountant": ["Dashboard","Client Management","Task Assignment","Compliance Calendar","Document Management","Tax-Return Tracking","GST-Return Tracking","Open Queries","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review"],
     "Audit Manager":        ["Dashboard","Client Management","Audit Workflow","Document Management","Task Assignment","Compliance Calendar","Documents Awaiting Review","Reports","Staff Workload"],
     "Tax Manager":          ["Dashboard","Client Management","Tax-Return Tracking","Compliance Calendar","Task Assignment","Pending Filings","Due This Week","Overdue Tasks","Document Management","Reports"],
@@ -619,6 +635,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     { label: "Blog Management",           icon: BookOpen },
     { label: "Careers Management",        icon: Award },
     { label: "Website CMS",               icon: Globe },
+    { label: "Portal Access Requests",    icon: UserCheck },
     { label: "Lead Management",           icon: Target },
     { label: "Role-Based Access",         icon: Shield },
     { label: "Total Clients",             icon: Users },
@@ -1267,6 +1284,52 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
           ))}
         </div>
       );
+      case "Portal Access Requests": return (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm text-[#94A3B8]">{contactRequests.length} request{contactRequests.length !== 1 ? "s" : ""} from the login page</div>
+          </div>
+          {contactRequests.length === 0 && (
+            <div className="p-5 text-center text-sm font-semibold text-[#087F5B] bg-[#EAF4F0] rounded-2xl">No access requests yet.</div>
+          )}
+          {contactRequests.map(({ name, email, phone, service, msg, date, status, _raw }: any) => (
+            <div key={_raw?.id ?? email} className="p-5 bg-[#102A43] rounded-2xl border border-white/10">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="font-bold text-white text-sm" style={{ fontFamily: "Manrope" }}>{name}</div>
+                  <div className="text-xs text-[#94A3B8]">{email} &middot; {phone} &middot; {date}</div>
+                </div>
+                <span className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: status === "new" ? "#FFF4E0" : "#EAF4F0", color: status === "new" ? "#C8A45D" : "#087F5B" }}>{_tc(status)}</span>
+              </div>
+              {service !== "—" && <div className="text-xs text-[#94A3B8] mb-1">Service: <span className="text-white font-semibold">{service}</span></div>}
+              {msg && <p className="text-xs text-[#94A3B8] mb-3 leading-relaxed line-clamp-2">{msg}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await api.post<{ temporary_password?: string }>("/onboarding/clients", {
+                        full_name: name, email, company_name: name, client_type: "private_limited",
+                      });
+                      await loadData();
+                      showToast(`Client created. Temp password: ${res?.temporary_password ?? "(sent)"}`, "success");
+                    } catch {
+                      showToast("Could not onboard client. Check if email already exists.", "error");
+                    }
+                  }}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{ background: "linear-gradient(135deg,#087F5B,#065a40)" }}>
+                  Onboard as Client
+                </button>
+                <button
+                  onClick={() => showToast(`Dismissed request from ${name}`, "info")}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#FFF0F0", color: "#e53e3e" }}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+
       case "Lead Management": return (
         <div>
           <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
