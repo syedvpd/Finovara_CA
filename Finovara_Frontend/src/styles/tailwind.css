@@ -1,4 +1,7 @@
 @import 'tailwindcss' source(none);
 @source '../**/*.{js,ts,jsx,tsx}';
+/* Next.js App Router routes/layouts live outside src/ — scan them too so every
+   utility class used there is generated (matches the Vite build's coverage). */
+@source '../../app/**/*.{js,ts,jsx,tsx}';
 
 @import 'tw-animate-css';
