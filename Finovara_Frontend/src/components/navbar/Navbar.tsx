@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import logo from "../../assets/images/logo1.png";
+import logo from "../../assets/images/logo3-removebg-preview_1.png";
 import {
   Menu, X, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Phone, Mail,
   MapPin, Shield, Clock, FileText, BarChart2, Users, Briefcase, CheckCircle,
@@ -32,10 +32,10 @@ export function Navbar({ currentPage, setPage }: { currentPage: Page; setPage: (
   return (
     <nav className={`relative w-full z-50 transition-all duration-300 ${navBase}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           {/* Logo — fixed left */}
           <button onClick={() => setPage("home")} className="flex items-center gap-2 shrink-0" style={{ minWidth: "200px" }}>
-            <img src={logo} alt="Finovara Logo" className="h-12 w-auto object-contain" style={{ mixBlendMode: "screen" }} />
+            <img src={logo} alt="Finovara Logo" className="w-auto object-contain" style={{ mixBlendMode: "screen", height: "48px" }} />
             <div className="flex flex-col items-start">
               <span className="font-bold text-base leading-none" style={{ fontFamily: "Manrope", color: "white" }}>Finovara</span>
               <span className="text-[10px] leading-none mt-0.5 font-medium tracking-wider uppercase" style={{ color: "#94A3B8" }}>Chartered Accountants LLP</span>

@@ -118,8 +118,8 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
         {/* Dark overlay */}
         <div className="absolute inset-0 z-10" style={{ background: "rgba(16,42,67,0.78)" }} />
 
-        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 flex items-center min-h-screen">
-          <div className="max-w-3xl">
+        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 flex items-center min-h-screen">
+          <div className="w-full max-w-2xl text-left">
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 border border-white/20 bg-white/10">
               <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#087F5B" }} />
@@ -150,12 +150,6 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
                 style={{ fontFamily: "Inter" }}>
                 Explore Services
                 <ChevronRight size={18} />
-              </button>
-              <button onClick={() => setPage("login")}
-                className="flex items-center gap-2 px-7 py-4 rounded-xl font-semibold text-base transition-all border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
-                style={{ fontFamily: "Inter" }}>
-                <Lock size={16} />
-                
               </button>
               <button onClick={() => setPage("login")}
                 className="flex items-center gap-2 px-7 py-4 rounded-xl font-semibold text-base transition-all border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
