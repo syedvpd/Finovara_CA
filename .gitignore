@@ -52,3 +52,5 @@ tok.json
 scratch_*.py
 backend/scripts/check_users.py
 backend/scripts/fix_test_emails.py
+
+.freebuff/
