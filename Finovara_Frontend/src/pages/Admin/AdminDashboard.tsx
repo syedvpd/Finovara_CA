@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Page } from "../../types/index";
 import { useAuth } from "../../context";
-import { resources } from "../../services";
+import { resources, requestPasswordReset } from "../../services";
 import { api } from "../../lib/api";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell, PieChart, Pie, Legend, LabelList } from "recharts";
 const _PieChartIcon = PieChartIcon;
@@ -97,6 +97,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [taxReturns, setTaxReturns] = useState<any[]>([]);
   const [gstReturns, setGstReturns] = useState<any[]>([]);
   const [audits, setAudits] = useState<any[]>([]);
+  const [compliance, setCompliance] = useState<any[]>([]);
+  const [docStats, setDocStats] = useState<{ total: number; pending: number; storage: string; cats: any[] }>({ total: 0, pending: 0, storage: "0 B", cats: [] });
   const [queries, setQueries] = useState<any[]>([]);
   const [engagements, setEngagements] = useState<any[]>([]);
   const [contactRequests, setContactRequests] = useState<any[]>([]);
@@ -111,7 +113,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         resources.employees.list({ page_size: 100 }),
         resources.tasks.list({ page_size: 100 }),
         resources.leads.list({ page_size: 100 }),
-        resources.documents.list({ page_size: 50, status: "pending" }),
+        resources.documents.list({ page_size: 200 }),
         resources.notifications.list({ page_size: 50 }),
         resources.invoices.list({ page_size: 100 }),
         resources.payments.list({ page_size: 100 }),
@@ -120,6 +122,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         resources.taxReturns.list({ page_size: 100 }),
         resources.gstReturns.list({ page_size: 100 }),
         resources.audits.list({ page_size: 100 }),
+        resources.complianceCalendar.list({ page_size: 100 }),
         resources.queries.list({ page_size: 100 }),
         resources.engagements.list({ page_size: 100 }),
         resources.contactRequests.list({ page_size: 100 }),
@@ -139,7 +142,22 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         due: _date(t.due_date), priority: _tc(t.priority), status: _tc(t.status), _raw: t })));
       setLeads(_rowsOf(r[4]).map((l: any) => ({ name: l.company_name ?? l.name, contact: l.name, source: _tc(l.source),
         service: "—", status: _tc(l.status), followUp: "—", _raw: l })));
-      setReviewDocs(_rowsOf(r[5]).map((d: any) => ({ doc: d.name, client: d.client_id?.slice(0, 8) ?? "—", uploaded: _date(d.created_at), reviewer: _tc(d.status) })));
+      const allDocs = _rowsOf(r[5]);
+      const pendingDocs = allDocs.filter((d: any) => _lc(d.status) === "pending");
+      setReviewDocs(pendingDocs.map((d: any) => ({ doc: d.name, client: d.client_id?.slice(0, 8) ?? "—", uploaded: _date(d.created_at), reviewer: _tc(d.status) })));
+      const fmtBytes = (n: number) => n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : n >= 1e3 ? `${(n / 1e3).toFixed(1)} KB` : `${n} B`;
+      const catMap: Record<string, { count: number; size: number; last: string }> = {};
+      for (const d of allDocs) {
+        const k = _tc(d.file_category) || "Other";
+        (catMap[k] ||= { count: 0, size: 0, last: d.created_at });
+        catMap[k].count += 1; catMap[k].size += _num(d.file_size);
+        if (String(d.created_at) > String(catMap[k].last)) catMap[k].last = d.created_at;
+      }
+      setDocStats({
+        total: allDocs.length, pending: pendingDocs.length,
+        storage: fmtBytes(allDocs.reduce((s: number, d: any) => s + _num(d.file_size), 0)),
+        cats: Object.entries(catMap).map(([cat, v]) => ({ cat, count: `${v.count} files`, size: fmtBytes(v.size), lastUp: _date(v.last) })),
+      });
       setNotifications(_rowsOf(r[6]).map((n: any) => ({ title: n.subject ?? "Notification", msg: n.body, t: _date(n.sent_at ?? n.created_at), type: "info" })));
       setInvoices(_rowsOf(r[7]).map((i: any) => ({
         inv: i.invoice_number, client: i.client_id?.slice(0, 8) ?? "—", svc: _tc(i.status),
@@ -163,12 +181,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         client: g.client_id?.slice(0, 8) ?? "—", form: g.return_type,
         period: `${g.period_month ?? ""}/${g.period_year}`, status: _tc(g.status),
         arno: g.filed_at ? "Filed" : "—", _raw: g })));
-      setQueries(_rowsOf(r[14]).map((q: any) => ({
+      setQueries(_rowsOf(r[15]).map((q: any) => ({
         q: q.subject ?? q.title ?? "Query", client: q.client_id?.slice(0, 8) ?? "—",
         age: q.created_at ? (() => { const d = Math.floor((Date.now() - new Date(q.created_at).getTime()) / 36e5); return d < 24 ? `${d} hr` : `${Math.floor(d/24)} day`; })() : "—",
         staff: q.assigned_to?.slice(0, 8) ?? "—", priority: _tc(q.priority ?? "medium"), _raw: q })));
-      setEngagements(_rowsOf(r[15]));
-      setContactRequests(_rowsOf(r[16]).map((c: any) => ({
+      setEngagements(_rowsOf(r[16]));
+      setContactRequests(_rowsOf(r[17]).map((c: any) => ({
         name: c.name, email: c.email, phone: c.phone ?? "—",
         service: c.subject ?? "—", msg: c.message ?? "",
         date: _date(c.created_at), status: c.status ?? "new", _raw: c,
@@ -176,6 +194,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       setAudits(_rowsOf(r[13]).map((a: any) => ({
         client: a.client_id?.slice(0, 8) ?? "—", type: _tc(a.audit_type), stage: _tc(a.status),
         stageNum: 3, lead: "—", team: [], due: _date(a.end_date), _raw: a })));
+      setCompliance(_rowsOf(r[14]).map((c: any) => {
+        const due = c.due_date ? new Date(c.due_date) : null;
+        const days = due ? Math.ceil((due.getTime() - Date.now()) / 86400000) : 99;
+        const urgency = _lc(c.status) === "filed" ? "low" : days < 0 ? "critical" : days <= 2 ? "high" : days <= 7 ? "medium" : "low";
+        return { date: _date(c.due_date), filing: c.compliance_type?.name ?? _tc(c.status), clients: c.client_id?.slice(0, 8) ?? "—", owner: "—", status: _tc(c.status), urgency };
+      }));
       const soon = _rowsOf(r[3]).filter((t: any) => t.due_date).sort((a: any, b: any) => String(a.due_date).localeCompare(String(b.due_date))).slice(0, 8);
       setDueTasks(soon.map((t: any) => ({ task: t.title, date: _date(t.due_date), staff: t.assignments?.[0]?.assignee_name ?? "—" })));
       setDataLoading(false);
@@ -285,14 +309,15 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     if (pan && !/^[A-Z]{5}\d{5}$/.test(pan.slice(0, 10))) { /* lenient: ignore */ }
 
     try {
-      const res = await api.post<{ temporary_password?: string }>("/onboarding/clients", {
+      await api.post("/onboarding/clients", {
         full_name: name, email, company_name: name, client_type: "private_limited",
       });
+      try { await requestPasswordReset(email); } catch { /* email best-effort: Supabase rate-limits; account is already created, user can use OTP */ }   // client sets their own password via email
       setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" });
       setFormErrors({});
       setActionModal(null);
       await loadData();
-      showToast(`Client created. Temp password: ${res?.temporary_password ?? "(sent)"}`, 'success');
+      showToast(`Client created for ${email}. They can set a password via the email link or sign in with OTP.`, 'success');
     } catch {
       showToast('Could not create the client on the server. Check the email and try again.', 'error');
     }
@@ -305,17 +330,18 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Enter a valid login email for the employee.', 'error'); return; }
 
     try {
-      const res = await api.post<{ temporary_password?: string }>("/onboarding/employees", {
+      await api.post("/onboarding/employees", {
         full_name: name,
         email,
         designation: employeeFormValues.role || "Staff",
         department: employeeFormValues.dept.trim() || "Operations",
         role_code: "accountant",
       });
+      try { await requestPasswordReset(email); } catch { /* email best-effort: Supabase rate-limits; account is already created, user can use OTP */ }
       setEmployeeFormValues({ name: "", role: "Staff", dept: "", email: "", clients: "2", tasks: "1" });
       setActionModal(null);
       await loadData();
-      showToast(`Employee created. Temp password: ${res?.temporary_password ?? "(sent)"}`, 'success');
+      showToast(`Employee created for ${email}. They can set a password via the email link or sign in with OTP.`, 'success');
     } catch {
       showToast('Could not create the employee on the server. Check the email and try again.', 'error');
     }
@@ -1166,12 +1192,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Compliance Calendar": return (
         <div>
           <div className="mb-5 p-4 rounded-2xl" style={{ background:"#F7F9FC" }}>
-            <div className="font-bold text-[#102A43] text-lg mb-1" style={{ fontFamily:"Manrope" }}>July 2025 Compliance Deadlines</div>
-            <div className="text-[#52606D] text-xs">18 filings due this month · 4 overdue</div>
+            <div className="font-bold text-[#102A43] text-lg mb-1" style={{ fontFamily:"Manrope" }}>Compliance Deadlines</div>
+            <div className="text-[#52606D] text-xs">{compliance.length} filings · {compliance.filter((c:any)=>c.urgency==="critical").length} overdue</div>
           </div>
+          {compliance.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No compliance deadlines found.</div>}
           <div className="space-y-3">
-            {[{date:"20 Jul",filing:"GSTR-3B (Monthly)",clients:"289 clients",owner:"Kavya R.",status:"Due Today",urgency:"critical"},{date:"21 Jul",filing:"GSTR-1 (Monthly)",clients:"289 clients",owner:"Kavya R.",status:"Tomorrow",urgency:"high"},{date:"25 Jul",filing:"Form 16 Distribution",clients:"145 clients",owner:"Rahul S.",status:"5 days left",urgency:"medium"},{date:"31 Jul",filing:"ITR-1/2/3 Filing",clients:"892 clients",owner:"Multiple",status:"11 days left",urgency:"medium"},{date:"07 Aug",filing:"TDS Payment Q1",clients:"312 clients",owner:"Rahul S.",status:"18 days left",urgency:"low"},{date:"30 Sep",filing:"ROC Annual Return",clients:"78 companies",owner:"Amit P.",status:"72 days left",urgency:"low"}].map(({date,filing,clients,owner,status,urgency}) => (
-              <div key={filing} className="flex items-center gap-4 p-4 rounded-2xl border" style={{ background:urgency==="critical"?"#FFF8F8":"#102A43",borderColor:urgency==="critical"?"rgba(229,62,62,0.2)":"rgba(0,0,0,0.05)" }}>
+            {compliance.map(({date,filing,clients,owner,status,urgency}: any, ci: number) => (
+              <div key={filing+ci} className="flex items-center gap-4 p-4 rounded-2xl border" style={{ background:urgency==="critical"?"#FFF8F8":"#F7F9FC",borderColor:urgency==="critical"?"rgba(229,62,62,0.2)":"#E2E8F0" }}>
                 <div className="text-center flex-shrink-0 w-14 py-2 rounded-xl" style={{ background:urgency==="critical"?"#FFF0F0":urgency==="high"?"#FFF4E0":"#EAF4F0" }}><div className="text-xs font-bold" style={{ color:urgency==="critical"?"#e53e3e":urgency==="high"?"#C8A45D":"#087F5B" }}>{date}</div></div>
                 <div className="flex-1"><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{filing}</div><div className="text-xs text-[#52606D]">{clients} · Owner: {owner}</div></div>
                 <span className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background:urgency==="critical"?"#FFF0F0":urgency==="high"?"#FFF4E0":"#EAF4F0",color:urgency==="critical"?"#e53e3e":urgency==="high"?"#C8A45D":"#087F5B" }}>{status}</span>
@@ -1182,8 +1209,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Document Management": return (
         <div>
-          <div className="grid grid-cols-3 gap-4 mb-6">{[{l:"Total Docs",v:"12,847",color:"#087F5B"},{l:"Pending Review",v:"23",color:"#C8A45D"},{l:"Storage Used",v:"48.2 GB",color: "white"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-2xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D] mt-1">{l}</div></div>))}</div>
-          <div className="space-y-3">{[{cat:"PAN Documents",count:"3,084 files",size:"2.1 GB",lastUp:"Today"},{cat:"GST Records",count:"4,231 files",size:"8.4 GB",lastUp:"Today"},{cat:"Financial Statements",count:"2,156 files",size:"12.3 GB",lastUp:"Yesterday"},{cat:"Bank Statements",count:"6,842 files",size:"18.7 GB",lastUp:"Today"},{cat:"Audit Evidence",count:"892 files",size:"4.2 GB",lastUp:"2 days ago"},{cat:"Filing Acknowledgements",count:"1,879 files",size:"980 MB",lastUp:"Today"}].map(({cat,count,size,lastUp}) => (<div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{cat}</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div></div><div className="flex gap-2"><button onClick={() => setActionModal({title: 'Upload File', type: 'upload'})}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button><button onClick={() => setActionModal({title: 'Upload File', type: 'upload'})}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button></div></div>))}</div>
+          <div className="grid grid-cols-3 gap-4 mb-6">{[{l:"Total Docs",v:String(docStats.total),color:"#087F5B"},{l:"Pending Review",v:String(docStats.pending),color:"#C8A45D"},{l:"Storage Used",v:docStats.storage,color:"#102A43"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-2xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D] mt-1">{l}</div></div>))}</div>
+          {docStats.cats.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No documents yet.</div>}
+          <div className="space-y-3">{docStats.cats.map(({cat,count,size,lastUp}: any) => (<div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{cat}</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div></div><div className="flex gap-2"><button onClick={() => setActionModal({title: 'Upload File', type: 'upload'})}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button><button onClick={() => setActionModal({title: 'Upload File', type: 'upload'})}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button></div></div>))}</div>
         </div>
       );
       case "Audit Workflow": return (
@@ -1199,7 +1227,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Tax-Return Tracking": return (
         <div className="space-y-3">
-          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:"892",color: "white"},{l:"Filed",v:"734",color:"#087F5B"},{l:"In Progress",v:"124",color:"#C8A45D"},{l:"Pending",v:"34",color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
+          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:String(taxReturns.length),color:"#102A43"},{l:"Filed",v:String(taxReturns.filter((t:any)=>_lc(t.status)==="filed").length),color:"#087F5B"},{l:"In Progress",v:String(taxReturns.filter((t:any)=>_lc(t.status).includes("progress")).length),color:"#C8A45D"},{l:"Pending",v:String(taxReturns.filter((t:any)=>{const s=_lc(t.status);return s!=="filed"&&!s.includes("progress");}).length),color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
           {taxReturns.map(({client,itr,fy,status,ack,date}: any) => (
             <div key={client} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{client} · {itr}</div><div className="text-xs text-[#52606D]">{fy} · Ack: {ack} · {date}</div></div>
@@ -1210,7 +1238,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "GST-Return Tracking": return (
         <div className="space-y-3">
-          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:"289",color: "white"},{l:"Filed",v:"251",color:"#087F5B"},{l:"Processing",v:"28",color:"#C8A45D"},{l:"Overdue",v:"10",color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
+          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:String(gstReturns.length),color:"#102A43"},{l:"Filed",v:String(gstReturns.filter((g:any)=>_lc(g.status)==="filed").length),color:"#087F5B"},{l:"Processing",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("process")).length),color:"#C8A45D"},{l:"Overdue",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("overdue")).length),color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
           {gstReturns.map(({client,form,period,status,arno}: any) => (
             <div key={client+form} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{client} · {form}</div><div className="text-xs text-[#52606D]">{period} · ARN: {arno}</div></div>
@@ -1307,11 +1335,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 <button
                   onClick={async () => {
                     try {
-                      const res = await api.post<{ temporary_password?: string }>("/onboarding/clients", {
+                      await api.post("/onboarding/clients", {
                         full_name: name, email, company_name: name, client_type: "private_limited",
                       });
+                      try { await requestPasswordReset(email); } catch { /* email best-effort: Supabase rate-limits; account is already created, user can use OTP */ }   // client sets their own password via email
+                      if (_raw?.id) { try { await resources.contactRequests.update(_raw.id, { status: "converted" } as any); } catch { /* non-fatal */ } }
                       await loadData();
-                      showToast(`Client created. Temp password: ${res?.temporary_password ?? "(sent)"}`, "success");
+                      showToast(`Approved — account created for ${email}. They can set a password via email or use OTP.`, "success");
                     } catch {
                       showToast("Could not onboard client. Check if email already exists.", "error");
                     }

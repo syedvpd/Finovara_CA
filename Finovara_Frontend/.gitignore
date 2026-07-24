@@ -36,3 +36,7 @@ Thumbs.db
 # Optional: package manager lock files (keep one, ignore others)
 # yarn.lock
 # pnpm-lock.yaml
+
+# Next.js build output
+.next/
+next-env.d.ts

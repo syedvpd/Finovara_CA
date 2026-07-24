@@ -4,11 +4,22 @@ import { Page } from "../../types/index";
 import { useAuth, landingPage } from "../../context";
 import { sendOtp, requestPasswordReset } from "../../services/auth";
 import { ApiError } from "../../lib/api";
+import { supabase } from "../../lib/supabase";
 
-type AuthView = 'login' | 'otp' | 'forgot';
+type AuthView = 'login' | 'otp' | 'forgot' | 'recovery';
 
 export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
-  const { login, verifyOtp } = useAuth();
+  const { login, verifyOtp, recoverPassword } = useAuth();
+  const [newPassword, setNewPassword] = useState("");
+
+  // When the user arrives via the "set your password" email link, Supabase
+  // fires a PASSWORD_RECOVERY event — switch to the set-password screen.
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setView("recovery");
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
   const [view, setView] = useState<AuthView>(() => {
     const params = new URLSearchParams(window.location.search);
     const v = params.get('view');
@@ -194,6 +205,21 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
     } catch (err) {
       setAuthError(errText(err, "Could not send reset link. Please try again."));
     } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRecoverySubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    if (newPassword.length < 8) { setAuthError("Password must be at least 8 characters."); return; }
+    setIsSubmitting(true);
+    setAuthError("");
+    try {
+      const session = await recoverPassword(newPassword);
+      setPage(landingPage(session));
+    } catch (err) {
+      setAuthError(errText(err, "Could not set your password. The link may have expired."));
       setIsSubmitting(false);
     }
   };
@@ -450,6 +476,39 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
                   </button>
                 </form>
               )}
+            </>
+          )}
+
+          {view === 'recovery' && (
+            <>
+              <h1 className="text-2xl font-extrabold text-[#102A43] mb-2 animate-in fade-in slide-in-from-bottom-2" style={{ fontFamily: "Manrope" }}>Set your password</h1>
+              <p className="text-[#475569] text-sm mb-6 animate-in fade-in slide-in-from-bottom-2" style={{ fontFamily: "Inter" }}>Welcome to Finovara. Choose a password to finish activating your account.</p>
+              <form onSubmit={handleRecoverySubmit} noValidate className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="space-y-5 mb-6">
+                  <div className="relative group">
+                    <label htmlFor="new-password" className="text-xs font-bold text-[#475569] mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
+                      New Password <span className="text-[#EF4444] text-base leading-none">*</span>
+                    </label>
+                    <div className="relative">
+                      <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#059669] transition-colors pointer-events-none" />
+                      <input
+                        id="new-password" type={showPassword ? "text" : "password"} value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        placeholder="At least 8 characters"
+                        className={getInputStyles('password')}
+                      />
+                      <button type="button" onClick={() => setShowPassword(s => !s)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#102A43]">
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" disabled={isSubmitting || newPassword.length < 8}
+                  className={`w-full flex items-center justify-center gap-3 py-3.5 rounded-xl text-white font-extrabold text-sm mb-5 transition-all duration-300 ${isSubmitting || newPassword.length < 8 ? 'opacity-50 cursor-not-allowed saturate-50' : 'hover:-translate-y-1 hover:shadow-xl hover:shadow-[#087F5B]/30'}`}
+                  style={{ background: "linear-gradient(135deg, #087F5B, #065a40)", fontFamily: "Inter" }}>
+                  {isSubmitting ? <><Loader2 size={18} className="animate-spin" /> Activating...</> : <>Set Password &amp; Sign In</>}
+                </button>
+              </form>
             </>
           )}
 
