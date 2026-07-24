@@ -617,6 +617,34 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     persist(() => resources.leads.create(body), 'Lead added successfully.');
   };
 
+  const openEditLead = (item: any) => {
+    const l = item._raw ?? {};
+    setLeadFormValues({ name: l.company_name ?? l.name ?? "", contact: l.name ?? "", email: l.email ?? "", phone: l.phone ?? "", source: _tc(l.source) || "Website", service: l.notes ?? "", status: _tc(l.status) as any || "Hot", followUp: "Today" });
+    setActionModal({ title: 'Edit Lead', type: 'form', section: 'lead', item });
+  };
+
+  const handleUpdateLead = () => {
+    const id = actionModal?.item?._raw?.id;
+    if (!id) { setActionModal(null); return; }
+    persist(() => resources.leads.update(id, { company_name: leadFormValues.name.trim(), status: _lc(leadFormValues.status), notes: leadFormValues.service.trim() || undefined } as any), 'Lead updated successfully.');
+  };
+
+  const handleConvertLead = async (item: any) => {
+    const l = item?._raw ?? {};
+    const email = (l.email ?? "").trim().toLowerCase();
+    const name = l.company_name ?? l.name ?? "Client";
+    if (!email) { showToast('Lead has no email to convert.', 'error'); return; }
+    try {
+      await api.post("/onboarding/clients", { full_name: name, email, company_name: name, client_type: "private_limited" });
+      try { await requestPasswordReset(email); } catch { /* email best-effort */ }
+      if (l.id) { try { await resources.leads.update(l.id, { status: "converted" } as any); } catch { /* non-fatal */ } }
+      await loadData();
+      showToast(`Converted — client account created for ${email}.`, 'success');
+    } catch {
+      showToast('Could not convert lead. Email may already exist.', 'error');
+    }
+  };
+
   const handleMarkAllRead = () => {
     setNotifications([]);
     showToast('All notifications marked as read.', 'success');
@@ -1360,7 +1388,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   Onboard as Client
                 </button>
                 <button
-                  onClick={() => showToast(`Dismissed request from ${name}`, "info")}
+                  onClick={async () => {
+                    if (_raw?.id) { try { await resources.contactRequests.update(_raw.id, { status: "dismissed" } as any); await loadData(); } catch { /* non-fatal */ } }
+                    showToast(`Dismissed request from ${name}`, "info");
+                  }}
                   className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#FFF0F0", color: "#e53e3e" }}>
                   Dismiss
                 </button>
@@ -1376,7 +1407,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <div className="flex gap-3">{[{l:"Total Leads",v:leads.length},{l:"This Month",v:leads.filter(lead => lead.followUp !== "Done").length},{l:"Converted",v:leads.filter(lead => lead.status === "Converted").length}].map(({l,v}) => <div key={l} className="px-4 py-2 bg-white rounded-xl border border-[#E2E8F0] text-center"><div className="font-extrabold text-sm text-[#087F5B]" style={{ fontFamily:"Manrope" }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>)}</div>
             <button onClick={() => { setLeadFormValues({ name: "", contact: "", email: "", phone: "", source: "Website", service: "", status: "Hot", followUp: "Today" }); setActionModal({title: 'Add Lead', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Target size={13} /> Add Lead</button>
           </div>
-          <div className="space-y-3">{leads.map(({name,contact,source,service,status,followUp}) => (<div key={`${name}-${contact}`} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{name} · {contact}</div><div className="text-xs text-[#52606D]">{source} · {service} · Follow-up: {followUp}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Hot"?"#FFF0F0":status==="Warm"?"#FFF4E0":status==="Converted"?"#EAF4F0":"#EEF1F5",color:status==="Hot"?"#e53e3e":status==="Warm"?"#C8A45D":status==="Converted"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => setActionModal({title: 'Update', type: 'form'})} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Update</button></div></div>))}</div>
+          <div className="space-y-3">{leads.map(({name,contact,source,service,status,followUp,_raw}) => (<div key={`${name}-${contact}`} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{name} · {contact}</div><div className="text-xs text-[#52606D]">{source} · {service} · Follow-up: {followUp}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Hot"?"#FFF0F0":status==="Warm"?"#FFF4E0":status==="Converted"?"#EAF4F0":"#EEF1F5",color:status==="Hot"?"#e53e3e":status==="Warm"?"#C8A45D":status==="Converted"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => openEditLead(leads.find(x => x._raw?.id === _raw?.id) ?? { _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Update</button>{status !== "Converted" && <button onClick={() => handleConvertLead({ _raw })} className="text-xs px-2 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Convert</button>}</div></div>))}</div>
         </div>
       );
       default: return null;
@@ -1509,7 +1540,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                 </div>
               </div>
-            ) : actionModal.title === 'Add Lead' ? (
+            ) : (actionModal.title === 'Add Lead' || actionModal.title === 'Edit Lead') ? (
               <div className="space-y-4 mb-5 text-left">
                 <div>
                   <label className="block text-xs font-semibold text-[#102A43] mb-1">Lead Name *</label>
@@ -1649,6 +1680,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 if (actionModal?.title === 'Delete Service')  { handleDeleteService(); return; }
                 if (actionModal?.title === 'Edit Task')       { handleUpdateTask(); return; }
                 if (actionModal?.title === 'Delete Task')     { handleDeleteTask(); return; }
+                if (actionModal?.title === 'Edit Lead')       { handleUpdateLead(); return; }
                 showToast(`${actionModal.title} saved successfully!`, 'success');
                 setActionModal(null);
               }}
