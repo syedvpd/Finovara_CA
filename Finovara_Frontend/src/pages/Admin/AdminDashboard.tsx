@@ -919,19 +919,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Total Clients": return (
         <div>
           <div className="flex gap-3 mb-5">
-            {[["All", "1,542"], ["Active", "1,410"], ["Inactive", "132"]].map(([l,c]) => (
+            {[["All", String(clients.length)], ["Active", String(clients.filter(c => c.status === 'Active').length)], ["Inactive", String(clients.filter(c => c.status === 'Inactive').length)]].map(([l,c]) => (
               <div key={l} className="px-4 py-2 rounded-xl bg-white border border-[#E2E8F0] text-sm font-semibold text-[#102A43]"><span className="text-[#087F5B] font-extrabold mr-1">{c}</span>{l}</div>
             ))}
           </div>
+          {clients.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No clients yet.</div>}
           <div className="space-y-3">
-            {[
-              { name: "TechCorp India Pvt Ltd",  ca: "CA Priya Nair",    services: 5, status: "Active" },
-              { name: "Rajesh Mehta",             ca: "CA Arjun Mehta",   services: 3, status: "Active" },
-              { name: "ABC Manufacturing Ltd",   ca: "CA Suresh Kumar",  services: 7, status: "Active" },
-              { name: "Sharma & Co LLP",         ca: "CA Divya Rao",     services: 2, status: "Active" },
-              { name: "Green Pharma Pvt Ltd",    ca: "CA Priya Nair",    services: 6, status: "Active" },
-              { name: "Sunrise Retail Ltd",      ca: "CA Arjun Mehta",   services: 4, status: "Inactive" },
-            ].map(({ name, ca, services, status }) => (
+            {clients.map(({ n: name, ca, svc: services, status }) => (
               <div key={name} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm text-white" style={{ background: "linear-gradient(135deg, #102A43, #087F5B)" }}>{name[0]}</div>
@@ -949,14 +943,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Active Services": return (
         <div className="space-y-3">
-          {[
-            { svc: "Income Tax Filing",     clients: 312, staff: "Rahul S.",     due: "31 Jul", pct: 78 },
-            { svc: "GST Return Filing",     clients: 289, staff: "Kavya R.",     due: "20 Jul", pct: 91 },
-            { svc: "Payroll Processing",    clients: 145, staff: "Anita M.",     due: "05 Aug", pct: 65 },
-            { svc: "Audit & Assurance",     clients: 78,  staff: "CA Divya Rao", due: "30 Sep", pct: 40 },
-            { svc: "Virtual CFO",           clients: 54,  staff: "CA Suresh",    due: "Ongoing",pct: 85 },
-            { svc: "Company Incorporation", clients: 32,  staff: "Amit P.",      due: "15 Aug", pct: 55 },
-          ].map(({ svc, clients, staff, due, pct }) => (
+          {services.filter((s:any) => s.active).length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No active services.</div>}
+          {services.filter((s:any) => s.active).map((s:any) => ({ svc: s.svc, clients: Number(s.clients) || 0, staff: s.cat || "—", due: s.price || "—", pct: 100 })).map(({ svc, clients, staff, due, pct }) => (
             <div key={svc} className="p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-center justify-between mb-2">
                 <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{svc}</div>
@@ -974,12 +962,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Pending Filings": return (
         <div className="space-y-3">
           {[
-            { client: "TechCorp India",    filing: "GSTR-3B Jun 2025",       due: "20 Jul 2025", priority: "High" },
-            { client: "Sharma & Co LLP",  filing: "ITR-3 FY 2024-25",        due: "31 Jul 2025", priority: "High" },
-            { client: "ABC Mfg Ltd",      filing: "TDS Q1 FY 2025-26",       due: "07 Aug 2025", priority: "Medium" },
-            { client: "Rajesh Mehta",     filing: "Advance Tax Q2",           due: "15 Sep 2025", priority: "Medium" },
-            { client: "Green Pharma",     filing: "ROC Annual Return",        due: "30 Sep 2025", priority: "Low" },
-            { client: "Sunrise Retail",   filing: "GST Annual Return FY24",   due: "31 Dec 2025", priority: "Low" },
+            ...taxReturns.filter((t:any) => _lc(t.status) !== "filed").map((t:any) => ({ client: t.client, filing: `${t.itr} ${t.fy}`, due: t.date, priority: "High" })),
+            ...gstReturns.filter((g:any) => _lc(g.status) !== "filed").map((g:any) => ({ client: g.client, filing: `${g.form} ${g.period}`, due: g.status, priority: "Medium" })),
+          ].length === 0 ? [{ client: "—", filing: "No pending filings", due: "", priority: "Low" }] : [
+            ...taxReturns.filter((t:any) => _lc(t.status) !== "filed").map((t:any) => ({ client: t.client, filing: `${t.itr} ${t.fy}`, due: t.date, priority: "High" })),
+            ...gstReturns.filter((g:any) => _lc(g.status) !== "filed").map((g:any) => ({ client: g.client, filing: `${g.form} ${g.period}`, due: g.status, priority: "Medium" })),
           ].map(({ client, filing, due, priority }) => (
             <div key={filing+client} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div>
@@ -1012,12 +999,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Overdue Tasks": return (
         <div className="space-y-3">
-          {[
-            { task: "GSTR-1 May 2025 – Sunrise Retail",     overdue: "5 days", staff: "Kavya R.",  impact: "Penalty Risk" },
-            { task: "PF Return May 2025 – ABC Mfg",         overdue: "3 days", staff: "Anita M.", impact: "Interest" },
-            { task: "ITR Filing – Sharma & Co LLP",         overdue: "1 day",  staff: "Rahul S.", impact: "Penalty Risk" },
-            { task: "Director KYC – Green Pharma",          overdue: "7 days", staff: "Amit P.",  impact: "ROC Notice" },
-          ].map(({ task, overdue, staff, impact }) => (
+          {tasks.filter((t:any) => t._raw?.status !== "completed" && t._raw?.due_date && new Date(t._raw.due_date) < new Date()).length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No overdue tasks.</div>}
+          {tasks.filter((t:any) => t._raw?.status !== "completed" && t._raw?.due_date && new Date(t._raw.due_date) < new Date()).map((t:any) => ({
+            task: `${t.task} – ${t.client}`,
+            overdue: `${Math.max(1, Math.round((Date.now() - new Date(t._raw.due_date).getTime()) / 86400000))} days`,
+            staff: t.assignee, impact: t.priority === "High" ? "Penalty Risk" : "Follow up",
+          })).map(({ task, overdue, staff, impact }) => (
             <div key={task} className="p-4 rounded-2xl border" style={{ background: "#FFF8F8", borderColor: "rgba(229,62,62,0.15)" }}>
               <div className="flex items-center justify-between mb-2">
                 <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{task}</div>
@@ -1072,7 +1059,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Monthly Revenue": return (
         <div>
           <div className="grid grid-cols-3 gap-4 mb-6">
-            {[{ l: "This Month", v: "₹42,80,000", c: "+18%", color: "#087F5B", bg: "#EAF4F0" }, { l: "Last Month", v: "₹36,20,000", c: "", color: "white", bg: "#EEF1F5" }, { l: "Target", v: "₹50,00,000", c: "86%", color: "#C8A45D", bg: "#FFF4E0" }].map(({ l, v, c, color, bg }) => (
+            {[{ l: "Billed", v: _inr(revenue), c: "live", color: "#087F5B", bg: "#EAF4F0" }, { l: "Collected", v: _inr(paidTotal), c: "", color: "white", bg: "#EEF1F5" }, { l: "Outstanding", v: _inr(outstanding), c: "", color: "#C8A45D", bg: "#FFF4E0" }].map(({ l, v, c, color, bg }) => (
               <div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center">
                 <div className="text-xs text-[#52606D] mb-1" style={{ fontFamily: "Inter" }}>{l}</div>
                 <div className="text-xl font-extrabold text-[#102A43]" style={{ fontFamily: "Manrope" }}>{v}</div>
@@ -1106,12 +1093,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Outstanding Invoices": return (
         <div className="space-y-3">
-          {[
-            { inv: "INV-2025-0039", client: "Sunrise Retail Ltd",   amt: "₹6,000",  due: "30 Jun 2025", days: "20 days" },
-            { inv: "INV-2025-0035", client: "Sharma & Co LLP",      amt: "₹12,000", due: "15 Jun 2025", days: "35 days" },
-            { inv: "INV-2025-0031", client: "ABC Mfg Ltd",          amt: "₹45,000", due: "01 Jun 2025", days: "49 days" },
-            { inv: "INV-2025-0028", client: "Green Pharma Pvt Ltd", amt: "₹18,500", due: "25 May 2025", days: "56 days" },
-          ].map(({ inv, client, amt, due, days }) => (
+          {invoices.filter((i:any) => Number(i._raw?.outstanding_amount ?? 0) > 0).length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No outstanding invoices.</div>}
+          {invoices.filter((i:any) => Number(i._raw?.outstanding_amount ?? 0) > 0).map((i:any) => ({
+            inv: i.inv, client: i.client, amt: _inr(Number(i._raw.outstanding_amount)),
+            due: _date(i._raw.due_date),
+            days: `${Math.max(0, Math.round((Date.now() - new Date(i._raw.due_date).getTime()) / 86400000))} days`,
+          })).map(({ inv, client, amt, due, days }) => (
             <div key={inv} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div>
                 <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{inv} · {client}</div>
@@ -1128,13 +1115,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Staff Workload": return (
         <div className="space-y-4">
-          {[
-            { name: "Rahul S.",        role: "Senior Manager", tasks: 18, capacity: 20, clients: 45, color: "#087F5B" },
-            { name: "Kavya R.",        role: "Staff",          tasks: 22, capacity: 25, clients: 62, color: "#C8A45D" },
-            { name: "Anita M.",        role: "Senior Manager", tasks: 15, capacity: 20, clients: 38, color: "#087F5B" },
-            { name: "Amit P.",         role: "Staff",          tasks: 27, capacity: 25, clients: 71, color: "#e53e3e" },
-            { name: "Sneha K.",        role: "Staff",          tasks: 12, capacity: 25, clients: 28, color: "#087F5B" },
-          ].map(({ name, role, tasks, capacity, clients, color }) => (
+          {employees.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No employees yet.</div>}
+          {employees.map((e:any) => ({ name: e.n, role: e.role, tasks: Number(e.tasks) || 0, capacity: 25, clients: Number(e.clients) || 0, color: "#087F5B" })).map(({ name, role, tasks, capacity, clients, color }) => (
             <div key={name} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
