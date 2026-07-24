@@ -42,6 +42,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [employees, setEmployees] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
+  const [clientFilter, setClientFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
   const [formValues, setFormValues] = useState({
     clientName: "",
     caName: "",
@@ -144,7 +145,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         service: "—", status: _tc(l.status), followUp: "—", _raw: l })));
       const allDocs = _rowsOf(r[5]);
       const pendingDocs = allDocs.filter((d: any) => _lc(d.status) === "pending");
-      setReviewDocs(pendingDocs.map((d: any) => ({ doc: d.name, client: d.client_id?.slice(0, 8) ?? "—", uploaded: _date(d.created_at), reviewer: _tc(d.status) })));
+      setReviewDocs(pendingDocs.map((d: any) => ({ id: d.id, doc: d.name, client: d.client_id?.slice(0, 8) ?? "—", uploaded: _date(d.created_at), reviewer: _tc(d.status) })));
       const fmtBytes = (n: number) => n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : n >= 1e3 ? `${(n / 1e3).toFixed(1)} KB` : `${n} B`;
       const catMap: Record<string, { count: number; size: number; last: string }> = {};
       for (const d of allDocs) {
@@ -201,7 +202,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         return { date: _date(c.due_date), filing: c.compliance_type?.name ?? _tc(c.status), clients: c.client_id?.slice(0, 8) ?? "—", owner: "—", status: _tc(c.status), urgency };
       }));
       const soon = _rowsOf(r[3]).filter((t: any) => t.due_date).sort((a: any, b: any) => String(a.due_date).localeCompare(String(b.due_date))).slice(0, 8);
-      setDueTasks(soon.map((t: any) => ({ task: t.title, date: _date(t.due_date), staff: t.assignments?.[0]?.assignee_name ?? "—" })));
+      setDueTasks(soon.map((t: any) => ({ id: t.id, task: t.title, date: _date(t.due_date), staff: t.assignments?.[0]?.assignee_name ?? "—" })));
       setDataLoading(false);
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
@@ -288,14 +289,23 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setActionModal({ title: 'Delete Task', type: 'form', section: 'task', item: taskItem });
   };
 
-  const handleReviewDecision = (docName: string, decision: 'approve'|'reject') => {
-    setReviewDocs(prev => prev.filter(item => item.doc !== docName));
-    showToast(`${decision === 'approve' ? 'Approved' : 'Rejected'} ${docName}`, decision === 'approve' ? 'success' : 'error');
+  const handleReviewDecision = async (item: any, decision: 'approve'|'reject') => {
+    const status = decision === 'approve' ? 'approved' : 'rejected';
+    if (item.id) {
+      try { await resources.documents.update(item.id, { status } as any); }
+      catch { showToast('Could not update the document on the server.', 'error'); return; }
+    }
+    setReviewDocs(prev => prev.filter(d => d.doc !== item.doc));
+    showToast(`${decision === 'approve' ? 'Approved' : 'Rejected'} ${item.doc}`, decision === 'approve' ? 'success' : 'error');
   };
 
-  const handleMarkTaskDone = (taskTitle: string) => {
-    setDueTasks(prev => prev.filter(task => task.task !== taskTitle));
-    showToast(`Task marked done: ${taskTitle}`, 'success');
+  const handleMarkTaskDone = async (item: any) => {
+    if (item.id) {
+      try { await resources.tasks.update(item.id, { status: 'completed' } as any); }
+      catch { showToast('Could not update the task on the server.', 'error'); return; }
+    }
+    setDueTasks(prev => prev.filter(t => t.task !== item.task));
+    showToast(`Task marked done: ${item.task}`, 'success');
   };
 
   const handleAddClient = async () => {
@@ -911,7 +921,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Due This Week": return (
         <div className="space-y-3">
-          {dueTasks.map(({ task, date, staff }) => (
+          {dueTasks.map(({ id, task, date, staff }) => (
             <div key={task} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="text-center flex-shrink-0 px-3 py-2 rounded-xl" style={{ background: "#EAF4F0" }}>
                 <div className="text-xs font-bold text-[#087F5B]">{date.split(" ")[0]}</div>
@@ -921,7 +931,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{task}</div>
                 <div className="text-xs text-[#52606D]">Assigned: {staff}</div>
               </div>
-              <button onClick={() => handleMarkTaskDone(task)} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#EAF4F0", color: "#087F5B" }}>Mark Done</button>
+              <button onClick={() => handleMarkTaskDone({ id, task })} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#EAF4F0", color: "#087F5B" }}>Mark Done</button>
             </div>
           ))}
         </div>
@@ -948,7 +958,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Documents Awaiting Review": return (
         <div className="space-y-3">
-          {reviewDocs.map(({ doc, client, uploaded, reviewer }) => (
+          {reviewDocs.map(({ id, doc, client, uploaded, reviewer }) => (
             <div key={doc} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#FFF4E0" }}><Folder size={16} style={{ color: "#C8A45D" }} /></div>
@@ -958,8 +968,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => handleReviewDecision(doc, 'approve')} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-[#102A43]" style={{ background: "#087F5B" }}>Approve</button>
-                <button onClick={() => handleReviewDecision(doc, 'reject')} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#FFF0F0", color: "#e53e3e" }}>Reject</button>
+                <button onClick={() => handleReviewDecision({ id, doc }, 'approve')} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-[#102A43]" style={{ background: "#087F5B" }}>Approve</button>
+                <button onClick={() => handleReviewDecision({ id, doc }, 'reject')} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#FFF0F0", color: "#e53e3e" }}>Reject</button>
               </div>
             </div>
           ))}
@@ -1103,11 +1113,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Client Management": return (
         <div>
           <div className="flex items-center justify-between mb-5">
-            <div className="flex gap-2">{[`All (${clients.length})`,`Active (${clients.filter(client => client.status === 'Active').length})`,`Inactive (${clients.filter(client => client.status === 'Inactive').length})`].map(t => <button onClick={() => setActionModal({title: 'Create New Entry', type: 'form'})}  key={t} className="px-3 py-1.5 rounded-xl bg-white border border-[#E2E8F0] text-xs font-semibold text-[#102A43]">{t}</button>)}</div>
+            <div className="flex gap-2">{([['All',clients.length],['Active',clients.filter(client => client.status === 'Active').length],['Inactive',clients.filter(client => client.status === 'Inactive').length]] as const).map(([f,count]) => <button onClick={() => setClientFilter(f as 'All'|'Active'|'Inactive')} key={f} className={`px-3 py-1.5 rounded-xl border text-xs font-semibold ${clientFilter===f ? 'text-white border-transparent' : 'bg-white border-[#E2E8F0] text-[#102A43]'}`} style={clientFilter===f ? { background:'linear-gradient(135deg,#087F5B,#065a40)' } : undefined}>{f} ({count})</button>)}</div>
             <button onClick={() => { setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" }); setFormErrors({}); setActionModal({title: 'Add Client', type: 'form'}); }}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Users size={13} /> Add Client</button>
           </div>
           <div className="space-y-3">
-            {clients.map(({n,ca,pan,gstin,svc,status}) => (
+            {clients.filter(c => clientFilter === 'All' || c.status === clientFilter).map(({n,ca,pan,gstin,svc,status}) => (
               <div key={n} className="p-4 bg-white rounded-2xl border border-[#E2E8F0]">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
@@ -1388,7 +1398,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 <p className="text-sm font-semibold text-[#102A43] mb-1">Click to browse or drag and drop</p>
                 <p className="text-xs text-[#52606D]">PDF, XLSX, ZIP (Max. 10MB)</p>
               </div>
-            ) : actionModal.title === 'Add Employee' ? (
+            ) : (actionModal.title === 'Add Employee' || actionModal.title === 'Edit Employee') ? (
               <div className="space-y-4 mb-5 text-left">
                 <div>
                   <label className="block text-xs font-semibold text-[#102A43] mb-1">Employee Name *</label>
@@ -1417,7 +1427,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                 </div>
               </div>
-            ) : actionModal.title === 'Add Service' ? (
+            ) : (actionModal.title === 'Add Service' || actionModal.title === 'Edit Service') ? (
               <div className="space-y-4 mb-5 text-left">
                 <div>
                   <label className="block text-xs font-semibold text-[#102A43] mb-1">Service Name *</label>
@@ -1445,7 +1455,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                 </div>
               </div>
-            ) : actionModal.title === 'Assign Task' ? (
+            ) : (actionModal.title === 'Assign Task' || actionModal.title === 'Edit Task') ? (
               <div className="space-y-4 mb-5 text-left">
                 <div>
                   <label className="block text-xs font-semibold text-[#102A43] mb-1">Task Title *</label>
@@ -1551,7 +1561,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                 </div>
               </div>
-            ) : actionModal.title === 'Add Client' ? (
+            ) : (actionModal.title === 'Add Client' || actionModal.title === 'Edit Client') ? (
               <div className="space-y-4 mb-5 text-left">
                 <div>
                   <label className="block text-xs font-semibold text-[#102A43] mb-1">Client Name *</label>
@@ -1591,6 +1601,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                 </div>
               </div>
+            ) : actionModal.title?.startsWith('Delete') ? (
+              <div className="mb-5 text-sm text-[#52606D]">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold text-[#102A43]">{actionModal.item?.n ?? actionModal.item?.svc ?? actionModal.item?.task ?? "this item"}</span>?
+                This action cannot be undone.
+              </div>
             ) : (
               <div className="space-y-4 mb-5 text-left">
                 <div>
@@ -1625,12 +1641,20 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   handleAddTask();
                   return;
                 }
+                if (actionModal?.title === 'Edit Client')    { handleUpdateClient(); return; }
+                if (actionModal?.title === 'Delete Client')   { handleDeleteClient(); return; }
+                if (actionModal?.title === 'Edit Employee')   { handleUpdateEmployee(); return; }
+                if (actionModal?.title === 'Delete Employee') { handleDeleteEmployee(); return; }
+                if (actionModal?.title === 'Edit Service')    { handleUpdateService(); return; }
+                if (actionModal?.title === 'Delete Service')  { handleDeleteService(); return; }
+                if (actionModal?.title === 'Edit Task')       { handleUpdateTask(); return; }
+                if (actionModal?.title === 'Delete Task')     { handleDeleteTask(); return; }
                 showToast(`${actionModal.title} saved successfully!`, 'success');
                 setActionModal(null);
               }}
               className="w-full py-3 rounded-xl text-[#102A43] font-semibold text-sm transition-transform active:scale-95 flex justify-center items-center gap-2" 
               style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
-              {actionModal.type === 'upload' ? 'Confirm Upload' : actionModal.title === 'Add Client' ? 'Add Client' : actionModal.title === 'Add Lead' ? 'Add Lead' : actionModal.title === 'Add Employee' ? 'Add Employee' : actionModal.title === 'Add Service' ? 'Add Service' : actionModal.title === 'Assign Task' ? 'Assign Task' : 'Save Changes'}
+              {actionModal.type === 'upload' ? 'Confirm Upload' : actionModal.title?.startsWith('Delete') ? 'Delete' : actionModal.title === 'Add Client' ? 'Add Client' : actionModal.title === 'Add Lead' ? 'Add Lead' : actionModal.title === 'Add Employee' ? 'Add Employee' : actionModal.title === 'Add Service' ? 'Add Service' : actionModal.title === 'Assign Task' ? 'Assign Task' : 'Save Changes'}
             </button>
           </div>
         </div>
