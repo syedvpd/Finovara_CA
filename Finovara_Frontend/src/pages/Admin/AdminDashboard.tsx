@@ -97,6 +97,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [taxReturns, setTaxReturns] = useState<any[]>([]);
   const [gstReturns, setGstReturns] = useState<any[]>([]);
   const [audits, setAudits] = useState<any[]>([]);
+  const [compliance, setCompliance] = useState<any[]>([]);
   const [queries, setQueries] = useState<any[]>([]);
   const [engagements, setEngagements] = useState<any[]>([]);
   const [contactRequests, setContactRequests] = useState<any[]>([]);
@@ -120,6 +121,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         resources.taxReturns.list({ page_size: 100 }),
         resources.gstReturns.list({ page_size: 100 }),
         resources.audits.list({ page_size: 100 }),
+        resources.complianceCalendar.list({ page_size: 100 }),
         resources.queries.list({ page_size: 100 }),
         resources.engagements.list({ page_size: 100 }),
         resources.contactRequests.list({ page_size: 100 }),
@@ -176,6 +178,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       setAudits(_rowsOf(r[13]).map((a: any) => ({
         client: a.client_id?.slice(0, 8) ?? "—", type: _tc(a.audit_type), stage: _tc(a.status),
         stageNum: 3, lead: "—", team: [], due: _date(a.end_date), _raw: a })));
+      setCompliance(_rowsOf(r[14]).map((c: any) => {
+        const due = c.due_date ? new Date(c.due_date) : null;
+        const days = due ? Math.ceil((due.getTime() - Date.now()) / 86400000) : 99;
+        const urgency = _lc(c.status) === "filed" ? "low" : days < 0 ? "critical" : days <= 2 ? "high" : days <= 7 ? "medium" : "low";
+        return { date: _date(c.due_date), filing: c.compliance_type?.name ?? _tc(c.status), clients: c.client_id?.slice(0, 8) ?? "—", owner: "—", status: _tc(c.status), urgency };
+      }));
       const soon = _rowsOf(r[3]).filter((t: any) => t.due_date).sort((a: any, b: any) => String(a.due_date).localeCompare(String(b.due_date))).slice(0, 8);
       setDueTasks(soon.map((t: any) => ({ task: t.title, date: _date(t.due_date), staff: t.assignments?.[0]?.assignee_name ?? "—" })));
       setDataLoading(false);
@@ -1166,12 +1174,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Compliance Calendar": return (
         <div>
           <div className="mb-5 p-4 rounded-2xl" style={{ background:"#F7F9FC" }}>
-            <div className="font-bold text-[#102A43] text-lg mb-1" style={{ fontFamily:"Manrope" }}>July 2025 Compliance Deadlines</div>
-            <div className="text-[#52606D] text-xs">18 filings due this month · 4 overdue</div>
+            <div className="font-bold text-[#102A43] text-lg mb-1" style={{ fontFamily:"Manrope" }}>Compliance Deadlines</div>
+            <div className="text-[#52606D] text-xs">{compliance.length} filings · {compliance.filter((c:any)=>c.urgency==="critical").length} overdue</div>
           </div>
+          {compliance.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No compliance deadlines found.</div>}
           <div className="space-y-3">
-            {[{date:"20 Jul",filing:"GSTR-3B (Monthly)",clients:"289 clients",owner:"Kavya R.",status:"Due Today",urgency:"critical"},{date:"21 Jul",filing:"GSTR-1 (Monthly)",clients:"289 clients",owner:"Kavya R.",status:"Tomorrow",urgency:"high"},{date:"25 Jul",filing:"Form 16 Distribution",clients:"145 clients",owner:"Rahul S.",status:"5 days left",urgency:"medium"},{date:"31 Jul",filing:"ITR-1/2/3 Filing",clients:"892 clients",owner:"Multiple",status:"11 days left",urgency:"medium"},{date:"07 Aug",filing:"TDS Payment Q1",clients:"312 clients",owner:"Rahul S.",status:"18 days left",urgency:"low"},{date:"30 Sep",filing:"ROC Annual Return",clients:"78 companies",owner:"Amit P.",status:"72 days left",urgency:"low"}].map(({date,filing,clients,owner,status,urgency}) => (
-              <div key={filing} className="flex items-center gap-4 p-4 rounded-2xl border" style={{ background:urgency==="critical"?"#FFF8F8":"#102A43",borderColor:urgency==="critical"?"rgba(229,62,62,0.2)":"rgba(0,0,0,0.05)" }}>
+            {compliance.map(({date,filing,clients,owner,status,urgency}: any, ci: number) => (
+              <div key={filing+ci} className="flex items-center gap-4 p-4 rounded-2xl border" style={{ background:urgency==="critical"?"#FFF8F8":"#F7F9FC",borderColor:urgency==="critical"?"rgba(229,62,62,0.2)":"#E2E8F0" }}>
                 <div className="text-center flex-shrink-0 w-14 py-2 rounded-xl" style={{ background:urgency==="critical"?"#FFF0F0":urgency==="high"?"#FFF4E0":"#EAF4F0" }}><div className="text-xs font-bold" style={{ color:urgency==="critical"?"#e53e3e":urgency==="high"?"#C8A45D":"#087F5B" }}>{date}</div></div>
                 <div className="flex-1"><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{filing}</div><div className="text-xs text-[#52606D]">{clients} · Owner: {owner}</div></div>
                 <span className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background:urgency==="critical"?"#FFF0F0":urgency==="high"?"#FFF4E0":"#EAF4F0",color:urgency==="critical"?"#e53e3e":urgency==="high"?"#C8A45D":"#087F5B" }}>{status}</span>
@@ -1199,7 +1208,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Tax-Return Tracking": return (
         <div className="space-y-3">
-          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:"892",color: "white"},{l:"Filed",v:"734",color:"#087F5B"},{l:"In Progress",v:"124",color:"#C8A45D"},{l:"Pending",v:"34",color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
+          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:String(taxReturns.length),color:"#102A43"},{l:"Filed",v:String(taxReturns.filter((t:any)=>_lc(t.status)==="filed").length),color:"#087F5B"},{l:"In Progress",v:String(taxReturns.filter((t:any)=>_lc(t.status).includes("progress")).length),color:"#C8A45D"},{l:"Pending",v:String(taxReturns.filter((t:any)=>{const s=_lc(t.status);return s!=="filed"&&!s.includes("progress");}).length),color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
           {taxReturns.map(({client,itr,fy,status,ack,date}: any) => (
             <div key={client} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{client} · {itr}</div><div className="text-xs text-[#52606D]">{fy} · Ack: {ack} · {date}</div></div>
@@ -1210,7 +1219,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "GST-Return Tracking": return (
         <div className="space-y-3">
-          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:"289",color: "white"},{l:"Filed",v:"251",color:"#087F5B"},{l:"Processing",v:"28",color:"#C8A45D"},{l:"Overdue",v:"10",color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
+          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:String(gstReturns.length),color:"#102A43"},{l:"Filed",v:String(gstReturns.filter((g:any)=>_lc(g.status)==="filed").length),color:"#087F5B"},{l:"Processing",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("process")).length),color:"#C8A45D"},{l:"Overdue",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("overdue")).length),color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
           {gstReturns.map(({client,form,period,status,arno}: any) => (
             <div key={client+form} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{client} · {form}</div><div className="text-xs text-[#52606D]">{period} · ARN: {arno}</div></div>
