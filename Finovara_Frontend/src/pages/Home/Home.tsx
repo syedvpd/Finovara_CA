@@ -118,8 +118,8 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
         {/* Dark overlay */}
         <div className="absolute inset-0 z-10" style={{ background: "rgba(16,42,67,0.78)" }} />
 
-        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 grid lg:grid-cols-2 gap-16 items-center">
-          <div>
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 flex items-center min-h-screen">
+          <div className="max-w-3xl">
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 border border-white/20 bg-white/10">
               <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#087F5B" }} />
@@ -281,61 +281,6 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
                   <span className="text-sm text-white/60 font-medium" style={{ fontFamily: "Inter" }}>{badge}</span>
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* Right side — portal preview */}
-          <div className="hidden lg:block">
-            <div className="relative">
-              <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/10"
-                style={{ background: "rgba(255,255,255,0.08)" }}>
-                {/* Portal header */}
-                <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between" style={{ background: "rgba(255,255,255,0.05)" }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-red-400" />
-                    <div className="w-2 h-2 rounded-full bg-yellow-400" />
-                    <div className="w-2 h-2 rounded-full bg-green-400" />
-                  </div>
-                  <span className="text-white/50 text-xs font-medium tracking-wide" style={{ fontFamily: "Inter" }}>portal.finovara.in</span>
-                  <Lock size={14} className="text-white/30" />
-                </div>
-                <div className="p-6">
-                  <div className="text-white/50 text-xs mb-4 uppercase tracking-widest" style={{ fontFamily: "Inter" }}>Dashboard Overview</div>
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    {[
-                      { label: "Compliance Score", value: "98%", color: "#087F5B", icon: Shield },
-                      { label: "Pending Tasks", value: "3", color: "#C8A45D", icon: Bell },
-                      { label: "Documents", value: "247", color: "white", icon: Folder },
-                      { label: "Due This Month", value: "₹1.2L", color: "#2F9E44", icon: Calendar },
-                    ].map(({ label, value, color, icon: Icon }) => (
-                      <div key={label} className="rounded-2xl p-4 border" style={{ background: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.08)" }}>
-                        <Icon size={16} style={{ color }} className="mb-2" />
-                        <div className="text-xl font-bold text-white mb-1" style={{ fontFamily: "Manrope" }}>{value}</div>
-                        <div className="text-xs text-white/40" style={{ fontFamily: "Inter" }}>{label}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="rounded-2xl p-4 border" style={{ background: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.08)" }}>
-                    <div className="text-xs text-white/40 mb-3 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>Recent Activity</div>
-                    {["ITR Filed — FY 2024-25", "GST Return Submitted", "TDS Certificate Uploaded"].map((activity, i) => (
-                      <div key={i} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
-                        <CheckCircle size={14} style={{ color: "#087F5B" }} />
-                        <span className="text-xs text-white/60" style={{ fontFamily: "Inter" }}>{activity}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {/* Floating badge */}
-              <div className="mt-4 rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 border border-white/10" style={{ background: "rgba(255,255,255,0.08)" }}>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "#EAF4F0" }}>
-                  <Shield size={16} style={{ color: "#087F5B" }} />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-white" style={{ fontFamily: "Manrope" }}>256-bit Encrypted</div>
-                  <div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>Bank-grade security</div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -603,7 +548,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {FEATURED_ASSIGNMENTS.map((assignment, i) => (
-              <div key={i} className="flex flex-col bg-white rounded-3xl p-8 border border-gray-200 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+              <div key={i} className="flex flex-col bg-white rounded-3xl p-8 border-2 border-[#E2E8F0] hover:border-[#087F5B] hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
                 <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mb-6" style={{ background: "linear-gradient(135deg, #087F5B15, #087F5B30)", color: "#087F5B", fontFamily: "Inter" }}>
                   {assignment.tag}
                 </span>
@@ -627,7 +572,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
             <h2 className="text-4xl font-extrabold text-gray-900 mb-4" style={{ fontFamily: "Manrope" }}>Trusted by Industry Leaders</h2>
           </div>
           <div className="relative max-w-4xl mx-auto">
-            <div className="bg-gray-50 rounded-3xl p-8 md:p-12 border border-gray-200">
+            <div className="bg-gray-50 rounded-3xl p-8 md:p-12 border border-gray-200 shadow-xl">
               <Quote size={40} style={{ color: "#087F5B" }} className="mb-6 opacity-30" />
               <p className="text-xl md:text-2xl text-gray-900 leading-relaxed mb-8 font-medium" style={{ fontFamily: "Playfair Display", fontStyle: "italic" }}>
                 "{displayTestimonials[activeTestimonial]?.text}"

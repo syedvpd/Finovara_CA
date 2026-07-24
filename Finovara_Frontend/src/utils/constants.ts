@@ -201,6 +201,26 @@ export const TESTIMONIALS = [
     text: "Their financial due diligence reports are thorough, incisive, and decision-ready. We rely on Finovara for every M&A transaction we evaluate.",
     avatar: "VN"
   },
+  {
+    name: "Deepa Iyer", role: "MD, Iyer Retail Group", rating: 5,
+    text: "Switching to Finovara was the best business decision we made. Their payroll and GST teams handle everything seamlessly across our 12 retail outlets. Zero compliance misses in two years.",
+    avatar: "DI"
+  },
+  {
+    name: "Karthik Subramaniam", role: "Founder, LogiTrack Solutions", rating: 5,
+    text: "As a logistics startup, we needed a CA firm that understood our sector. Finovara's team knew exactly what we needed — from GST on transport to driver payroll. Highly recommended.",
+    avatar: "KS"
+  },
+  {
+    name: "Meera Joshi", role: "Trustee, Joshi Education Foundation", rating: 5,
+    text: "Finovara guided us through 80G and 12A registration, FCRA compliance, and donor reporting with remarkable clarity. Their NGO expertise is genuinely rare.",
+    avatar: "MJ"
+  },
+  {
+    name: "Rohit Bansal", role: "Co-founder, NovaPharma Labs", rating: 5,
+    text: "Transfer pricing and R&D deductions are complex territory. Finovara's pharma specialists handled our entire compliance calendar and saved us significant tax outflow.",
+    avatar: "RB"
+  },
 ];
 
 export const INSIGHTS = [
