@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Page } from "../../types/index";
 import { useAuth } from "../../context";
-import { resources } from "../../services";
+import { resources, requestPasswordReset } from "../../services";
 import { api } from "../../lib/api";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell, PieChart, Pie, Legend, LabelList } from "recharts";
 const _PieChartIcon = PieChartIcon;
@@ -309,14 +309,15 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     if (pan && !/^[A-Z]{5}\d{5}$/.test(pan.slice(0, 10))) { /* lenient: ignore */ }
 
     try {
-      const res = await api.post<{ temporary_password?: string }>("/onboarding/clients", {
+      await api.post("/onboarding/clients", {
         full_name: name, email, company_name: name, client_type: "private_limited",
       });
+      await requestPasswordReset(email);   // client sets their own password via email
       setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" });
       setFormErrors({});
       setActionModal(null);
       await loadData();
-      showToast(`Client created. Temp password: ${res?.temporary_password ?? "(sent)"}`, 'success');
+      showToast(`Client created. A set-password email was sent to ${email}.`, 'success');
     } catch {
       showToast('Could not create the client on the server. Check the email and try again.', 'error');
     }
@@ -329,17 +330,18 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Enter a valid login email for the employee.', 'error'); return; }
 
     try {
-      const res = await api.post<{ temporary_password?: string }>("/onboarding/employees", {
+      await api.post("/onboarding/employees", {
         full_name: name,
         email,
         designation: employeeFormValues.role || "Staff",
         department: employeeFormValues.dept.trim() || "Operations",
         role_code: "accountant",
       });
+      await requestPasswordReset(email);
       setEmployeeFormValues({ name: "", role: "Staff", dept: "", email: "", clients: "2", tasks: "1" });
       setActionModal(null);
       await loadData();
-      showToast(`Employee created. Temp password: ${res?.temporary_password ?? "(sent)"}`, 'success');
+      showToast(`Employee created. A set-password email was sent to ${email}.`, 'success');
     } catch {
       showToast('Could not create the employee on the server. Check the email and try again.', 'error');
     }
@@ -1333,11 +1335,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 <button
                   onClick={async () => {
                     try {
-                      const res = await api.post<{ temporary_password?: string }>("/onboarding/clients", {
+                      await api.post("/onboarding/clients", {
                         full_name: name, email, company_name: name, client_type: "private_limited",
                       });
+                      await requestPasswordReset(email);   // client sets their own password via email
+                      if (_raw?.id) { try { await resources.contactRequests.update(_raw.id, { status: "converted" } as any); } catch { /* non-fatal */ } }
                       await loadData();
-                      showToast(`Client created. Temp password: ${res?.temporary_password ?? "(sent)"}`, "success");
+                      showToast(`Approved. A set-password email was sent to ${email}.`, "success");
                     } catch {
                       showToast("Could not onboard client. Check if email already exists.", "error");
                     }

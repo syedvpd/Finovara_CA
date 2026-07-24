@@ -22,9 +22,10 @@ export interface SessionInfo {
   expires_at: string | null;
 }
 
-async function exchange(access_token: string, refresh_token?: string | null): Promise<SessionInfo> {
+export async function exchangeSession(access_token: string, refresh_token?: string | null): Promise<SessionInfo> {
   return api.post<SessionInfo>("/auth/session", { access_token, refresh_token });
 }
+const exchange = exchangeSession;
 
 /** Password login → cookie session. */
 export async function login(email: string, password: string): Promise<SessionInfo> {

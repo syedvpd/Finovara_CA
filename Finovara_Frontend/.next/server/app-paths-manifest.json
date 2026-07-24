@@ -1,0 +1,18 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/[...slug]/page": "app/[...slug]/page.js",
+  "/(site)/about/page": "app/(site)/about/page.js",
+  "/(site)/insights/page": "app/(site)/insights/page.js",
+  "/(site)/book-consultation/page": "app/(site)/book-consultation/page.js",
+  "/(site)/blogs/page": "app/(site)/blogs/page.js",
+  "/(site)/careers/page": "app/(site)/careers/page.js",
+  "/(site)/resources/page": "app/(site)/resources/page.js",
+  "/(site)/industries/page": "app/(site)/industries/page.js",
+  "/(site)/page": "app/(site)/page.js",
+  "/(site)/privacy/page": "app/(site)/privacy/page.js",
+  "/(site)/faqs/page": "app/(site)/faqs/page.js",
+  "/(site)/services/page": "app/(site)/services/page.js",
+  "/(site)/testimonials/page": "app/(site)/testimonials/page.js",
+  "/(site)/contact/page": "app/(site)/contact/page.js",
+  "/(site)/terms/page": "app/(site)/terms/page.js"
+}

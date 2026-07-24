@@ -8,7 +8,9 @@
  */
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { Page } from "../types/index";
-import { SessionInfo, login as doLogin, verifyOtp as doVerifyOtp, logout as doLogout, currentSession } from "../services/auth";
+import { SessionInfo, login as doLogin, verifyOtp as doVerifyOtp, logout as doLogout, currentSession, exchangeSession } from "../services/auth";
+import { supabase } from "../lib/supabase";
+import { ApiError } from "../lib/api";
 
 // Backend Role enum value → frontend Page (matches the old email-prefix routing).
 const ROLE_TO_PAGE: Record<string, Page> = {
@@ -56,6 +58,8 @@ interface AuthState {
   login: (email: string, password: string) => Promise<SessionInfo>;
   verifyOtp: (email: string, token: string) => Promise<SessionInfo>;
   logout: () => Promise<void>;
+  /** Set a new password during a Supabase recovery session, then sign in. */
+  recoverPassword: (newPassword: string) => Promise<SessionInfo>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -89,8 +93,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, []);
 
+  const recoverPassword = useCallback(async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw new ApiError(400, "recover_failed", error.message);
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) throw new ApiError(401, "no_recovery_session", "Recovery link expired. Request a new one.");
+    const s = await exchangeSession(data.session.access_token, data.session.refresh_token);
+    setSession(s);
+    return s;
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ session, loading, login, verifyOtp, logout }}>
+    <AuthContext.Provider value={{ session, loading, login, verifyOtp, logout, recoverPassword }}>
       {children}
     </AuthContext.Provider>
   );

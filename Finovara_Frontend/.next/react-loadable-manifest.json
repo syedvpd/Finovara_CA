@@ -1,0 +1,16 @@
+{
+  "app\\[...slug]\\page.tsx -> ../../src/app/App": {
+    "id": 6565,
+    "files": [
+      "static/chunks/289-05971b00c18c55d0.js",
+      "static/chunks/300.71fd45c436a990db.js",
+      "static/chunks/565.a4d00f6988e8b66f.js"
+    ]
+  },
+  "src\\views\\Home\\Home.tsx -> ../../services/public": {
+    "id": 3123,
+    "files": [
+      "static/chunks/123.761df7f9d89989bc.js"
+    ]
+  }
+}
