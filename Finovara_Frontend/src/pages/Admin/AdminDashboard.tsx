@@ -43,7 +43,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [tasks, setTasks] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [clientFilter, setClientFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
-  const [blogForm, setBlogForm] = useState({ title: "", content: "", summary: "" });
+  const [blogForm, setBlogForm] = useState({ title: "", content: "", summary: "", metaTitle: "", metaDesc: "", status: "draft", publishAt: "" });
   const [careerForm, setCareerForm] = useState({ job_title: "", department: "", location: "", description: "", requirements: "" });
   const [invoiceForm, setInvoiceForm] = useState({ clientId: "", due: "", description: "", amount: "" });
   const [queryForm, setQueryForm] = useState({ clientId: "", subject: "", description: "" });
@@ -673,16 +673,20 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     }
   };
 
-  const openEditBlog = (item: any) => { const b = item._raw ?? {}; setBlogForm({ title: b.title ?? "", content: b.content ?? "", summary: b.summary ?? "" }); setActionModal({ title: 'Edit Blog', type: 'form', item }); };
+  const openEditBlog = (item: any) => { const b = item._raw ?? {}; setBlogForm({ title: b.title ?? "", content: b.content ?? "", summary: b.summary ?? "", metaTitle: b.meta_title ?? "", metaDesc: b.meta_description ?? "", status: _lc(b.status ?? "draft"), publishAt: b.published_at ? String(b.published_at).slice(0, 16) : "" }); setActionModal({ title: 'Edit Blog', type: 'form', item }); };
   const handleAddBlog = () => {
     const title = blogForm.title.trim(), content = blogForm.content.trim();
     if (!title || !content) { showToast('Title and content are required.', 'error'); return; }
-    setBlogForm({ title: "", content: "", summary: "" });
-    persist(() => resources.blogs.create({ title, content, summary: blogForm.summary.trim() || undefined } as any), 'Post created.');
+    persist(() => resources.blogs.create({ title, content, summary: blogForm.summary.trim() || undefined,
+      meta_title: blogForm.metaTitle.trim() || undefined, meta_description: blogForm.metaDesc.trim() || undefined } as any), 'Post created.');
   };
   const handleUpdateBlog = () => {
     const id = actionModal?.item?._raw?.id; if (!id) { setActionModal(null); return; }
-    persist(() => resources.blogs.update(id, { title: blogForm.title.trim(), content: blogForm.content.trim() || undefined, summary: blogForm.summary.trim() || undefined } as any), 'Post updated.');
+    const body: any = { title: blogForm.title.trim(), content: blogForm.content.trim() || undefined,
+      summary: blogForm.summary.trim() || undefined, meta_title: blogForm.metaTitle.trim() || undefined,
+      meta_description: blogForm.metaDesc.trim() || undefined, status: blogForm.status };
+    if (blogForm.publishAt) body.published_at = new Date(blogForm.publishAt).toISOString();
+    persist(() => resources.blogs.update(id, body), 'Post updated.');
   };
 
   const openEditCareer = (item: any) => { const c = item._raw ?? {}; setCareerForm({ job_title: c.job_title ?? "", department: c.department ?? "", location: c.location ?? "", description: c.description ?? "", requirements: c.requirements ?? "" }); setActionModal({ title: 'Edit Job', type: 'form', item }); };
@@ -1082,13 +1086,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Role-Based Access": return (
         <div className="space-y-4">
-          {[
-            { role: "Super Admin",      users: ["CA Arjun Mehta"], perms: ["Full Access", "User Management", "Billing", "Reports", "Audit Logs"], color: "#e53e3e", bg: "#FFF0F0" },
-            { role: "Partner",          users: ["CA Priya Nair", "CA Suresh Kumar", "CA Divya Rao"], perms: ["All Clients", "All Services", "Reports", "Assign Staff"], color: "#087F5B", bg: "#EAF4F0" },
-            { role: "Senior Manager",   users: ["Rahul S.", "Anita M."], perms: ["Assigned Clients", "File Returns", "Upload Docs", "Close Queries"], color: "#C8A45D", bg: "#FFF4E0" },
-            { role: "Staff",            users: ["Kavya R.", "Amit P.", "Sneha K."], perms: ["Assigned Tasks", "Upload Docs", "View Client Data"], color: "white", bg: "#EEF1F5" },
-            { role: "Client (View-Only)",users: ["Rajesh Mehta", "TechCorp India"], perms: ["Own Docs", "Own Filings", "Own Invoices"], color: "#52606D", bg: "#102A43" },
-          ].map(({ role, users, perms, color, bg }) => (
+          {employees.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No staff to show roles for.</div>}
+          {Object.entries(employees.reduce((acc: Record<string, string[]>, e: any) => {
+            const key = e.role || "Staff"; (acc[key] ||= []).push(e.n); return acc;
+          }, {})).map(([role, users]) => ({
+            role, users: users as string[],
+            perms: roleTabMap[role] ? roleTabMap[role].slice(0, 5) : ["Assigned Tasks", "Upload Docs"],
+            color: "#087F5B", bg: "#EAF4F0",
+          })).map(({ role, users, perms, color, bg }) => (
             <div key={role} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -1421,7 +1426,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:active?"#EAF4F0":"#102A43",color:active?"#087F5B":"#52606D" }}>{active?"Active":"Inactive"}</span>
                   <button onClick={() => openEditService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
                   <button onClick={() => openDeleteService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
-                  <button onClick={() => setActionModal({title: 'Pricing', type: 'form'})} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Pricing</button>
+                  <button onClick={() => openEditService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Pricing</button>
                 </div>
               </div>
             ))}
@@ -1576,7 +1581,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Blog Management": return (
         <div>
-          <div className="flex items-center justify-between mb-5"><div className="text-sm text-[#52606D]">{blogs.length} posts</div><button onClick={() => { setBlogForm({ title: "", content: "", summary: "" }); setActionModal({title: 'New Blog', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><BookOpen size={13} /> New Post</button></div>
+          <div className="flex items-center justify-between mb-5"><div className="text-sm text-[#52606D]">{blogs.length} posts</div><button onClick={() => { setBlogForm({ title: "", content: "", summary: "", metaTitle: "", metaDesc: "", status: "draft", publishAt: "" }); setActionModal({title: 'New Blog', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><BookOpen size={13} /> New Post</button></div>
           <div className="space-y-3">{blogs.map(({title,cat,author,date,status,views,_raw}: any) => (<div key={title} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{title}</div><div className="text-xs text-[#52606D]">{cat} · {author} · {date} {views!=="—"?`· ${views} views`:""}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Published"?"#EAF4F0":status==="Scheduled"?"#FFF4E0":"#EEF1F5",color:status==="Published"?"#087F5B":status==="Scheduled"?"#C8A45D":"#52606D" }}>{status}</span><button onClick={() => openEditBlog({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button></div></div>))}</div>
         </div>
       );
@@ -2155,6 +2160,20 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Title *</label><input type="text" value={blogForm.title} onChange={(e) => setBlogForm(p => ({ ...p, title: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Post title" /></div>
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Summary</label><input type="text" value={blogForm.summary} onChange={(e) => setBlogForm(p => ({ ...p, summary: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Short summary" /></div>
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Content *</label><textarea value={blogForm.content} onChange={(e) => setBlogForm(p => ({ ...p, content: e.target.value }))} rows={5} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Write the post…" /></div>
+                <div className="pt-1 border-t border-[#E2E8F0]"><div className="text-xs font-bold text-[#52606D] uppercase tracking-wider mb-2 mt-2">SEO &amp; Publishing</div>
+                  <div className="space-y-3">
+                    <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Meta Title</label><input type="text" maxLength={150} value={blogForm.metaTitle} onChange={(e) => setBlogForm(p => ({ ...p, metaTitle: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="SEO title (max 150)" /></div>
+                    <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Meta Description</label><textarea maxLength={255} value={blogForm.metaDesc} onChange={(e) => setBlogForm(p => ({ ...p, metaDesc: e.target.value }))} rows={2} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="SEO description (max 255)" /></div>
+                    {actionModal.title === 'Edit Blog' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Status</label>
+                          <select value={blogForm.status} onChange={(e) => setBlogForm(p => ({ ...p, status: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm">{["draft","scheduled","published"].map(s => <option key={s} value={s}>{_tc(s)}</option>)}</select>
+                        </div>
+                        <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Publish At</label><input type="datetime-local" value={blogForm.publishAt} onChange={(e) => setBlogForm(p => ({ ...p, publishAt: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" /></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (actionModal.title === 'New Job' || actionModal.title === 'Edit Job') ? (
               <div className="space-y-4 mb-5 text-left">
