@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   X, Phone, Mail, Shield, Clock, FileText, BarChart2, Users, CheckCircle,
-  Globe, Star, Download, Lock, Bell, Folder,
+  Globe, Star, Download, Lock, Bell, Folder, Edit3, Check,
   Calendar, PieChart, DollarSign, FileCheck,
   AlertCircle, Info, CreditCard, ClipboardList, UploadCloud, AlertTriangle,
   HelpCircle, ReceiptText, User2, LogOut, Loader2, ChevronRight, Search
@@ -33,6 +33,10 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
   const [actionModal, setActionModal] = useState<{ title: string } | null>(null);
   const [modalForm, setModalForm] = useState({ subject: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ first_name: "", last_name: "", phone: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const showToast = (msg: string, type: "success" | "info" | "error" = "success") => {
     setToastMessage({ msg, type });
@@ -121,6 +125,51 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
     }
   };
 
+  const handleUploadFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("file_category", "general");
+      await api.post<Row>("/documents/upload", undefined, { form });
+      await load();
+      showToast(`Uploaded ${file.name}.`, "success");
+    } catch {
+      showToast("Upload failed. Check the file size limit and try again.", "error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    const { first_name, last_name, phone } = profileForm;
+    if (!first_name.trim()) { showToast("First name is required.", "error"); return; }
+    setSavingProfile(true);
+    try {
+      const updated = await api.patch<any>("/auth/me", {
+        first_name: first_name.trim(),
+        last_name: last_name.trim(),
+        phone: phone.trim() || undefined,
+      });
+      setProfile(updated);
+      setEditingProfile(false);
+      showToast("Profile updated successfully.", "success");
+    } catch {
+      showToast("Could not update profile. Try again.", "error");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleStartEditProfile = () => {
+    setProfileForm({
+      first_name: profile?.first_name ?? "",
+      last_name: profile?.last_name ?? "",
+      phone: profile?.phone ?? "",
+    });
+    setEditingProfile(true);
+  };
+
   const handleSubmitQuery = async () => {
     const subject = modalForm.subject.trim();
     if (!subject) { showToast("Please add a query subject before submitting.", "error"); return; }
@@ -201,6 +250,12 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
       );
       case "Uploaded Documents": return (
         <div className="space-y-4">
+          <div className="flex justify-end">
+            <label className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white cursor-pointer transition-transform active:scale-95 ${uploading ? "opacity-60 cursor-wait" : ""}`} style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
+              {uploading ? <Loader2 size={13} className="animate-spin" /> : <UploadCloud size={13} />} {uploading ? "Uploading…" : "Upload Document"}
+              <input type="file" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadFile(f); e.target.value = ""; }} />
+            </label>
+          </div>
           {documents.length === 0 && empty("No documents uploaded yet.")}
           {documents.map((d) => (
             <div key={d.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
@@ -224,6 +279,10 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#FFF0F0" }}><AlertTriangle size={16} style={{ color: "#e53e3e" }} /></div>
                 <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{r.title ?? r.name ?? r.document_name ?? "Requested document"}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{r.due_date ? `Due ${fmtDate(r.due_date)}` : titleCase(r.status)}</div></div>
               </div>
+              <label className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg text-white cursor-pointer flex-shrink-0 ${uploading ? "opacity-60 cursor-wait" : ""}`} style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
+                <UploadCloud size={13} /> Upload
+                <input type="file" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadFile(f); e.target.value = ""; }} />
+              </label>
             </div>
           ))}
         </div>
@@ -272,15 +331,27 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
           {invoices.length === 0 && empty("No invoices yet.")}
           {invoices.map((inv) => {
             const paid = inv.status === "paid" || Number(inv.outstanding_amount ?? 0) <= 0;
+            const outstanding = Number(inv.outstanding_amount ?? inv.total_amount ?? 0);
             return (
               <div key={inv.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#EAF4F0" }}><ReceiptText size={16} style={{ color: "#087F5B" }} /></div>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: paid ? "#EAF4F0" : "#FFF0F0" }}><ReceiptText size={16} style={{ color: paid ? "#087F5B" : "#e53e3e" }} /></div>
                   <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{inv.invoice_number}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>Issued {fmtDate(inv.issue_date)} · Due {fmtDate(inv.due_date)}</div></div>
                 </div>
-                <div className="text-right">
-                  <div className="font-bold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{money(inv.total_amount)}</div>
-                  <span className="text-xs font-bold" style={{ color: paid ? "#087F5B" : "#e53e3e" }}>{paid ? "Paid" : titleCase(inv.status)}</span>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="font-bold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{money(inv.total_amount)}</div>
+                    <span className="text-xs font-bold" style={{ color: paid ? "#087F5B" : "#e53e3e" }}>{paid ? "Paid" : titleCase(inv.status)}</span>
+                  </div>
+                  {!paid && outstanding > 0 && (
+                    <button onClick={async () => {
+                      try {
+                        await resources.payments.create({ invoice_id: inv.id, amount: String(outstanding), payment_method: "online" } as any);
+                        showToast(`Payment of ${money(outstanding)} recorded.`, "success");
+                        load();
+                      } catch { showToast("Payment could not be processed.", "error"); }
+                    }} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>Pay Now</button>
+                  )}
                 </div>
               </div>
             );
@@ -392,6 +463,68 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
           </div>
         </div>
       );
+      case "Profile": return (
+        <div className="max-w-lg">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 mb-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl text-white" style={{ background: "linear-gradient(135deg, #102A43, #087F5B)", fontFamily: "Manrope" }}>{initials}</div>
+                <div>
+                  <div className="font-bold text-[#102A43] text-lg" style={{ fontFamily: "Manrope" }}>{displayName}</div>
+                  <div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{profile?.email ?? session?.email ?? ""}</div>
+                </div>
+              </div>
+              {!editingProfile && <button onClick={handleStartEditProfile} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white transition-transform active:scale-95" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}><Edit3 size={13} /> Edit</button>}
+            </div>
+            {editingProfile ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#102A43] mb-1">First Name *</label>
+                    <input type="text" value={profileForm.first_name} onChange={(e) => setProfileForm(p => ({ ...p, first_name: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] bg-white text-[#102A43] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#102A43] mb-1">Last Name</label>
+                    <input type="text" value={profileForm.last_name} onChange={(e) => setProfileForm(p => ({ ...p, last_name: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] bg-white text-[#102A43] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#102A43] mb-1">Phone</label>
+                  <input type="tel" value={profileForm.phone} onChange={(e) => setProfileForm(p => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] bg-white text-[#102A43] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="+91 98765 43210" />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={handleSaveProfile} disabled={savingProfile} className="flex items-center gap-1.5 text-xs font-semibold px-5 py-2.5 rounded-xl text-white disabled:opacity-60 transition-transform active:scale-95" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
+                    {savingProfile ? <><Loader2 size={13} className="animate-spin" /> Saving…</> : <><Check size={13} /> Save Changes</>}
+                  </button>
+                  <button onClick={() => setEditingProfile(false)} className="text-xs font-semibold px-5 py-2.5 rounded-xl border border-[#E2E8F0] text-[#52606D] hover:bg-[#EEF1F5] transition-colors">Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: "First Name", value: profile?.first_name ?? "—" },
+                  { label: "Last Name", value: profile?.last_name ?? "—" },
+                  { label: "Email", value: profile?.email ?? session?.email ?? "—" },
+                  { label: "Phone", value: profile?.phone || "—" },
+                  { label: "Status", value: titleCase(profile?.status) || "Active" },
+                  { label: "Role", value: profile?.role?.name ?? "Client" },
+                ].map(({ label, value }) => (
+                  <div key={label} className="p-3 rounded-xl" style={{ background: "#F7F9FC" }}>
+                    <div className="text-xs text-[#52606D] mb-0.5" style={{ fontFamily: "Inter" }}>{label}</div>
+                    <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="p-5 rounded-2xl flex items-center gap-4" style={{ background: "#F7F9FC" }}>
+            <Lock size={18} style={{ color: "#087F5B" }} />
+            <div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>
+              Your profile details are encrypted and secure. Only you and authorized Finovara staff can view your information.
+            </div>
+          </div>
+        </div>
+      );
       case "Security": return (
         <div>
           <div className="mb-6 p-5 rounded-2xl flex items-center gap-4" style={{ background: "#F7F9FC" }}>
@@ -433,6 +566,7 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
   };
 
   const tabs = [
+    { label: "Profile", icon: User2 },
     { label: "Active Services", icon: CheckCircle },
     { label: "Pending Tasks", icon: ClipboardList },
     { label: "Upcoming Due Dates", icon: Calendar },

@@ -1,12 +1,12 @@
 import { useState, FormEvent, useEffect } from "react";
-import { Shield, Lock, Users, FileText, Clock, AlertCircle, Globe, Star, CheckCircle, Loader2, ArrowLeft, Mail, Key, Eye, EyeOff, Smartphone, User, Phone } from "lucide-react";
+import { Shield, Lock, Users, FileText, Clock, AlertCircle, Globe, Star, CheckCircle, Loader2, ArrowLeft, Mail, Key, Eye, EyeOff, Smartphone } from "lucide-react";
 import { Page } from "../../types/index";
 import { useAuth, landingPage } from "../../context";
-import { sendOtp, requestPasswordReset, registerClient } from "../../services/auth";
+import { sendOtp, requestPasswordReset } from "../../services/auth";
 import { ApiError } from "../../lib/api";
 import { supabase } from "../../lib/supabase";
 
-type AuthView = 'login' | 'otp' | 'forgot' | 'recovery' | 'register';
+type AuthView = 'login' | 'otp' | 'forgot' | 'recovery';
 
 export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
   const { login, verifyOtp, recoverPassword } = useAuth();
@@ -40,10 +40,7 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [regError, setRegError] = useState<{ fullName?: string, phone?: string }>({});
-
+  
   const [errors, setErrors] = useState<{ email?: string, password?: string, otp?: string }>({});
   const [touched, setTouched] = useState<{ email?: boolean, password?: boolean, otp?: boolean }>({});
   
@@ -109,7 +106,6 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
     setResetSent(false);
     setIsSubmitting(false);
     setAuthError("");
-    setRegError({});
 
     const url = new URL(window.location.href);
     if (newView === 'login') {
@@ -224,32 +220,6 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
       setPage(landingPage(session));
     } catch (err) {
       setAuthError(errText(err, "Could not set your password. The link may have expired."));
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRegisterSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-
-    setTouched({ email: true, password: true });
-    const nameError = fullName.trim().length < 2 ? "Enter your full name" : "";
-    const phoneError = phone.replace(/\D/g, "").length < 7 ? "Enter a valid phone number" : "";
-    const emailError = validateField('email', email);
-    const passwordError = password.length < 8 ? "Password must be at least 8 characters" : "";
-
-    setRegError({ fullName: nameError, phone: phoneError });
-    setErrors({ email: emailError, password: passwordError });
-    if (nameError || phoneError || emailError || passwordError) return;
-
-    setIsSubmitting(true);
-    setAuthError("");
-    try {
-      await registerClient({ full_name: fullName.trim(), email, phone: phone.trim(), password });
-      const session = await login(email, password);
-      setPage(landingPage(session));
-    } catch (err) {
-      setAuthError(errText(err, "Could not create your account. Please try again."));
       setIsSubmitting(false);
     }
   };
@@ -542,101 +512,12 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
             </>
           )}
 
-          {view === 'register' && (
-            <>
-              <h1 className="text-2xl font-extrabold text-[#102A43] mb-2 animate-in fade-in slide-in-from-bottom-2" style={{ fontFamily: "Manrope" }}>Create your portal account</h1>
-              <p className="text-[#475569] text-sm mb-6 animate-in fade-in slide-in-from-bottom-2" style={{ fontFamily: "Inter" }}>Set up secure access to your documents, compliance calendar, and service status.</p>
-
-              <form onSubmit={handleRegisterSubmit} noValidate className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="space-y-5 mb-6">
-                  {/* Full Name */}
-                  <div className="relative group">
-                    <label htmlFor="reg-name" className="text-xs font-bold text-[#475569] mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
-                      Full Name <span className="text-[#EF4444] text-base leading-none">*</span>
-                    </label>
-                    <div className="relative">
-                      <User size={20} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 pointer-events-none ${regError.fullName ? 'text-[#EF4444]' : 'text-gray-400 group-focus-within:text-[#059669]'}`} />
-                      <input id="reg-name" type="text" value={fullName}
-                        onChange={e => { setFullName(e.target.value); if (regError.fullName) setRegError(p => ({ ...p, fullName: "" })); }}
-                        placeholder="Rahul Sharma"
-                        className={"w-full pl-12 pr-4 h-[56px] rounded-[14px] border bg-white text-[15px] outline-none transition-all duration-300 text-[#102A43] font-medium placeholder:text-gray-400 " + (regError.fullName ? "border-[#EF4444] bg-red-50/30 focus:ring-4 focus:ring-[#EF4444]/15" : "border-[#D6E2F0] focus:ring-4 focus:ring-[#059669]/15 focus:border-[#059669] hover:border-[#059669]")}
-                      />
-                    </div>
-                    {regError.fullName && <p className="text-[#EF4444] text-xs mt-2 font-medium flex items-center gap-1.5"><AlertCircle size={14} /> {regError.fullName}</p>}
-                  </div>
-
-                  {/* Email */}
-                  <div className="relative group">
-                    <label htmlFor="reg-email" className="text-xs font-bold text-[#475569] mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
-                      Email Address <span className="text-[#EF4444] text-base leading-none">*</span>
-                    </label>
-                    <div className="relative">
-                      <Mail size={20} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 pointer-events-none ${errors.email ? 'text-[#EF4444]' : 'text-gray-400 group-focus-within:text-[#059669]'}`} />
-                      <input id="reg-email" type="email" value={email}
-                        onChange={e => handleChange('email', e.target.value)} onBlur={() => handleBlur('email')}
-                        placeholder="your@email.com" className={getInputStyles('email')} />
-                    </div>
-                    {errors.email && <p className="text-[#EF4444] text-xs mt-2 font-medium flex items-center gap-1.5"><AlertCircle size={14} /> {errors.email}</p>}
-                  </div>
-
-                  {/* Phone */}
-                  <div className="relative group">
-                    <label htmlFor="reg-phone" className="text-xs font-bold text-[#475569] mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
-                      Phone Number <span className="text-[#EF4444] text-base leading-none">*</span>
-                    </label>
-                    <div className="relative">
-                      <Phone size={20} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 pointer-events-none ${regError.phone ? 'text-[#EF4444]' : 'text-gray-400 group-focus-within:text-[#059669]'}`} />
-                      <input id="reg-phone" type="tel" value={phone}
-                        onChange={e => { setPhone(e.target.value); if (regError.phone) setRegError(p => ({ ...p, phone: "" })); }}
-                        placeholder="+91 98765 43210"
-                        className={"w-full pl-12 pr-4 h-[56px] rounded-[14px] border bg-white text-[15px] outline-none transition-all duration-300 text-[#102A43] font-medium placeholder:text-gray-400 " + (regError.phone ? "border-[#EF4444] bg-red-50/30 focus:ring-4 focus:ring-[#EF4444]/15" : "border-[#D6E2F0] focus:ring-4 focus:ring-[#059669]/15 focus:border-[#059669] hover:border-[#059669]")}
-                      />
-                    </div>
-                    {regError.phone && <p className="text-[#EF4444] text-xs mt-2 font-medium flex items-center gap-1.5"><AlertCircle size={14} /> {regError.phone}</p>}
-                  </div>
-
-                  {/* Password */}
-                  <div className="relative group">
-                    <label htmlFor="reg-password" className="text-xs font-bold text-[#475569] mb-2 flex items-center gap-1 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>
-                      Password <span className="text-[#EF4444] text-base leading-none">*</span>
-                    </label>
-                    <div className="relative">
-                      <Lock size={20} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 pointer-events-none ${errors.password ? 'text-[#EF4444]' : 'text-gray-400 group-focus-within:text-[#059669]'}`} />
-                      <input id="reg-password" type={showPassword ? "text" : "password"} value={password}
-                        onChange={e => handleChange('password', e.target.value)}
-                        placeholder="At least 8 characters" className={`${getInputStyles('password')} pr-12`} />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#059669] transition-colors focus:outline-none">
-                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                      </button>
-                    </div>
-                    {errors.password && <p className="text-[#EF4444] text-xs mt-2 font-medium flex items-center gap-1.5"><AlertCircle size={14} /> {errors.password}</p>}
-                  </div>
-                </div>
-
-                <button type="submit" disabled={isSubmitting}
-                  className={`w-full h-[56px] flex items-center justify-center gap-3 rounded-[14px] text-white font-semibold text-base mb-5 transition-all duration-300 ${isSubmitting ? 'bg-gray-300 cursor-not-allowed shadow-none' : 'bg-gradient-to-r from-[#0F766E] to-[#059669] shadow-md hover:shadow-xl hover:shadow-[#059669]/25 hover:-translate-y-[2px] hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] cursor-pointer'}`}
-                  style={{ fontFamily: "Inter" }}>
-                  {isSubmitting ? <><Loader2 size={22} className="animate-spin" /> Creating account...</> : <>Create Account &amp; Sign In</>}
-                </button>
-              </form>
-            </>
-          )}
-
           {/* Registration Link (Shown on all views at bottom) */}
           <p className="text-center text-sm font-medium text-[#64748B] mt-6" style={{ fontFamily: "Inter" }}>
-            {view === 'register' ? (
-              <>Already have an account?{" "}
-                <button type="button" onClick={() => resetView('login')} className="font-bold text-[#059669] hover:text-[#0F766E] transition-colors hover:underline">
-                  Sign in
-                </button>
-              </>
-            ) : (
-              <>New client?{" "}
-                <button type="button" onClick={() => resetView('register')} className="font-bold text-[#059669] hover:text-[#0F766E] transition-colors hover:underline">
-                  Request Portal Access
-                </button>
-              </>
-            )}
+            New client?{" "}
+            <button type="button" onClick={() => setPage("contact")} className="font-bold text-[#059669] hover:text-[#0F766E] transition-colors hover:underline">
+              Request Portal Access
+            </button>
           </p>
         </div>
       </div>

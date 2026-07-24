@@ -36,13 +36,6 @@ export async function login(email: string, password: string): Promise<SessionInf
   return exchange(data.session.access_token, data.session.refresh_token);
 }
 
-/** Self-service client signup. Provisions a 'client' account server-side. */
-export async function registerClient(payload: {
-  full_name: string; email: string; phone: string; password: string;
-}): Promise<void> {
-  await api.post<unknown>("/onboarding/register", payload);
-}
-
 /** Send an email OTP (magic-code) for passwordless sign-in. */
 export async function sendOtp(email: string): Promise<void> {
   const { error } = await supabase.auth.signInWithOtp({ email });

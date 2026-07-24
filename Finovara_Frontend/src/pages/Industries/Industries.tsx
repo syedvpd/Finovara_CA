@@ -95,7 +95,7 @@ export function IndustriesPage({ setPage }: { setPage: (p: Page) => void }) {
               <div className="p-8 grid md:grid-cols-2 gap-8" style={{ background: "#ffffff" }}>
                 {/* Services */}
                 <div>
-                  <h4 className="font-bold text-white mb-4 flex items-center gap-2" style={{ fontFamily: "Manrope" }}>
+                  <h4 className="font-bold text-black mb-4 flex items-center gap-2" style={{ fontFamily: "Manrope" }}>
                     <span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "#EAF4F0" }}>
                       <CheckCircle size={14} style={{ color: "#087F5B" }} />
                     </span>
@@ -113,7 +113,7 @@ export function IndustriesPage({ setPage }: { setPage: (p: Page) => void }) {
 
                 {/* Compliance */}
                 <div>
-                  <h4 className="font-bold text-white mb-4 flex items-center gap-2" style={{ fontFamily: "Manrope" }}>
+                  <h4 className="font-bold text-black mb-4 flex items-center gap-2" style={{ fontFamily: "Manrope" }}>
                     <span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "#FFF4E0" }}>
                       <Shield size={14} style={{ color: "#C8A45D" }} />
                     </span>

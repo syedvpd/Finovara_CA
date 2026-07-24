@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { publicApi, Blog } from "../../services/public";
 import { ArticleModal } from "../../components/modals/ArticleModal";
+import { INSIGHTS } from "../../utils/constants";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=200&fit=crop&auto=format";
 
@@ -17,7 +18,9 @@ export function BlogsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const [featured, ...rest] = blogs;
+  const staticInsights = INSIGHTS.map(i => ({ ...i, id: i.title, category_id: i.tag, cover_image_url: null, published_at: i.date, read_time_minutes: null, content: null }));
+  const allBlogs = blogs.length ? blogs : staticInsights as any[];
+  const [featured, ...rest] = allBlogs;
 
   return (
     <div className="pt-16">
@@ -37,17 +40,17 @@ export function BlogsPage() {
               <Loader2 size={18} className="animate-spin" /> Loading articles…
             </div>
           )}
-          {!loading && blogs.length === 0 && (
+          {!loading && blogs.length === 0 && allBlogs.length === 0 && (
             <p className="text-center text-[#94A3B8] py-20">No articles published yet.</p>
           )}
           {!loading && featured && (
             <div className="mb-12 bg-white rounded-3xl overflow-hidden border border-[#E2E8F0] hover:shadow-xl transition-all grid md:grid-cols-2">
-              <img src={featured.cover_image_url || FALLBACK_IMG} alt={featured.title} className="w-full h-full object-cover" />
+              <img src={featured.cover_image_url || featured.image || FALLBACK_IMG} alt={featured.title} className="w-full h-full object-cover" />
               <div className="p-8 flex flex-col justify-center">
                 <span className="text-xs font-semibold px-3 py-1 rounded-full mb-4 inline-block self-start" style={{ background: "#EAF4F0", color: "#087F5B", fontFamily: "Inter" }}>Featured Article</span>
                 <h2 className="text-3xl font-extrabold text-[#102A43] mb-4" style={{ fontFamily: "Manrope" }}>{featured.title}</h2>
                 <p className="text-[#94A3B8] leading-relaxed mb-6" style={{ fontFamily: "Inter" }}>{featured.excerpt}</p>
-                <button onClick={() => setSelectedArticle({ title: featured.title, excerpt: featured.excerpt, content: featured.content, date: featured.published_at ? new Date(featured.published_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "", readTime: featured.read_time_minutes ? `${featured.read_time_minutes} min read` : "" })} className="inline-flex items-center gap-2 text-sm font-semibold text-[#087F5B]" style={{ fontFamily: "Inter" }}>Read Full Article <ArrowRight size={14} /></button>
+                <button onClick={() => setSelectedArticle({ title: featured.title, excerpt: featured.excerpt, content: featured.content, tag: featured.category_id, image: featured.image, date: featured.published_at ? new Date(featured.published_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "", readTime: featured.read_time_minutes ? `${featured.read_time_minutes} min read` : featured.readTime ?? "" })} className="inline-flex items-center gap-2 text-sm font-semibold text-[#087F5B]" style={{ fontFamily: "Inter" }}>Read Full Article <ArrowRight size={14} /></button>
               </div>
             </div>
           )}
@@ -56,14 +59,14 @@ export function BlogsPage() {
               {rest.map((article) => (
                 <div key={article.id} className="group bg-white rounded-2xl overflow-hidden border border-[#E2E8F0] hover:shadow-xl transition-all hover:-translate-y-1">
                   <div className="h-48 bg-[#EEF1F5] overflow-hidden">
-                    <img src={article.cover_image_url || FALLBACK_IMG} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={article.cover_image_url || article.image || FALLBACK_IMG} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   </div>
                   <div className="p-6">
                     <h3 className="font-bold text-[#102A43] mb-2 leading-tight" style={{ fontFamily: "Manrope" }}>{article.title}</h3>
                     <p className="text-sm text-[#94A3B8] mb-4" style={{ fontFamily: "Inter" }}>{article.excerpt}</p>
                     <div className="flex items-center justify-between text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>
                       <span>{article.read_time_minutes ? `${article.read_time_minutes} min read` : ""}</span>
-                      <button onClick={() => setSelectedArticle({ title: article.title, excerpt: article.excerpt, content: article.content, date: article.published_at ? new Date(article.published_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "" })} className="flex items-center gap-1 text-xs font-semibold text-[#087F5B] hover:underline">Read Full Article <ArrowRight size={12} /></button>
+                      <button onClick={() => setSelectedArticle({ title: article.title, excerpt: article.excerpt, content: article.content, tag: article.category_id, image: article.image, date: article.published_at ? new Date(article.published_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "", readTime: article.read_time_minutes ? `${article.read_time_minutes} min read` : article.readTime ?? "" })} className="flex items-center gap-1 text-xs font-semibold text-[#087F5B] hover:underline">Read Full Article <ArrowRight size={12} /></button>
                     </div>
                   </div>
                 </div>

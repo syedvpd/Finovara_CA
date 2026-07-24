@@ -4,6 +4,9 @@ import {
   Briefcase, Zap, UserCheck, PieChart, Flag, Bell, Lock, Mail
 } from "lucide-react";
 import { Page } from "../types/index";
+import virtualCeoImg from "../assets/images/virtual_ceo.png";
+import newGstImg from "../assets/images/new_gst.png";
+import budgetImg from "../assets/images/budget.png";
 
 export const NAV_ITEMS = [
   { label: "Home", page: "home" as Page },
@@ -200,6 +203,26 @@ export const TESTIMONIALS = [
     text: "Their financial due diligence reports are thorough, incisive, and decision-ready. We rely on Finovara for every M&A transaction we evaluate.",
     avatar: "VN"
   },
+  {
+    name: "Deepa Iyer", role: "MD, Iyer Retail Group", rating: 5,
+    text: "Switching to Finovara was the best business decision we made. Their payroll and GST teams handle everything seamlessly across our 12 retail outlets. Zero compliance misses in two years.",
+    avatar: "DI"
+  },
+  {
+    name: "Karthik Subramaniam", role: "Founder, LogiTrack Solutions", rating: 5,
+    text: "As a logistics startup, we needed a CA firm that understood our sector. Finovara's team knew exactly what we needed — from GST on transport to driver payroll. Highly recommended.",
+    avatar: "KS"
+  },
+  {
+    name: "Meera Joshi", role: "Trustee, Joshi Education Foundation", rating: 5,
+    text: "Finovara guided us through 80G and 12A registration, FCRA compliance, and donor reporting with remarkable clarity. Their NGO expertise is genuinely rare.",
+    avatar: "MJ"
+  },
+  {
+    name: "Rohit Bansal", role: "Co-founder, NovaPharma Labs", rating: 5,
+    text: "Transfer pricing and R&D deductions are complex territory. Finovara's pharma specialists handled our entire compliance calendar and saved us significant tax outflow.",
+    avatar: "RB"
+  },
 ];
 
 export const INSIGHTS = [
@@ -207,19 +230,22 @@ export const INSIGHTS = [
     tag: "Tax Update", date: "15 Jan 2025",
     title: "Budget 2025: Key Changes Affecting Indian Businesses",
     excerpt: "A comprehensive breakdown of the Union Budget announcements impacting corporate tax, capital gains, and startup incentives.",
-    readTime: "8 min read"
+    readTime: "8 min read",
+    image: budgetImg
   },
   {
     tag: "GST Advisory", date: "08 Jan 2025",
     title: "New GST Return Filing Mechanism: What You Need to Know",
     excerpt: "Understanding the revised GST filing procedures and how businesses should prepare for the updated compliance framework.",
-    readTime: "6 min read"
+    readTime: "6 min read",
+    image: newGstImg
   },
   {
     tag: "Financial Planning", date: "02 Jan 2025",
     title: "Virtual CFO vs In-House CFO: The 2025 Decision Guide",
     excerpt: "A detailed cost-benefit analysis helping growing businesses decide between hiring full-time financial leadership or outsourcing.",
-    readTime: "10 min read"
+    readTime: "10 min read",
+    image: virtualCeoImg
   },
 ];
 

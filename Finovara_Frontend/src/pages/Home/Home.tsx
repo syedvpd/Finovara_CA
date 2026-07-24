@@ -16,6 +16,8 @@ import { StatCard } from "../../components/cards/StatCard";
 import { handleDownloadResource, handleAddCalendar } from "../../utils/helpers";
 import { ArticleModal } from "../../components/modals/ArticleModal";
 import { Reveal } from "../../components/animations/Reveal";
+import heroVideo from "../../assets/videos/Hero_video.mp4";
+import clientImg from "../../assets/images/client.png";
 
 export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => void }) {
   const statsRef = useRef<HTMLDivElement>(null);
@@ -42,9 +44,10 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
     });
   }, []);
 
-  const displayTestimonials = liveTestimonials.length
-    ? liveTestimonials.map(t => ({ name: t.author_name, role: t.author_title ?? "", text: t.content, avatar: t.author_name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), rating: t.rating ?? 5 }))
-    : TESTIMONIALS;
+  const mappedLiveTestimonials = liveTestimonials
+    .filter(t => t.content && t.content.trim())
+    .map(t => ({ name: t.author_name, role: t.author_title ?? "", text: t.content, avatar: t.author_name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), rating: t.rating ?? 5 }));
+  const displayTestimonials = mappedLiveTestimonials.length ? mappedLiveTestimonials : TESTIMONIALS;
 
   const displayBlogs = liveBlogs.length
     ? liveBlogs.map(b => ({ title: b.title, tag: b.category_id ?? "Article", date: b.published_at ? new Date(b.published_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "", excerpt: b.excerpt ?? "", readTime: b.read_time_minutes ? `${b.read_time_minutes} min read` : "", cover: b.cover_image_url, _raw: b }))
@@ -104,22 +107,25 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
   return (
     <div>
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: "#102A43" }}>
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "48px 48px" }} />
-        </div>
-        <div className="absolute top-0 right-0 w-1/2 h-full opacity-10"
-          style={{ background: "radial-gradient(ellipse at top right, #087F5B, transparent 70%)" }} />
-        <div className="absolute bottom-0 left-0 w-1/3 h-1/2 opacity-10"
-          style={{ background: "radial-gradient(ellipse at bottom left, #C8A45D, transparent 70%)" }} />
+      <section className="relative min-h-screen flex items-center overflow-hidden">
+        {/* Background video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0"
+          src={heroVideo}
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 z-10" style={{ background: "rgba(16,42,67,0.78)" }} />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 grid lg:grid-cols-2 gap-16 items-center">
-          <div>
+        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 flex items-center min-h-screen">
+          <div className="w-full max-w-2xl text-left">
             {/* Eyebrow */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 border border-[#E2E8F0] bg-white backdrop-blur-sm">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 border border-white/20 bg-white/10">
               <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#087F5B" }} />
-              <span className="text-xs font-semibold uppercase tracking-widest text-black" style={{ fontFamily: "Inter" }}>
+              <span className="text-xs font-semibold uppercase tracking-widest text-white/80" style={{ fontFamily: "Inter" }}>
                 Chartered Accountants & Financial Advisors
               </span>
             </div>
@@ -146,12 +152,6 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
                 style={{ fontFamily: "Inter" }}>
                 Explore Services
                 <ChevronRight size={18} />
-              </button>
-              <button onClick={() => setPage("login")}
-                className="flex items-center gap-2 px-7 py-4 rounded-xl font-semibold text-base transition-all border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
-                style={{ fontFamily: "Inter" }}>
-                <Lock size={16} />
-                
               </button>
               <button onClick={() => setPage("login")}
                 className="flex items-center gap-2 px-7 py-4 rounded-xl font-semibold text-base transition-all border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
@@ -279,65 +279,10 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
               ))}
             </div>
           </div>
-
-          {/* Right side — portal preview */}
-          <div className="hidden lg:block">
-            <div className="relative">
-              <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/10 backdrop-blur-sm"
-                style={{ background: "rgba(255,255,255,0.05)" }}>
-                {/* Portal header */}
-                <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-red-400" />
-                    <div className="w-2 h-2 rounded-full bg-yellow-400" />
-                    <div className="w-2 h-2 rounded-full bg-green-400" />
-                  </div>
-                  <span className="text-white/50 text-xs font-medium tracking-wide" style={{ fontFamily: "Inter" }}>portal.finovara.in</span>
-                  <Lock size={14} className="text-white/30" />
-                </div>
-                <div className="p-6">
-                  <div className="text-white/50 text-xs mb-4 uppercase tracking-widest" style={{ fontFamily: "Inter" }}>Dashboard Overview</div>
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    {[
-                      { label: "Compliance Score", value: "98%", color: "#087F5B", icon: Shield },
-                      { label: "Pending Tasks", value: "3", color: "#C8A45D", icon: Bell },
-                      { label: "Documents", value: "247", color: "white", icon: Folder },
-                      { label: "Due This Month", value: "₹1.2L", color: "#2F9E44", icon: Calendar },
-                    ].map(({ label, value, color, icon: Icon }) => (
-                      <div key={label} className="rounded-2xl p-4 bg-white/5 border border-white/5">
-                        <Icon size={16} style={{ color }} className="mb-2" />
-                        <div className="text-xl font-bold text-white mb-1" style={{ fontFamily: "Manrope" }}>{value}</div>
-                        <div className="text-xs text-white/40" style={{ fontFamily: "Inter" }}>{label}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="rounded-2xl p-4 bg-white/5 border border-white/5">
-                    <div className="text-xs text-white/40 mb-3 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>Recent Activity</div>
-                    {["ITR Filed — FY 2024-25", "GST Return Submitted", "TDS Certificate Uploaded"].map((activity, i) => (
-                      <div key={i} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
-                        <CheckCircle size={14} style={{ color: "#087F5B" }} />
-                        <span className="text-xs text-white/60" style={{ fontFamily: "Inter" }}>{activity}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {/* Floating badge */}
-              <div className="mt-4 bg-white/5 rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "#EAF4F0" }}>
-                  <Shield size={16} style={{ color: "#087F5B" }} />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-white" style={{ fontFamily: "Manrope" }}>256-bit Encrypted</div>
-                  <div className="text-xs text-[#94A3B8]" style={{ fontFamily: "Inter" }}>Bank-grade security</div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Bottom curve */}
-        <div className="absolute bottom-0 left-0 right-0">
+        <div className="absolute bottom-0 left-0 right-0 z-20">
           <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0 60L1440 60L1440 0C1440 0 1080 60 720 60C360 60 0 0 0 0L0 60Z" fill="#102A43" />
           </svg>
@@ -581,7 +526,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
           </div>
           <div className="hidden lg:block">
             <img
-              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=450&fit=crop&auto=format"
+              src={clientImg}
               alt="Financial dashboard showing analytics and compliance tracking"
               className="rounded-3xl shadow-2xl border border-white/10 w-full object-cover"
             />
@@ -599,7 +544,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {FEATURED_ASSIGNMENTS.map((assignment, i) => (
-              <div key={i} className="flex flex-col bg-white rounded-3xl p-8 border border-gray-200 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+              <div key={i} className="flex flex-col bg-white rounded-3xl p-8 border-2 border-[#E2E8F0] hover:border-[#087F5B] hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
                 <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mb-6" style={{ background: "linear-gradient(135deg, #087F5B15, #087F5B30)", color: "#087F5B", fontFamily: "Inter" }}>
                   {assignment.tag}
                 </span>
@@ -623,7 +568,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
             <h2 className="text-4xl font-extrabold text-gray-900 mb-4" style={{ fontFamily: "Manrope" }}>Trusted by Industry Leaders</h2>
           </div>
           <div className="relative max-w-4xl mx-auto">
-            <div className="bg-gray-50 rounded-3xl p-8 md:p-12 border border-gray-200">
+            <div className="bg-gray-50 rounded-3xl p-8 md:p-12 border border-gray-200 shadow-xl">
               <Quote size={40} style={{ color: "#087F5B" }} className="mb-6 opacity-30" />
               <p className="text-xl md:text-2xl text-gray-900 leading-relaxed mb-8 font-medium" style={{ fontFamily: "Playfair Display", fontStyle: "italic" }}>
                 "{displayTestimonials[activeTestimonial]?.text}"
@@ -678,7 +623,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
               <div key={article.title + idx} className="group bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-xl transition-all hover:-translate-y-1">
                 <div className="h-48 overflow-hidden bg-[#EEF1F5]">
                   <img
-                    src={article.cover || "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=200&fit=crop&auto=format"}
+                    src={article.cover || article.image || "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=200&fit=crop&auto=format"}
                     alt={article.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
