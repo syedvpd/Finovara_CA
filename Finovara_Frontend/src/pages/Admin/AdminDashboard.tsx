@@ -1039,18 +1039,19 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Open Queries": return (
         <div className="space-y-3">
-          {[
-            { q: "Can TechCorp claim input credit on laptop purchase?", client: "TechCorp India", age: "2 hrs",    staff: "CA Priya",    priority: "High" },
-            { q: "Is advance tax applicable for Rajesh Mehta this year?", client: "Rajesh Mehta", age: "1 day",   staff: "Rahul S.",    priority: "Medium" },
-            { q: "What is the penalty for late GST filing for ABC Mfg?",  client: "ABC Mfg Ltd", age: "2 days",   staff: "Kavya R.",    priority: "High" },
-            { q: "When is the next ROC annual filing for Sharma & Co?",   client: "Sharma & Co", age: "3 days",   staff: "Amit P.",     priority: "Low" },
-          ].map(({ q, client, age, staff, priority }) => (
-            <div key={q} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
+          {queries.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No open queries.</div>}
+          {queries.map(({ q, client, age, staff, priority, _raw }: any) => (
+            <div key={_raw?.id ?? q} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{q}</div>
                 <span className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: priority==="High"?"#FFF0F0":priority==="Medium"?"#FFF4E0":"#EAF4F0", color: priority==="High"?"#e53e3e":priority==="Medium"?"#C8A45D":"#087F5B" }}>{priority}</span>
               </div>
-              <div className="flex justify-between text-xs text-[#52606D]"><span>{client} · {age} ago</span><span>Assigned: {staff}</span></div>
+              <div className="flex items-center justify-between text-xs text-[#52606D]">
+                <span>{client} · {age} ago · Assigned: {staff}</span>
+                {_raw?.id && _lc(_raw.status) !== "resolved" && _lc(_raw.status) !== "closed" && (
+                  <button onClick={() => persist(() => resources.queries.update(_raw.id, { status: "resolved" } as any), 'Query resolved.')} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background: "linear-gradient(135deg,#087F5B,#065a40)" }}>Resolve</button>
+                )}
+              </div>
             </div>
           ))}
         </div>
