@@ -45,6 +45,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [clientFilter, setClientFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
   const [blogForm, setBlogForm] = useState({ title: "", content: "", summary: "" });
   const [careerForm, setCareerForm] = useState({ job_title: "", department: "", location: "", description: "", requirements: "" });
+  const [invoiceForm, setInvoiceForm] = useState({ clientId: "", due: "", description: "", amount: "" });
   const [formValues, setFormValues] = useState({
     clientName: "",
     caName: "",
@@ -669,6 +670,24 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const handleUpdateCareer = () => {
     const id = actionModal?.item?._raw?.id; if (!id) { setActionModal(null); return; }
     persist(() => resources.careers.update(id, { job_title: careerForm.job_title.trim(), description: careerForm.description.trim() || undefined, requirements: careerForm.requirements.trim() || undefined } as any), 'Job updated.');
+  };
+
+  const handleAddInvoice = () => {
+    const client = clients.find(c => c._raw?.id === invoiceForm.clientId);
+    if (!client) { showToast('Please select a client.', 'error'); return; }
+    if (!invoiceForm.due) { showToast('Please set a due date.', 'error'); return; }
+    const amount = Number((invoiceForm.amount || "").replace(/[^0-9.]/g, ""));
+    if (!amount) { showToast('Please enter a valid amount.', 'error'); return; }
+    const body: any = { client_id: client._raw.id, branch_id: client._raw.branch_id, due_date: invoiceForm.due,
+      items: [{ description: invoiceForm.description.trim() || "Professional services", quantity: 1, unit_price: String(amount), tax_rate_percent: "18.00" }] };
+    setInvoiceForm({ clientId: "", due: "", description: "", amount: "" });
+    persist(() => resources.invoices.create(body), 'Invoice created.');
+  };
+  const handleMarkInvoicePaid = (item: any) => {
+    const i = item._raw ?? {};
+    const outstanding = Number(i.outstanding_amount ?? i.total_amount ?? 0);
+    if (!i.id || outstanding <= 0) { showToast('Nothing outstanding on this invoice.', 'info'); return; }
+    persist(() => resources.payments.create({ invoice_id: i.id, amount: String(outstanding), payment_method: 'cash' } as any), 'Payment recorded.');
   };
 
   const handleMarkAllRead = () => {
@@ -1314,10 +1333,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Invoice Management": return (
         <div>
           <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-            <div className="flex gap-3">{[{l:"Total",v:"₹42.8L"},{l:"Paid",v:"₹34.6L"},{l:"Outstanding",v:"₹8.2L"}].map(({l,v}) => <div key={l} className="px-4 py-2 bg-white rounded-xl border border-[#E2E8F0] text-center"><div className="font-extrabold text-sm text-[#087F5B]" style={{ fontFamily:"Manrope" }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>)}</div>
-            <button onClick={() => setActionModal({title: 'Create New Entry', type: 'form'})}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><ReceiptText size={13} /> Create Invoice</button>
+            <div className="flex gap-3">{[{l:"Total",v:_inr(revenue)},{l:"Paid",v:_inr(paidTotal)},{l:"Outstanding",v:_inr(outstanding)}].map(({l,v}) => <div key={l} className="px-4 py-2 bg-white rounded-xl border border-[#E2E8F0] text-center"><div className="font-extrabold text-sm text-[#087F5B]" style={{ fontFamily:"Manrope" }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>)}</div>
+            <button onClick={() => { setInvoiceForm({ clientId: "", due: "", description: "", amount: "" }); setActionModal({title: 'Create Invoice', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><ReceiptText size={13} /> Create Invoice</button>
           </div>
-          <div className="space-y-3">{invoices.map(({inv,client,svc,amt,date,status}: any) => (<div key={inv} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{inv} · {client}</div><div className="text-xs text-[#52606D]">{svc} · {date}</div></div><div className="flex items-center gap-3"><div className="font-bold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{amt}</div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Paid"?"#EAF4F0":"#FFF0F0",color:status==="Paid"?"#087F5B":"#e53e3e" }}>{status}</span><button onClick={() => setActionModal({title: 'View', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">View</button></div></div>))}</div>
+          <div className="space-y-3">{invoices.map(({inv,client,svc,amt,date,status,_raw}: any) => (<div key={inv} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{inv} · {client}</div><div className="text-xs text-[#52606D]">{svc} · {date}</div></div><div className="flex items-center gap-3"><div className="font-bold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{amt}</div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Paid"?"#EAF4F0":"#FFF0F0",color:status==="Paid"?"#087F5B":"#e53e3e" }}>{status}</span>{status!=="Paid" && <button onClick={() => handleMarkInvoicePaid({ _raw })} className="text-xs px-2 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Mark Paid</button>}</div></div>))}</div>
         </div>
       );
       case "Payment Tracking": return (
@@ -1658,6 +1677,21 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                 </div>
               </div>
+            ) : actionModal.title === 'Create Invoice' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
+                  <select value={invoiceForm.clientId} onChange={(e) => setInvoiceForm(p => ({ ...p, clientId: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
+                    <option value="">Select client…</option>
+                    {clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Due Date *</label><input type="date" value={invoiceForm.due} onChange={(e) => setInvoiceForm(p => ({ ...p, due: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" /></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Amount (₹) *</label><input type="number" min="1" value={invoiceForm.amount} onChange={(e) => setInvoiceForm(p => ({ ...p, amount: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="10000" /></div>
+                </div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Description</label><input type="text" value={invoiceForm.description} onChange={(e) => setInvoiceForm(p => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Professional services" /></div>
+                <div className="text-xs text-[#52606D]">18% GST is added automatically.</div>
+              </div>
             ) : (actionModal.title === 'New Blog' || actionModal.title === 'Edit Blog') ? (
               <div className="space-y-4 mb-5 text-left">
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Title *</label><input type="text" value={blogForm.title} onChange={(e) => setBlogForm(p => ({ ...p, title: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Post title" /></div>
@@ -1727,6 +1761,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 if (actionModal?.title === 'Edit Blog')        { handleUpdateBlog(); return; }
                 if (actionModal?.title === 'New Job')          { handleAddCareer(); return; }
                 if (actionModal?.title === 'Edit Job')         { handleUpdateCareer(); return; }
+                if (actionModal?.title === 'Create Invoice')   { handleAddInvoice(); return; }
                 showToast(`${actionModal.title} saved successfully!`, 'success');
                 setActionModal(null);
               }}
