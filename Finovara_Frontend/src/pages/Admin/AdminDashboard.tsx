@@ -181,12 +181,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         client: g.client_id?.slice(0, 8) ?? "—", form: g.return_type,
         period: `${g.period_month ?? ""}/${g.period_year}`, status: _tc(g.status),
         arno: g.filed_at ? "Filed" : "—", _raw: g })));
-      setQueries(_rowsOf(r[14]).map((q: any) => ({
+      setQueries(_rowsOf(r[15]).map((q: any) => ({
         q: q.subject ?? q.title ?? "Query", client: q.client_id?.slice(0, 8) ?? "—",
         age: q.created_at ? (() => { const d = Math.floor((Date.now() - new Date(q.created_at).getTime()) / 36e5); return d < 24 ? `${d} hr` : `${Math.floor(d/24)} day`; })() : "—",
         staff: q.assigned_to?.slice(0, 8) ?? "—", priority: _tc(q.priority ?? "medium"), _raw: q })));
-      setEngagements(_rowsOf(r[15]));
-      setContactRequests(_rowsOf(r[16]).map((c: any) => ({
+      setEngagements(_rowsOf(r[16]));
+      setContactRequests(_rowsOf(r[17]).map((c: any) => ({
         name: c.name, email: c.email, phone: c.phone ?? "—",
         service: c.subject ?? "—", msg: c.message ?? "",
         date: _date(c.created_at), status: c.status ?? "new", _raw: c,
