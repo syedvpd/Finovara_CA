@@ -54,6 +54,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [meetingForm, setMeetingForm] = useState({ lead_id: "", scheduled_date: "", notes: "" });
   const [settings, setSettings] = useState<any[]>([]);
   const [trialBalance, setTrialBalance] = useState<any[]>([]);
+  const [auditForm, setAuditForm] = useState({ clientId: "", serviceId: "", start: "", end: "", type: "statutory", risk: "medium" });
+  const [taxForm, setTaxForm] = useState({ income: "", liability: "", refund: "", refundStatus: "pending" });
+  const [lateFee, setLateFee] = useState({ days: "0", nil: "no" });
   const [tbClientId, setTbClientId] = useState("");
   const [formValues, setFormValues] = useState({
     clientName: "",
@@ -721,6 +724,40 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setInvoiceForm({ clientId: "", due: "", description: "", amount: "" });
     persist(() => resources.invoices.create(body), 'Invoice created.');
   };
+  // --- simple PDF helper (certificates, payslips) ---------------------------
+  const makePdf = (title: string, lines: string[], file: string) => {
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    doc.setFontSize(16); doc.text("Finovara Chartered Accountants LLP", 40, 50);
+    doc.setFontSize(13); doc.text(title, 40, 78);
+    doc.setFontSize(10);
+    lines.forEach((l, i) => doc.text(l, 40, 110 + i * 18));
+    doc.text(`Generated: ${new Date().toLocaleString("en-IN")}`, 40, 800);
+    doc.save(file);
+    showToast(`${title} downloaded.`, 'success');
+  };
+
+  const handleAddAudit = () => {
+    const client = clients.find(c => c._raw?.id === auditForm.clientId);
+    const service = services.find(s => s._raw?.id === auditForm.serviceId);
+    if (!client) { showToast('Please select a client.', 'error'); return; }
+    if (!service) { showToast('Please select a service.', 'error'); return; }
+    if (!auditForm.start) { showToast('Please set a start date.', 'error'); return; }
+    persist(() => resources.audits.create({ client_id: client._raw.id, service_id: service._raw.id,
+      start_date: auditForm.start, end_date: auditForm.end || undefined,
+      audit_type: auditForm.type, risk_rating: auditForm.risk } as any), 'Audit created.');
+  };
+  const setAuditRisk = (item: any, risk: string) => {
+    if (!item._raw?.id) return;
+    persist(() => resources.audits.update(item._raw.id, { risk_rating: risk } as any), `Risk set to ${risk}.`);
+  };
+  const handleSaveTaxDetails = () => {
+    const id = actionModal?.item?._raw?.id; if (!id) { setActionModal(null); return; }
+    const body: any = { refund_status: taxForm.refundStatus };
+    if (taxForm.liability) body.calculated_tax_liability = taxForm.liability;
+    if (taxForm.income) body.calculated_taxable_income = taxForm.income;
+    if (taxForm.refund) body.refund_claimed = taxForm.refund;
+    persist(() => resources.taxReturns.update(id, body), 'Tax details saved.');
+  };
   const handleRunPayroll = () => {
     const branch_id = clients[0]?._raw?.branch_id ?? employees[0]?._raw?.branch_id;
     if (!branch_id) { showToast('No branch available to run payroll.', 'error'); return; }
@@ -755,7 +792,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     persist(() => resources.payments.create({ invoice_id: i.id, amount: String(outstanding), payment_method: 'cash' } as any), 'Payment recorded.');
   };
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
+    try { await api.post("/notifications/read-all", {}); await loadData(); } catch { /* fall through to local clear */ }
     setNotifications([]);
     showToast('All notifications marked as read.', 'success');
   };
@@ -1336,6 +1374,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#FFF0F0",color:status==="Active"?"#087F5B":"#e53e3e" }}>{status}</span>
                     <button onClick={() => openEditClient({ n, ca, pan, gstin, svc, status })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
+                    <button onClick={() => makePdf("Certificate of Engagement", [`Client: ${n}`, `PAN: ${pan}`, `GSTIN: ${gstin}`, `Engaged services: ${svc}`, `Assigned CA: ${ca}`, `Status: ${status}`, "", "This is to certify that the above client is engaged with", "Finovara Chartered Accountants LLP for the services listed."], `certificate-${n.replace(/\s+/g,'-')}.pdf`)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Certificate</button>
                     <button onClick={() => openDeleteClient({ n, ca, pan, gstin, svc, status })} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
                   </div>
                 </div>
@@ -1435,11 +1474,23 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Audit Workflow": return (
         <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-[#52606D]">{audits.length} audits</div>
+            <button onClick={() => { setAuditForm({ clientId: "", serviceId: "", start: "", end: "", type: "statutory", risk: "medium" }); setActionModal({ title: 'Create Audit', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><FileCheck size={13} /> Create Audit</button>
+          </div>
+          {audits.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No audits yet.</div>}
           {audits.map(({client,type,stage,stageNum,lead,team,due,_raw}: any) => (
             <div key={client+type} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-center justify-between mb-3"><div><div className="font-bold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{client}</div><div className="text-xs text-[#52606D]">{type} · Due: {due}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:"#EAF4F0",color:"#087F5B" }}>{stage}</span>{_lc(_raw?.status) !== "completed" && <button onClick={() => advance('audit', { _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>{_lc(_raw?.status) === "partner_review" ? "Approve" : "Advance →"}</button>}</div></div>
               <div className="flex gap-1 mb-3">{["Planning","Risk Assessment","Field Work","Evidence Review","Reporting","Sign-off"].map((s,i) => (<div key={s} className="flex-1 h-1.5 rounded-full" style={{ background:i<stageNum?"#087F5B":"#E2E8F0" }} />))}</div>
-              <div className="text-xs text-[#52606D]">Lead: {lead} · Team: {team.join(", ")} · Stage {stageNum}/6</div>
+              <div className="flex items-center justify-between text-xs text-[#52606D]">
+                <span>Lead: {lead} · Team: {team.join(", ")} · Stage {stageNum}/6</span>
+                <span className="flex items-center gap-1">Risk:
+                  <select value={_lc(_raw?.risk_rating ?? "medium")} onChange={(e) => setAuditRisk({ _raw }, e.target.value)} className="text-xs border border-[#E2E8F0] rounded-lg px-2 py-1">
+                    {["low","medium","high"].map(r => <option key={r} value={r}>{_tc(r)}</option>)}
+                  </select>
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -1450,13 +1501,25 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
           {taxReturns.map(({client,itr,fy,status,ack,date,_raw}: any) => (
             <div key={client} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{client} · {itr}</div><div className="text-xs text-[#52606D]">{fy} · Ack: {ack} · {date}</div></div>
-              <div className="flex items-center gap-2"><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="In Progress"?"#FFF4E0":"#FFF0F0",color:status==="Filed"?"#087F5B":status==="In Progress"?"#C8A45D":"#e53e3e" }}>{status}</span>{_lc(_raw?.status) !== "acknowledgement_received" && <button onClick={() => advance('tax', { _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}</div>
+              <div className="flex items-center gap-2"><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="In Progress"?"#FFF4E0":"#FFF0F0",color:status==="Filed"?"#087F5B":status==="In Progress"?"#C8A45D":"#e53e3e" }}>{status}</span><button onClick={() => { setTaxForm({ income: String(_raw?.calculated_taxable_income ?? ""), liability: String(_raw?.calculated_tax_liability ?? ""), refund: String(_raw?.refund_claimed ?? ""), refundStatus: _lc(_raw?.refund_status ?? "pending") }); setActionModal({ title: 'Tax Details', type: 'form', item: { _raw } }); }} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Tax / Refund</button>{_lc(_raw?.status) !== "acknowledgement_received" && <button onClick={() => advance('tax', { _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}</div>
             </div>
           ))}
         </div>
       );
       case "GST-Return Tracking": return (
         <div className="space-y-3">
+          <div className="p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+            <div className="font-bold text-[#102A43] text-sm mb-2" style={{ fontFamily:"Manrope" }}>Late Fee Calculator</div>
+            <div className="flex items-end gap-3 flex-wrap">
+              <div><label className="block text-xs text-[#52606D] mb-1">Days late</label><input type="number" min="0" value={lateFee.days} onChange={(e) => setLateFee(p => ({ ...p, days: e.target.value }))} className="w-24 px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" /></div>
+              <div><label className="block text-xs text-[#52606D] mb-1">Nil return?</label>
+                <select value={lateFee.nil} onChange={(e) => setLateFee(p => ({ ...p, nil: e.target.value }))} className="px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="no">No</option><option value="yes">Yes</option></select>
+              </div>
+              <div className="text-sm">Late fee: <span className="font-extrabold text-[#087F5B]">{_money(Math.min(Number(lateFee.days || 0) * (lateFee.nil === "yes" ? 20 : 50), lateFee.nil === "yes" ? 500 : 5000))}</span>
+                <span className="text-xs text-[#52606D] ml-2">₹{lateFee.nil === "yes" ? 20 : 50}/day, capped</span>
+              </div>
+            </div>
+          </div>
           <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:String(gstReturns.length),color:"#102A43"},{l:"Filed",v:String(gstReturns.filter((g:any)=>_lc(g.status)==="filed").length),color:"#087F5B"},{l:"Processing",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("process")).length),color:"#C8A45D"},{l:"Overdue",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("overdue")).length),color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
           {gstReturns.map(({client,form,period,status,arno,_raw}: any) => (
             <div key={client+form} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
@@ -1491,7 +1554,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Notifications": return (
         <div className="space-y-3">
-          <div className="flex items-center justify-between mb-2"><div className="text-sm text-[#52606D]">24 unread notifications</div><button onClick={() => showToast('Action completed successfully', 'success')}  className="text-xs font-semibold" style={{ color:"#087F5B" }}>Mark all read</button></div>
+          <div className="flex items-center justify-between mb-2"><div className="text-sm text-[#52606D]">{notifications.length} notification{notifications.length !== 1 ? "s" : ""}</div><button onClick={handleMarkAllRead} className="text-xs font-semibold" style={{ color:"#087F5B" }}>Mark all read</button></div>
           {notifications.map(({title,msg,t,type}: any) => (
             <div key={title} className="flex items-start gap-4 p-4 rounded-2xl border" style={{ background:type==="critical"?"#FFF8F8":"#102A43",borderColor:type==="critical"?"rgba(229,62,62,0.2)":"rgba(0,0,0,0.05)" }}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background:type==="success"?"#EAF4F0":type==="critical"||type==="warning"?"#FFF0F0":"#EEF1F5" }}>{type==="success"?<CheckCircle size={15} style={{ color:"#087F5B" }} />:type==="critical"?<AlertTriangle size={15} style={{ color:"#e53e3e" }} />:type==="warning"?<Bell size={15} style={{ color:"#C8A45D" }} />:<Info size={15} style={{ color: "white" }} />}</div>
@@ -1685,7 +1748,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
           <div className="space-y-3">{payrollRuns.map(({period,status,gross,net,_raw}: any) => (
             <div key={_raw?.id ?? period} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>Period {period}</div><div className="text-xs text-[#52606D]">Gross: {gross} · Net: {net}</div></div>
-              <div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Paid"?"#EAF4F0":"#FFF4E0",color:status==="Paid"?"#087F5B":"#C8A45D" }}>{status}</span>{_lc(_raw?.status) !== "paid" && <button onClick={() => advancePayroll({ _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}</div>
+              <div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Paid"?"#EAF4F0":"#FFF4E0",color:status==="Paid"?"#087F5B":"#C8A45D" }}>{status}</span><button onClick={() => makePdf("Payslip Summary", [`Period: ${period}`, `Gross: ${gross}`, `Net: ${net}`, `Status: ${status}`, "", "Employee-wise breakdown is available in Payroll Reports."], `payslip-${period.replace('/','-')}.pdf`)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Payslip</button>{_lc(_raw?.status) !== "paid" && <button onClick={() => advancePayroll({ _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}</div>
             </div>
           ))}</div>
         </div>
@@ -1956,6 +2019,38 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                 </div>
               </div>
+            ) : actionModal.title === 'Create Audit' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
+                  <select value={auditForm.clientId} onChange={(e) => setAuditForm(p => ({ ...p, clientId: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="">Select client…</option>{clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}</select>
+                </div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Service *</label>
+                  <select value={auditForm.serviceId} onChange={(e) => setAuditForm(p => ({ ...p, serviceId: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="">Select service…</option>{services.map((s) => <option key={s._raw?.id} value={s._raw?.id}>{s.svc}</option>)}</select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Start *</label><input type="date" value={auditForm.start} onChange={(e) => setAuditForm(p => ({ ...p, start: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" /></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">End</label><input type="date" value={auditForm.end} onChange={(e) => setAuditForm(p => ({ ...p, end: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Type</label>
+                    <select value={auditForm.type} onChange={(e) => setAuditForm(p => ({ ...p, type: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm">{["statutory","internal","tax","stock","concurrent","process","compliance","management"].map(t => <option key={t} value={t}>{_tc(t)}</option>)}</select>
+                  </div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Risk</label>
+                    <select value={auditForm.risk} onChange={(e) => setAuditForm(p => ({ ...p, risk: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm">{["low","medium","high"].map(t => <option key={t} value={t}>{_tc(t)}</option>)}</select>
+                  </div>
+                </div>
+              </div>
+            ) : actionModal.title === 'Tax Details' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Taxable Income (₹)</label><input type="number" value={taxForm.income} onChange={(e) => setTaxForm(p => ({ ...p, income: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="0" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Tax Liability (₹)</label><input type="number" value={taxForm.liability} onChange={(e) => setTaxForm(p => ({ ...p, liability: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="0" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Refund Claimed (₹)</label><input type="number" value={taxForm.refund} onChange={(e) => setTaxForm(p => ({ ...p, refund: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="0" /></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Refund Status</label>
+                    <select value={taxForm.refundStatus} onChange={(e) => setTaxForm(p => ({ ...p, refundStatus: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm">{["pending","received","adjusted"].map(t => <option key={t} value={t}>{_tc(t)}</option>)}</select>
+                  </div>
+                </div>
+              </div>
             ) : actionModal.title === 'Run Payroll' ? (
               <div className="space-y-4 mb-5 text-left">
                 <div className="grid grid-cols-2 gap-3">
@@ -2128,6 +2223,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 if (actionModal?.title === 'Raise Query')      { handleAddQuery(); return; }
                 if (actionModal?.title === 'Run Payroll')        { handleRunPayroll(); return; }
                 if (actionModal?.title === 'Add Ledger Account')  { handleAddLedger(); return; }
+                if (actionModal?.title === 'Create Audit')        { handleAddAudit(); return; }
+                if (actionModal?.title === 'Tax Details')         { handleSaveTaxDetails(); return; }
                 if (actionModal?.title === 'Create Voucher')      { handleAddVoucher(); return; }
                 if (actionModal?.title === 'Record Attendance')   { handleAddAttendance(); return; }
                 if (actionModal?.title === 'Schedule Meeting')    { handleAddMeeting(); return; }
