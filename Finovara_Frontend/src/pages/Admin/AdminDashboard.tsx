@@ -312,12 +312,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       await api.post("/onboarding/clients", {
         full_name: name, email, company_name: name, client_type: "private_limited",
       });
-      await requestPasswordReset(email);   // client sets their own password via email
+      try { await requestPasswordReset(email); } catch { /* email best-effort: Supabase rate-limits; account is already created, user can use OTP */ }   // client sets their own password via email
       setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" });
       setFormErrors({});
       setActionModal(null);
       await loadData();
-      showToast(`Client created. A set-password email was sent to ${email}.`, 'success');
+      showToast(`Client created for ${email}. They can set a password via the email link or sign in with OTP.`, 'success');
     } catch {
       showToast('Could not create the client on the server. Check the email and try again.', 'error');
     }
@@ -337,11 +337,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         department: employeeFormValues.dept.trim() || "Operations",
         role_code: "accountant",
       });
-      await requestPasswordReset(email);
+      try { await requestPasswordReset(email); } catch { /* email best-effort: Supabase rate-limits; account is already created, user can use OTP */ }
       setEmployeeFormValues({ name: "", role: "Staff", dept: "", email: "", clients: "2", tasks: "1" });
       setActionModal(null);
       await loadData();
-      showToast(`Employee created. A set-password email was sent to ${email}.`, 'success');
+      showToast(`Employee created for ${email}. They can set a password via the email link or sign in with OTP.`, 'success');
     } catch {
       showToast('Could not create the employee on the server. Check the email and try again.', 'error');
     }
@@ -1338,10 +1338,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                       await api.post("/onboarding/clients", {
                         full_name: name, email, company_name: name, client_type: "private_limited",
                       });
-                      await requestPasswordReset(email);   // client sets their own password via email
+                      try { await requestPasswordReset(email); } catch { /* email best-effort: Supabase rate-limits; account is already created, user can use OTP */ }   // client sets their own password via email
                       if (_raw?.id) { try { await resources.contactRequests.update(_raw.id, { status: "converted" } as any); } catch { /* non-fatal */ } }
                       await loadData();
-                      showToast(`Approved. A set-password email was sent to ${email}.`, "success");
+                      showToast(`Approved — account created for ${email}. They can set a password via email or use OTP.`, "success");
                     } catch {
                       showToast("Could not onboard client. Check if email already exists.", "error");
                     }
