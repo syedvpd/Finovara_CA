@@ -17,6 +17,7 @@ import { handleDownloadResource, handleAddCalendar } from "../../utils/helpers";
 import { ArticleModal } from "../../components/modals/ArticleModal";
 import { Reveal } from "../../components/animations/Reveal";
 import heroVideo from "../../assets/videos/Hero_video.mp4";
+import clientImg from "../../assets/images/client.png";
 
 export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => void }) {
   const statsRef = useRef<HTMLDivElement>(null);
@@ -524,7 +525,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
           </div>
           <div className="hidden lg:block">
             <img
-              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=450&fit=crop&auto=format"
+              src={clientImg}
               alt="Financial dashboard showing analytics and compliance tracking"
               className="rounded-3xl shadow-2xl border border-white/10 w-full object-cover"
             />
