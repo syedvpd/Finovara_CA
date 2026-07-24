@@ -28,6 +28,12 @@ export function Footer({ setPage }: { setPage: (p: Page) => void }) {
       setError("Invalid email format");
       return;
     }
+    const stored = JSON.parse(localStorage.getItem('subscribedEmails') || '[]');
+    if (stored.includes(email.toLowerCase())) {
+      setError("Already subscribed with this email. Try another mail.");
+      return;
+    }
+    localStorage.setItem('subscribedEmails', JSON.stringify([...stored, email.toLowerCase()]));
     setSuccess(true);
     setEmail("");
     setTimeout(() => setSuccess(false), 3000);
@@ -36,7 +42,7 @@ export function Footer({ setPage }: { setPage: (p: Page) => void }) {
     <footer style={{ background: "#102A43" }}>
       {/* Main footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2">
             <div className="flex items-center gap-2.5 mb-4">
@@ -82,7 +88,7 @@ export function Footer({ setPage }: { setPage: (p: Page) => void }) {
                   window.sessionStorage.setItem("activeService", s.index.toString());
                   window.dispatchEvent(new Event("serviceChanged"));
                   setPage("services");
-                }} className="block text-sm hover:text-white transition-colors cursor-pointer" style={{ fontFamily: "Inter", color: "rgba(255,255,255,0.5)" }}>{s.title}</button>
+                }} className="block w-full text-left text-sm hover:text-white transition-colors cursor-pointer whitespace-nowrap" style={{ fontFamily: "Inter", color: "rgba(255,255,255,0.5)" }}>{s.title}</button>
               ))}
             </div>
           </div>
@@ -98,7 +104,7 @@ export function Footer({ setPage }: { setPage: (p: Page) => void }) {
                 { label: "Careers", page: "careers" as Page },
                 { label: "Contact", page: "contact" as Page },
               ].map(({ label, page }) => (
-                <button key={label} onClick={() => setPage(page)} className="block text-sm hover:text-white transition-colors cursor-pointer" style={{ fontFamily: "Inter", color: "rgba(255,255,255,0.5)" }}>{label}</button>
+                <button key={label} onClick={() => setPage(page)} className="block w-full text-left text-sm hover:text-white transition-colors cursor-pointer whitespace-nowrap" style={{ fontFamily: "Inter", color: "rgba(255,255,255,0.5)" }}>{label}</button>
               ))}
             </div>
           </div>
@@ -107,15 +113,15 @@ export function Footer({ setPage }: { setPage: (p: Page) => void }) {
           <div>
             <div className="font-bold text-white text-sm mb-4 uppercase tracking-widest" style={{ fontFamily: "Manrope" }}>Contact</div>
             <div className="space-y-3">
-              <a href="tel:+912267890123" className="flex items-start gap-2 group cursor-pointer transition-colors hover:opacity-80">
+              <a href="tel:+912267890123" target="_blank" rel="noopener noreferrer" className="relative z-10 flex items-start gap-2 group cursor-pointer transition-colors hover:opacity-80">
                 <Phone size={14} style={{ color: "#087F5B", marginTop: 2, flexShrink: 0 }} />
                 <span className="text-sm group-hover:text-white transition-colors" style={{ fontFamily: "Inter", color: "rgba(255,255,255,0.5)" }}>+91 22 6789 0123</span>
               </a>
-              <a href="mailto:hello@finovara.in" className="flex items-start gap-2 group cursor-pointer transition-colors hover:opacity-80">
+              <a href="mailto:hello@finovara.in" target="_blank" rel="noopener noreferrer" className="relative z-10 flex items-start gap-2 group cursor-pointer transition-colors hover:opacity-80">
                 <Mail size={14} style={{ color: "#087F5B", marginTop: 2, flexShrink: 0 }} />
                 <span className="text-sm group-hover:text-white transition-colors" style={{ fontFamily: "Inter", color: "rgba(255,255,255,0.5)" }}>hello@finovara.in</span>
               </a>
-              <a href="https://maps.google.com/?q=Finovara+Hyderabad+Telangana" target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 group cursor-pointer transition-colors hover:opacity-80">
+              <a href="https://maps.google.com/?q=Finovara+Hyderabad+Telangana" target="_blank" rel="noopener noreferrer" className="relative z-10 flex items-start gap-2 group cursor-pointer transition-colors hover:opacity-80">
                 <MapPin size={14} style={{ color: "#087F5B", marginTop: 2, flexShrink: 0 }} />
                 <span className="text-sm group-hover:text-white transition-colors" style={{ fontFamily: "Inter", color: "rgba(255,255,255,0.5)" }}>Hyderabad, Telangana</span>
               </a>
@@ -123,7 +129,7 @@ export function Footer({ setPage }: { setPage: (p: Page) => void }) {
           </div>
 
           {/* Newsletter */}
-          <div className="col-span-2 md:col-span-1">
+          <div className="col-span-2 md:col-span-2">
             <div className="font-bold text-white text-sm mb-4 uppercase tracking-widest" style={{ fontFamily: "Manrope" }}>Newsletter</div>
             <p className="text-xs mb-4" style={{ fontFamily: "Inter", color: "rgba(255,255,255,0.5)" }}>
               Tax updates, compliance alerts, and financial insights — delivered monthly.
@@ -132,7 +138,7 @@ export function Footer({ setPage }: { setPage: (p: Page) => void }) {
               <div className="flex-1">
                 <input value={email} onChange={e => { setEmail(e.target.value); setError(""); }}
                   placeholder="Your email"
-                  className={`w-full px-3 py-2.5 rounded-xl text-sm bg-white/5 border ${error ? 'border-red-500' : 'border-white/10'} text-white placeholder:text-white/30 outline-none focus:border-[#087F5B]`}
+                  className={`w-full px-4 py-3 rounded-xl text-sm bg-white/5 border ${error ? 'border-red-500' : 'border-white/10'} text-white placeholder:text-white/30 outline-none focus:border-[#087F5B]`}
                   style={{ fontFamily: "Inter" }} />
                 {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
                 {success && <p className="text-green-400 text-xs mt-1">Subscribed successfully!</p>}
