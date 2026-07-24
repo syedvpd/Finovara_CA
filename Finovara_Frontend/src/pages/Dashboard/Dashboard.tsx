@@ -33,6 +33,7 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
   const [actionModal, setActionModal] = useState<{ title: string } | null>(null);
   const [modalForm, setModalForm] = useState({ subject: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const showToast = (msg: string, type: "success" | "info" | "error" = "success") => {
     setToastMessage({ msg, type });
@@ -121,6 +122,22 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
     }
   };
 
+  const handleUploadFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("file_category", "general");
+      await api.post<Row>("/documents/upload", undefined, { form });
+      await load();
+      showToast(`Uploaded ${file.name}.`, "success");
+    } catch {
+      showToast("Upload failed. Check the file size limit and try again.", "error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmitQuery = async () => {
     const subject = modalForm.subject.trim();
     if (!subject) { showToast("Please add a query subject before submitting.", "error"); return; }
@@ -201,6 +218,12 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
       );
       case "Uploaded Documents": return (
         <div className="space-y-4">
+          <div className="flex justify-end">
+            <label className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white cursor-pointer transition-transform active:scale-95 ${uploading ? "opacity-60 cursor-wait" : ""}`} style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
+              {uploading ? <Loader2 size={13} className="animate-spin" /> : <UploadCloud size={13} />} {uploading ? "Uploading…" : "Upload Document"}
+              <input type="file" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadFile(f); e.target.value = ""; }} />
+            </label>
+          </div>
           {documents.length === 0 && empty("No documents uploaded yet.")}
           {documents.map((d) => (
             <div key={d.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
@@ -224,6 +247,10 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#FFF0F0" }}><AlertTriangle size={16} style={{ color: "#e53e3e" }} /></div>
                 <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{r.title ?? r.name ?? r.document_name ?? "Requested document"}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{r.due_date ? `Due ${fmtDate(r.due_date)}` : titleCase(r.status)}</div></div>
               </div>
+              <label className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg text-white cursor-pointer flex-shrink-0 ${uploading ? "opacity-60 cursor-wait" : ""}`} style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
+                <UploadCloud size={13} /> Upload
+                <input type="file" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadFile(f); e.target.value = ""; }} />
+              </label>
             </div>
           ))}
         </div>

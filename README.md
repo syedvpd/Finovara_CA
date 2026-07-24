@@ -94,18 +94,6 @@ never accepted from the client; paid and outstanding amounts are maintained by a
 database trigger. Payroll statutory rates live in `payroll_statutory_config` —
 effective-dated and state-aware, so a budget change is a data edit, not a deploy.
 
-## Testing
 
-- `backend/postman/` — 249-request Postman collection, generated from the
-  OpenAPI schema. See its README.
-- `supabase/tests/` — database and auth SQL tests.
 
-## Known gaps
 
-- **Report generation and notification dispatch are queued but have no worker.**
-  `backend/app/workers/` is empty, so those rows stay `queued` / `pending`.
-- **Malware scanning is a stub.** `scan_for_malware()` in
-  `backend/app/services/storage.py` returns clean; wire a real scanner before
-  accepting uploads from untrusted parties.
-- The frontend bundle is a single ~600 kB chunk; it needs code splitting before
-  production.
