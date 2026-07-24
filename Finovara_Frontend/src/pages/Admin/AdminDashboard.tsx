@@ -14,7 +14,7 @@ import {
 import { Page } from "../../types/index";
 import { useAuth } from "../../context";
 import { resources, requestPasswordReset } from "../../services";
-import { api } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell, PieChart, Pie, Legend, LabelList } from "recharts";
 const _PieChartIcon = PieChartIcon;
 
@@ -98,7 +98,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     assignee: "",
     due: "",
     priority: "Medium",
-    status: "Pending",
+    status: "todo",
   });
   const [leadFormValues, setLeadFormValues] = useState({
     name: "",
@@ -329,10 +329,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   };
 
   const handleReviewDecision = async (item: any, decision: 'approve'|'reject') => {
-    const status = decision === 'approve' ? 'approved' : 'rejected';
+    // Dedicated endpoint; DOCUMENT_STATUSES only allows verified|rejected here.
+    const status = decision === 'approve' ? 'verified' : 'rejected';
     if (item.id) {
-      try { await resources.documents.update(item.id, { status } as any); }
-      catch { showToast('Could not update the document on the server.', 'error'); return; }
+      try { await api.post(`/documents/${item.id}/verify`, { status }); }
+      catch (err) { showToast(err instanceof ApiError ? err.message : 'Could not update the document.', 'error'); return; }
     }
     setReviewDocs(prev => prev.filter(d => d.doc !== item.doc));
     showToast(`${decision === 'approve' ? 'Approved' : 'Rejected'} ${item.doc}`, decision === 'approve' ? 'success' : 'error');
@@ -340,7 +341,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
   const handleMarkTaskDone = async (item: any) => {
     if (item.id) {
-      try { await resources.tasks.update(item.id, { status: 'completed' } as any); }
+      try { await resources.tasks.update(item.id, { status: 'done' } as any); }
       catch { showToast('Could not update the task on the server.', 'error'); return; }
     }
     setDueTasks(prev => prev.filter(t => t.task !== item.task));
@@ -508,8 +509,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
     const id = actionModal?.item?._raw?.id;
     const priority = _lc(taskFormValues.priority);   // low|medium|high|urgent
-    const status = _lc(taskFormValues.status);       // pending|in_progress|completed…
-    setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "Pending" });
+    const status = _lc(taskFormValues.status);       // TASK_STATUSES: backlog|todo|in_progress|review|partner_approval|client_approval|done
+    setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "todo" });
     if (!id) { setActionModal(null); return; }
     persist(() => resources.tasks.update(id, { title: taskTitle, priority, status } as any), 'Task updated successfully.');
   };
@@ -632,7 +633,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       branch_id: picked._raw.branch_id,
     };
     if (taskFormValues.due) body.due_date = taskFormValues.due;
-    setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "Pending" });
+    setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "todo" });
     persist(() => resources.tasks.create(body), 'Task created successfully.');
   };
 
@@ -1051,7 +1052,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const outstanding = invoices.reduce((s, i) => s + Math.max(_num(i._raw?.total_amount) - _num(i._raw?.paid_amount), 0), 0);
   const paidTotal = invoices.reduce((s, i) => s + _num(i._raw?.paid_amount), 0);
   const revenue = invoices.reduce((s, i) => s + _num(i._raw?.total_amount), 0);
-  const overdueTasks = tasks.filter((t) => t._raw?.status !== "completed" && t._raw?.due_date && new Date(t._raw.due_date) < new Date()).length;
+  const overdueTasks = tasks.filter((t) => t._raw?.status !== "done" && t._raw?.due_date && new Date(t._raw.due_date) < new Date()).length;
   const pendingFilings = taxReturns.filter((t) => _lc(t.status) !== "filed").length + gstReturns.filter((g) => _lc(g.status) !== "filed").length;
 
   const _byStatus = (rows: any[], key = "status") => {
@@ -1075,7 +1076,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const payrollRunning = payrollRuns.filter((p: any) => _lc(p._raw?.status) !== 'paid').length;
   const overdueCompliance = compliance.filter((c: any) => c.urgency === 'critical').length;
   const utilisation = employees.length
-    ? Math.round((tasks.filter((t: any) => _lc(t._raw?.status) !== 'completed').length / (employees.length * 25)) * 100)
+    ? Math.round((tasks.filter((t: any) => _lc(t._raw?.status) !== 'done').length / (employees.length * 25)) * 100)
     : 0;
 
   const kpiCards = [
@@ -1168,7 +1169,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 { label: "Income Tax", done: taxReturns.filter((t: any) => _lc(t.status) === "filed").length, total: Math.max(taxReturns.length, 1) },
                 { label: "GST Returns", done: gstReturns.filter((g: any) => _lc(g.status) === "filed").length, total: Math.max(gstReturns.length, 1) },
                 { label: "Compliance", done: compliance.filter((c: any) => _lc(c.status) === "filed").length, total: Math.max(compliance.length, 1) },
-                { label: "Tasks", done: tasks.filter((t: any) => _lc(t._raw?.status) === "completed").length, total: Math.max(tasks.length, 1) },
+                { label: "Tasks", done: tasks.filter((t: any) => _lc(t._raw?.status) === "done").length, total: Math.max(tasks.length, 1) },
               ].map(({ label, done, total }) => (
                 <div key={label} className="mb-4">
                   <div className="flex justify-between text-xs mb-1">
@@ -1295,8 +1296,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Overdue Tasks": return (
         <div className="space-y-3">
-          {tasks.filter((t:any) => t._raw?.status !== "completed" && t._raw?.due_date && new Date(t._raw.due_date) < new Date()).length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No overdue tasks.</div>}
-          {tasks.filter((t:any) => t._raw?.status !== "completed" && t._raw?.due_date && new Date(t._raw.due_date) < new Date()).map((t:any) => ({
+          {tasks.filter((t:any) => t._raw?.status !== "done" && t._raw?.due_date && new Date(t._raw.due_date) < new Date()).length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No overdue tasks.</div>}
+          {tasks.filter((t:any) => t._raw?.status !== "done" && t._raw?.due_date && new Date(t._raw.due_date) < new Date()).map((t:any) => ({
             task: `${t.task} – ${t.client}`,
             overdue: `${Math.max(1, Math.round((Date.now() - new Date(t._raw.due_date).getTime()) / 86400000))} days`,
             staff: t.assignee, impact: t.priority === "High" ? "Penalty Risk" : "Follow up",
@@ -1541,7 +1542,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         <div className="space-y-3">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm text-[#52606D]">{tasks.length} open tasks across {new Set(tasks.map(task => task.assignee)).size} staff members</div>
-            <button onClick={() => { setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "Pending" }); setActionModal({title: 'Assign Task', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><ClipboardList size={13} /> Assign Task</button>
+            <button onClick={() => { setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "todo" }); setActionModal({title: 'Assign Task', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><ClipboardList size={13} /> Assign Task</button>
           </div>
           {tasks.map(({task,client,assignee,due,priority,status}) => (
             <div key={task} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
@@ -1706,11 +1707,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <input type="file" className="hidden" accept="image/*,.pdf" onChange={async (e) => {
               const f = e.target.files?.[0]; e.target.value = "";
               if (!f) return;
+              // /documents/upload requires client_id; media is filed against the first client.
+              const cid = clients[0]?._raw?.id;
+              if (!cid) { showToast('Add a client first — uploads are filed against a client.', 'error'); return; }
               try {
-                const form = new FormData(); form.append("file", f); form.append("file_category", "general");
+                const form = new FormData(); form.append("file", f); form.append("client_id", cid); form.append("file_category", "general");
                 await api.post("/documents/upload", undefined, { form });
                 showToast(`Uploaded ${f.name}.`, 'success');
-              } catch { showToast('Media upload failed.', 'error'); }
+              } catch (err) { showToast(err instanceof ApiError ? err.message : 'Media upload failed.', 'error'); }
             }} />
           </label>
         </div>
@@ -2066,9 +2070,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   <div>
                     <label className="block text-xs font-semibold text-[#102A43] mb-1">Status</label>
                     <select value={taskFormValues.status} onChange={(e) => setTaskFormValues(prev => ({ ...prev, status: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
-                      <option value="Pending">Pending</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Not Started">Not Started</option>
+                      {["backlog","todo","in_progress","review","partner_approval","client_approval","done"].map(s => <option key={s} value={s}>{_tc(s)}</option>)}
                     </select>
                   </div>
                 </div>

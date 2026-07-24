@@ -9,7 +9,7 @@ import {
 import { Page } from "../../types/index";
 import { useAuth } from "../../context";
 import { resources } from "../../services";
-import { api } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 
 // --- formatting helpers -----------------------------------------------------
 const money = (v: unknown) => `₹${Number(v ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -126,16 +126,19 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
   };
 
   const handleUploadFile = async (file: File) => {
+    // client_id is a required form field on /documents/upload.
+    if (!session?.client_id) { showToast("No client profile linked to this account.", "error"); return; }
     setUploading(true);
     try {
       const form = new FormData();
       form.append("file", file);
+      form.append("client_id", session.client_id);
       form.append("file_category", "general");
       await api.post<Row>("/documents/upload", undefined, { form });
       await load();
       showToast(`Uploaded ${file.name}.`, "success");
-    } catch {
-      showToast("Upload failed. Check the file size limit and try again.", "error");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Upload failed. Please try again.", "error");
     } finally {
       setUploading(false);
     }
