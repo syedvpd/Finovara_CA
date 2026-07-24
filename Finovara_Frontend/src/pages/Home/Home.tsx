@@ -121,9 +121,9 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 grid lg:grid-cols-2 gap-16 items-center">
           <div>
             {/* Eyebrow */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 border border-[#E2E8F0] bg-white backdrop-blur-sm">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 border border-white/20 bg-white/10">
               <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#087F5B" }} />
-              <span className="text-xs font-semibold uppercase tracking-widest text-black" style={{ fontFamily: "Inter" }}>
+              <span className="text-xs font-semibold uppercase tracking-widest text-white/80" style={{ fontFamily: "Inter" }}>
                 Chartered Accountants & Financial Advisors
               </span>
             </div>
@@ -287,10 +287,10 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
           {/* Right side — portal preview */}
           <div className="hidden lg:block">
             <div className="relative">
-              <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/10 backdrop-blur-sm"
-                style={{ background: "rgba(255,255,255,0.05)" }}>
+              <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+                style={{ background: "rgba(255,255,255,0.08)" }}>
                 {/* Portal header */}
-                <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+                <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between" style={{ background: "rgba(255,255,255,0.05)" }}>
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-red-400" />
                     <div className="w-2 h-2 rounded-full bg-yellow-400" />
@@ -308,14 +308,14 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
                       { label: "Documents", value: "247", color: "white", icon: Folder },
                       { label: "Due This Month", value: "₹1.2L", color: "#2F9E44", icon: Calendar },
                     ].map(({ label, value, color, icon: Icon }) => (
-                      <div key={label} className="rounded-2xl p-4 bg-white/5 border border-white/5">
+                      <div key={label} className="rounded-2xl p-4 border" style={{ background: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.08)" }}>
                         <Icon size={16} style={{ color }} className="mb-2" />
                         <div className="text-xl font-bold text-white mb-1" style={{ fontFamily: "Manrope" }}>{value}</div>
                         <div className="text-xs text-white/40" style={{ fontFamily: "Inter" }}>{label}</div>
                       </div>
                     ))}
                   </div>
-                  <div className="rounded-2xl p-4 bg-white/5 border border-white/5">
+                  <div className="rounded-2xl p-4 border" style={{ background: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.08)" }}>
                     <div className="text-xs text-white/40 mb-3 uppercase tracking-wider" style={{ fontFamily: "Inter" }}>Recent Activity</div>
                     {["ITR Filed — FY 2024-25", "GST Return Submitted", "TDS Certificate Uploaded"].map((activity, i) => (
                       <div key={i} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
@@ -327,7 +327,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
                 </div>
               </div>
               {/* Floating badge */}
-              <div className="mt-4 bg-white/5 rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3">
+              <div className="mt-4 rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 border border-white/10" style={{ background: "rgba(255,255,255,0.08)" }}>
                 <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "#EAF4F0" }}>
                   <Shield size={16} style={{ color: "#087F5B" }} />
                 </div>
@@ -682,7 +682,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
               <div key={article.title + idx} className="group bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-xl transition-all hover:-translate-y-1">
                 <div className="h-48 overflow-hidden bg-[#EEF1F5]">
                   <img
-                    src={article.cover || "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=200&fit=crop&auto=format"}
+                    src={article.cover || article.image || "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=200&fit=crop&auto=format"}
                     alt={article.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />

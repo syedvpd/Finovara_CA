@@ -4,6 +4,7 @@ import {
   Briefcase, Zap, UserCheck, PieChart, Flag, Bell, Lock, Mail
 } from "lucide-react";
 import { Page } from "../types/index";
+import financialPlanningImg from "../assets/images/Financial Planning.jpeg";
 
 export const NAV_ITEMS = [
   { label: "Home", page: "home" as Page },
@@ -219,7 +220,8 @@ export const INSIGHTS = [
     tag: "Financial Planning", date: "02 Jan 2025",
     title: "Virtual CFO vs In-House CFO: The 2025 Decision Guide",
     excerpt: "A detailed cost-benefit analysis helping growing businesses decide between hiring full-time financial leadership or outsourcing.",
-    readTime: "10 min read"
+    readTime: "10 min read",
+    image: financialPlanningImg
   },
 ];
 
