@@ -43,9 +43,10 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
     });
   }, []);
 
-  const displayTestimonials = liveTestimonials.length
-    ? liveTestimonials.map(t => ({ name: t.author_name, role: t.author_title ?? "", text: t.content, avatar: t.author_name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), rating: t.rating ?? 5 }))
-    : TESTIMONIALS;
+  const mappedLiveTestimonials = liveTestimonials
+    .filter(t => t.content && t.content.trim())
+    .map(t => ({ name: t.author_name, role: t.author_title ?? "", text: t.content, avatar: t.author_name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), rating: t.rating ?? 5 }));
+  const displayTestimonials = mappedLiveTestimonials.length ? mappedLiveTestimonials : TESTIMONIALS;
 
   const displayBlogs = liveBlogs.length
     ? liveBlogs.map(b => ({ title: b.title, tag: b.category_id ?? "Article", date: b.published_at ? new Date(b.published_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "", excerpt: b.excerpt ?? "", readTime: b.read_time_minutes ? `${b.read_time_minutes} min read` : "", cover: b.cover_image_url, _raw: b }))

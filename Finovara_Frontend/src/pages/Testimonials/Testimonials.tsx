@@ -10,7 +10,11 @@ export function TestimonialsPage() {
 
   useEffect(() => {
     publicApi.testimonials()
-      .then((data) => { if (data.length) setTestimonials(data); else setTestimonials(TESTIMONIALS.map((t, i) => ({ id: String(i), author_name: t.name, author_title: t.role, content: t.text, rating: t.rating })) as Testimonial[]); })
+      .then((data) => {
+        const valid = data.filter(t => t.content && t.content.trim());
+        if (valid.length) setTestimonials(valid);
+        else setTestimonials(TESTIMONIALS.map((t, i) => ({ id: String(i), author_name: t.name, author_title: t.role, content: t.text, rating: t.rating })) as Testimonial[]);
+      })
       .catch(() => setTestimonials(TESTIMONIALS.map((t, i) => ({ id: String(i), author_name: t.name, author_title: t.role, content: t.text, rating: t.rating })) as Testimonial[]))
       .finally(() => setLoading(false));
   }, []);
