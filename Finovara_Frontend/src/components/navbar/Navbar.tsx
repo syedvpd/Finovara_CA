@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import logo from "../../assets/images/logo1.png";
 import {
   Menu, X, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Phone, Mail,
   MapPin, Shield, Clock, FileText, BarChart2, Users, Briefcase, CheckCircle,
@@ -34,9 +35,7 @@ export function Navbar({ currentPage, setPage }: { currentPage: Page; setPage: (
         <div className="flex items-center justify-between h-18 py-3">
           {/* Logo */}
           <button onClick={() => setPage("home")} className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
-              <span className="text-white font-bold text-lg" style={{ fontFamily: "Manrope" }}>F</span>
-            </div>
+            <img src={logo} alt="Finovara Logo" className="h-20 w-auto object-contain" style={{ mixBlendMode: "screen", filter: "brightness(1.1)", transform: "scale(1.15)", transformOrigin: "left center" }} />
             <div className="flex flex-col items-start">
               <span className="font-bold text-lg leading-none" style={{ fontFamily: "Manrope", color: logoColor }}>
                 Finovara

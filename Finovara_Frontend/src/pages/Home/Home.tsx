@@ -16,6 +16,7 @@ import { StatCard } from "../../components/cards/StatCard";
 import { handleDownloadResource, handleAddCalendar } from "../../utils/helpers";
 import { ArticleModal } from "../../components/modals/ArticleModal";
 import { Reveal } from "../../components/animations/Reveal";
+import heroVideo from "../../assets/videos/Hero_video.mp4";
 
 export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => void }) {
   const statsRef = useRef<HTMLDivElement>(null);
@@ -104,17 +105,20 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
   return (
     <div>
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: "#102A43" }}>
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "48px 48px" }} />
-        </div>
-        <div className="absolute top-0 right-0 w-1/2 h-full opacity-10"
-          style={{ background: "radial-gradient(ellipse at top right, #087F5B, transparent 70%)" }} />
-        <div className="absolute bottom-0 left-0 w-1/3 h-1/2 opacity-10"
-          style={{ background: "radial-gradient(ellipse at bottom left, #C8A45D, transparent 70%)" }} />
+      <section className="relative min-h-screen flex items-center overflow-hidden">
+        {/* Background video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0"
+          src={heroVideo}
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 z-10" style={{ background: "rgba(16,42,67,0.78)" }} />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 grid lg:grid-cols-2 gap-16 items-center">
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 grid lg:grid-cols-2 gap-16 items-center">
           <div>
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 border border-[#E2E8F0] bg-white backdrop-blur-sm">
@@ -337,7 +341,7 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
         </div>
 
         {/* Bottom curve */}
-        <div className="absolute bottom-0 left-0 right-0">
+        <div className="absolute bottom-0 left-0 right-0 z-20">
           <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0 60L1440 60L1440 0C1440 0 1080 60 720 60C360 60 0 0 0 0L0 60Z" fill="#102A43" />
           </svg>
