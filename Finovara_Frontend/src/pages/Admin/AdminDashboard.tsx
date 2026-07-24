@@ -98,6 +98,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [gstReturns, setGstReturns] = useState<any[]>([]);
   const [audits, setAudits] = useState<any[]>([]);
   const [compliance, setCompliance] = useState<any[]>([]);
+  const [docStats, setDocStats] = useState<{ total: number; pending: number; storage: string; cats: any[] }>({ total: 0, pending: 0, storage: "0 B", cats: [] });
   const [queries, setQueries] = useState<any[]>([]);
   const [engagements, setEngagements] = useState<any[]>([]);
   const [contactRequests, setContactRequests] = useState<any[]>([]);
@@ -112,7 +113,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         resources.employees.list({ page_size: 100 }),
         resources.tasks.list({ page_size: 100 }),
         resources.leads.list({ page_size: 100 }),
-        resources.documents.list({ page_size: 50, status: "pending" }),
+        resources.documents.list({ page_size: 200 }),
         resources.notifications.list({ page_size: 50 }),
         resources.invoices.list({ page_size: 100 }),
         resources.payments.list({ page_size: 100 }),
@@ -141,7 +142,22 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         due: _date(t.due_date), priority: _tc(t.priority), status: _tc(t.status), _raw: t })));
       setLeads(_rowsOf(r[4]).map((l: any) => ({ name: l.company_name ?? l.name, contact: l.name, source: _tc(l.source),
         service: "—", status: _tc(l.status), followUp: "—", _raw: l })));
-      setReviewDocs(_rowsOf(r[5]).map((d: any) => ({ doc: d.name, client: d.client_id?.slice(0, 8) ?? "—", uploaded: _date(d.created_at), reviewer: _tc(d.status) })));
+      const allDocs = _rowsOf(r[5]);
+      const pendingDocs = allDocs.filter((d: any) => _lc(d.status) === "pending");
+      setReviewDocs(pendingDocs.map((d: any) => ({ doc: d.name, client: d.client_id?.slice(0, 8) ?? "—", uploaded: _date(d.created_at), reviewer: _tc(d.status) })));
+      const fmtBytes = (n: number) => n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : n >= 1e3 ? `${(n / 1e3).toFixed(1)} KB` : `${n} B`;
+      const catMap: Record<string, { count: number; size: number; last: string }> = {};
+      for (const d of allDocs) {
+        const k = _tc(d.file_category) || "Other";
+        (catMap[k] ||= { count: 0, size: 0, last: d.created_at });
+        catMap[k].count += 1; catMap[k].size += _num(d.file_size);
+        if (String(d.created_at) > String(catMap[k].last)) catMap[k].last = d.created_at;
+      }
+      setDocStats({
+        total: allDocs.length, pending: pendingDocs.length,
+        storage: fmtBytes(allDocs.reduce((s: number, d: any) => s + _num(d.file_size), 0)),
+        cats: Object.entries(catMap).map(([cat, v]) => ({ cat, count: `${v.count} files`, size: fmtBytes(v.size), lastUp: _date(v.last) })),
+      });
       setNotifications(_rowsOf(r[6]).map((n: any) => ({ title: n.subject ?? "Notification", msg: n.body, t: _date(n.sent_at ?? n.created_at), type: "info" })));
       setInvoices(_rowsOf(r[7]).map((i: any) => ({
         inv: i.invoice_number, client: i.client_id?.slice(0, 8) ?? "—", svc: _tc(i.status),
@@ -1191,8 +1207,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Document Management": return (
         <div>
-          <div className="grid grid-cols-3 gap-4 mb-6">{[{l:"Total Docs",v:"12,847",color:"#087F5B"},{l:"Pending Review",v:"23",color:"#C8A45D"},{l:"Storage Used",v:"48.2 GB",color: "white"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-2xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D] mt-1">{l}</div></div>))}</div>
-          <div className="space-y-3">{[{cat:"PAN Documents",count:"3,084 files",size:"2.1 GB",lastUp:"Today"},{cat:"GST Records",count:"4,231 files",size:"8.4 GB",lastUp:"Today"},{cat:"Financial Statements",count:"2,156 files",size:"12.3 GB",lastUp:"Yesterday"},{cat:"Bank Statements",count:"6,842 files",size:"18.7 GB",lastUp:"Today"},{cat:"Audit Evidence",count:"892 files",size:"4.2 GB",lastUp:"2 days ago"},{cat:"Filing Acknowledgements",count:"1,879 files",size:"980 MB",lastUp:"Today"}].map(({cat,count,size,lastUp}) => (<div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{cat}</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div></div><div className="flex gap-2"><button onClick={() => setActionModal({title: 'Upload File', type: 'upload'})}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button><button onClick={() => setActionModal({title: 'Upload File', type: 'upload'})}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button></div></div>))}</div>
+          <div className="grid grid-cols-3 gap-4 mb-6">{[{l:"Total Docs",v:String(docStats.total),color:"#087F5B"},{l:"Pending Review",v:String(docStats.pending),color:"#C8A45D"},{l:"Storage Used",v:docStats.storage,color:"#102A43"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-2xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D] mt-1">{l}</div></div>))}</div>
+          {docStats.cats.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No documents yet.</div>}
+          <div className="space-y-3">{docStats.cats.map(({cat,count,size,lastUp}: any) => (<div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{cat}</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div></div><div className="flex gap-2"><button onClick={() => setActionModal({title: 'Upload File', type: 'upload'})}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button><button onClick={() => setActionModal({title: 'Upload File', type: 'upload'})}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button></div></div>))}</div>
         </div>
       );
       case "Audit Workflow": return (
