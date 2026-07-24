@@ -46,6 +46,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [blogForm, setBlogForm] = useState({ title: "", content: "", summary: "" });
   const [careerForm, setCareerForm] = useState({ job_title: "", department: "", location: "", description: "", requirements: "" });
   const [invoiceForm, setInvoiceForm] = useState({ clientId: "", due: "", description: "", amount: "" });
+  const [queryForm, setQueryForm] = useState({ clientId: "", subject: "", description: "" });
   const [formValues, setFormValues] = useState({
     clientName: "",
     caName: "",
@@ -672,6 +673,22 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     persist(() => resources.careers.update(id, { job_title: careerForm.job_title.trim(), description: careerForm.description.trim() || undefined, requirements: careerForm.requirements.trim() || undefined } as any), 'Job updated.');
   };
 
+  // Forward path of each backend state machine (see core/constants.py transitions).
+  const WF_NEXT: Record<string, string[]> = {
+    tax: ["received","collecting_documents","preparing_return","internal_review","client_approval_pending","client_approved","return_filed","acknowledgement_received"],
+    gst: ["received","sales_collected","purchase_collected","reconciled","return_prepared","return_reviewed","return_filed","acknowledgement_received"],
+    audit: ["assigned","document_requested","verifying","observation_recorded","draft_prepared","partner_review","final_approved","completed"],
+  };
+  const advance = (kind: 'tax'|'gst'|'audit', item: any) => {
+    const raw = item._raw ?? {};
+    const order = WF_NEXT[kind];
+    const i = order.indexOf(_lc(raw.status ?? ""));
+    const next = i >= 0 && i < order.length - 1 ? order[i + 1] : null;
+    if (!raw.id || !next) { showToast('Already at the final stage.', 'info'); return; }
+    const res = kind === 'tax' ? resources.taxReturns : kind === 'gst' ? resources.gstReturns : resources.audits;
+    persist(() => res.update(raw.id, { status: next } as any), `Moved to ${_tc(next)}.`);
+  };
+
   const handleAddInvoice = () => {
     const client = clients.find(c => c._raw?.id === invoiceForm.clientId);
     if (!client) { showToast('Please select a client.', 'error'); return; }
@@ -683,6 +700,16 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setInvoiceForm({ clientId: "", due: "", description: "", amount: "" });
     persist(() => resources.invoices.create(body), 'Invoice created.');
   };
+  const handleAddQuery = () => {
+    const client = clients.find(c => c._raw?.id === queryForm.clientId);
+    const subject = queryForm.subject.trim();
+    if (!client) { showToast('Please select a client.', 'error'); return; }
+    if (!subject) { showToast('Please enter a subject.', 'error'); return; }
+    const query_text = queryForm.description.trim() || subject;
+    setQueryForm({ clientId: "", subject: "", description: "" });
+    persist(() => resources.queries.create({ client_id: client._raw.id, subject, query_text } as any), 'Query raised.');
+  };
+
   const handleMarkInvoicePaid = (item: any) => {
     const i = item._raw ?? {};
     const outstanding = Number(i.outstanding_amount ?? i.total_amount ?? 0);
@@ -713,7 +740,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
   const roleTabMap: Record<string, string[]> = {
     "Super Admin":          ["Dashboard","Portal Access Requests","Client Management","Employee Management","Service Management","Task Assignment","Compliance Calendar","Document Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Payment Tracking","Notifications","Reports","Blog Management","Careers Management","Website CMS","Lead Management","Role-Based Access","Total Clients","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review","Open Queries","Monthly Revenue","Outstanding Invoices","Staff Workload","Service-wise Client Count"],
-    "Managing Partner":     ["Dashboard","Portal Access Requests","Client Management","Reports","Monthly Revenue","Outstanding Invoices","Payment Tracking","Notifications","Staff Workload","Service-wise Client Count","Lead Management","Employee Management","Service Management"],
+    "Managing Partner":     ["Dashboard","Portal Access Requests","Client Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Reports","Monthly Revenue","Outstanding Invoices","Payment Tracking","Notifications","Staff Workload","Service-wise Client Count","Lead Management","Employee Management","Service Management"],
     "Chartered Accountant": ["Dashboard","Client Management","Task Assignment","Compliance Calendar","Document Management","Tax-Return Tracking","GST-Return Tracking","Open Queries","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review"],
     "Audit Manager":        ["Dashboard","Client Management","Audit Workflow","Document Management","Task Assignment","Compliance Calendar","Documents Awaiting Review","Reports","Staff Workload"],
     "Tax Manager":          ["Dashboard","Client Management","Tax-Return Tracking","Compliance Calendar","Task Assignment","Pending Filings","Due This Week","Overdue Tasks","Document Management","Reports"],
@@ -1039,6 +1066,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Open Queries": return (
         <div className="space-y-3">
+          <div className="flex justify-end"><button onClick={() => { setQueryForm({ clientId: "", subject: "", description: "" }); setActionModal({title: 'Raise Query', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><HelpCircle size={13} /> Raise Query</button></div>
           {queries.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No open queries.</div>}
           {queries.map(({ q, client, age, staff, priority, _raw }: any) => (
             <div key={_raw?.id ?? q} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
@@ -1282,9 +1310,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Audit Workflow": return (
         <div className="space-y-4">
-          {audits.map(({client,type,stage,stageNum,lead,team,due}: any) => (
+          {audits.map(({client,type,stage,stageNum,lead,team,due,_raw}: any) => (
             <div key={client+type} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
-              <div className="flex items-center justify-between mb-3"><div><div className="font-bold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{client}</div><div className="text-xs text-[#52606D]">{type} · Due: {due}</div></div><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:"#EAF4F0",color:"#087F5B" }}>{stage}</span></div>
+              <div className="flex items-center justify-between mb-3"><div><div className="font-bold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{client}</div><div className="text-xs text-[#52606D]">{type} · Due: {due}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:"#EAF4F0",color:"#087F5B" }}>{stage}</span>{_lc(_raw?.status) !== "completed" && <button onClick={() => advance('audit', { _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>{_lc(_raw?.status) === "partner_review" ? "Approve" : "Advance →"}</button>}</div></div>
               <div className="flex gap-1 mb-3">{["Planning","Risk Assessment","Field Work","Evidence Review","Reporting","Sign-off"].map((s,i) => (<div key={s} className="flex-1 h-1.5 rounded-full" style={{ background:i<stageNum?"#087F5B":"#E2E8F0" }} />))}</div>
               <div className="text-xs text-[#52606D]">Lead: {lead} · Team: {team.join(", ")} · Stage {stageNum}/6</div>
             </div>
@@ -1294,10 +1322,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Tax-Return Tracking": return (
         <div className="space-y-3">
           <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:String(taxReturns.length),color:"#102A43"},{l:"Filed",v:String(taxReturns.filter((t:any)=>_lc(t.status)==="filed").length),color:"#087F5B"},{l:"In Progress",v:String(taxReturns.filter((t:any)=>_lc(t.status).includes("progress")).length),color:"#C8A45D"},{l:"Pending",v:String(taxReturns.filter((t:any)=>{const s=_lc(t.status);return s!=="filed"&&!s.includes("progress");}).length),color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
-          {taxReturns.map(({client,itr,fy,status,ack,date}: any) => (
+          {taxReturns.map(({client,itr,fy,status,ack,date,_raw}: any) => (
             <div key={client} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{client} · {itr}</div><div className="text-xs text-[#52606D]">{fy} · Ack: {ack} · {date}</div></div>
-              <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="In Progress"?"#FFF4E0":"#FFF0F0",color:status==="Filed"?"#087F5B":status==="In Progress"?"#C8A45D":"#e53e3e" }}>{status}</span>
+              <div className="flex items-center gap-2"><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="In Progress"?"#FFF4E0":"#FFF0F0",color:status==="Filed"?"#087F5B":status==="In Progress"?"#C8A45D":"#e53e3e" }}>{status}</span>{_lc(_raw?.status) !== "acknowledgement_received" && <button onClick={() => advance('tax', { _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}</div>
             </div>
           ))}
         </div>
@@ -1305,10 +1333,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "GST-Return Tracking": return (
         <div className="space-y-3">
           <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:String(gstReturns.length),color:"#102A43"},{l:"Filed",v:String(gstReturns.filter((g:any)=>_lc(g.status)==="filed").length),color:"#087F5B"},{l:"Processing",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("process")).length),color:"#C8A45D"},{l:"Overdue",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("overdue")).length),color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
-          {gstReturns.map(({client,form,period,status,arno}: any) => (
+          {gstReturns.map(({client,form,period,status,arno,_raw}: any) => (
             <div key={client+form} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{client} · {form}</div><div className="text-xs text-[#52606D]">{period} · ARN: {arno}</div></div>
-              <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="Overdue"||status==="Due Today"?"#FFF0F0":"#FFF4E0",color:status==="Filed"?"#087F5B":status==="Overdue"||status==="Due Today"?"#e53e3e":"#C8A45D" }}>{status}</span>
+              <div className="flex items-center gap-2"><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="Overdue"||status==="Due Today"?"#FFF0F0":"#FFF4E0",color:status==="Filed"?"#087F5B":status==="Overdue"||status==="Due Today"?"#e53e3e":"#C8A45D" }}>{status}</span>{_lc(_raw?.status) !== "acknowledgement_received" && <button onClick={() => advance('gst', { _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}</div>
             </div>
           ))}
         </div>
@@ -1660,6 +1688,17 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                 </div>
               </div>
+            ) : actionModal.title === 'Raise Query' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
+                  <select value={queryForm.clientId} onChange={(e) => setQueryForm(p => ({ ...p, clientId: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
+                    <option value="">Select client…</option>
+                    {clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}
+                  </select>
+                </div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Subject *</label><input type="text" value={queryForm.subject} onChange={(e) => setQueryForm(p => ({ ...p, subject: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Query subject" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Details</label><textarea value={queryForm.description} onChange={(e) => setQueryForm(p => ({ ...p, description: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Describe the query" /></div>
+              </div>
             ) : actionModal.title === 'Create Invoice' ? (
               <div className="space-y-4 mb-5 text-left">
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
@@ -1745,6 +1784,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 if (actionModal?.title === 'New Job')          { handleAddCareer(); return; }
                 if (actionModal?.title === 'Edit Job')         { handleUpdateCareer(); return; }
                 if (actionModal?.title === 'Create Invoice')   { handleAddInvoice(); return; }
+                if (actionModal?.title === 'Raise Query')      { handleAddQuery(); return; }
                 showToast(`${actionModal.title} saved successfully!`, 'success');
                 setActionModal(null);
               }}
