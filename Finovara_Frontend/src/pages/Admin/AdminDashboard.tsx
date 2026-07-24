@@ -43,6 +43,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [tasks, setTasks] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [clientFilter, setClientFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
+  const [blogForm, setBlogForm] = useState({ title: "", content: "", summary: "" });
+  const [careerForm, setCareerForm] = useState({ job_title: "", department: "", location: "", description: "", requirements: "" });
   const [formValues, setFormValues] = useState({
     clientName: "",
     caName: "",
@@ -643,6 +645,30 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     } catch {
       showToast('Could not convert lead. Email may already exist.', 'error');
     }
+  };
+
+  const openEditBlog = (item: any) => { const b = item._raw ?? {}; setBlogForm({ title: b.title ?? "", content: b.content ?? "", summary: b.summary ?? "" }); setActionModal({ title: 'Edit Blog', type: 'form', item }); };
+  const handleAddBlog = () => {
+    const title = blogForm.title.trim(), content = blogForm.content.trim();
+    if (!title || !content) { showToast('Title and content are required.', 'error'); return; }
+    setBlogForm({ title: "", content: "", summary: "" });
+    persist(() => resources.blogs.create({ title, content, summary: blogForm.summary.trim() || undefined } as any), 'Post created.');
+  };
+  const handleUpdateBlog = () => {
+    const id = actionModal?.item?._raw?.id; if (!id) { setActionModal(null); return; }
+    persist(() => resources.blogs.update(id, { title: blogForm.title.trim(), content: blogForm.content.trim() || undefined, summary: blogForm.summary.trim() || undefined } as any), 'Post updated.');
+  };
+
+  const openEditCareer = (item: any) => { const c = item._raw ?? {}; setCareerForm({ job_title: c.job_title ?? "", department: c.department ?? "", location: c.location ?? "", description: c.description ?? "", requirements: c.requirements ?? "" }); setActionModal({ title: 'Edit Job', type: 'form', item }); };
+  const handleAddCareer = () => {
+    const { job_title, department, location, description, requirements } = careerForm;
+    if (!job_title.trim() || !description.trim() || !requirements.trim()) { showToast('Job title, description and requirements are required.', 'error'); return; }
+    setCareerForm({ job_title: "", department: "", location: "", description: "", requirements: "" });
+    persist(() => resources.careers.create({ job_title: job_title.trim(), department: department.trim() || "General", location: location.trim() || "Remote", description: description.trim(), requirements: requirements.trim() } as any), 'Job posted.');
+  };
+  const handleUpdateCareer = () => {
+    const id = actionModal?.item?._raw?.id; if (!id) { setActionModal(null); return; }
+    persist(() => resources.careers.update(id, { job_title: careerForm.job_title.trim(), description: careerForm.description.trim() || undefined, requirements: careerForm.requirements.trim() || undefined } as any), 'Job updated.');
   };
 
   const handleMarkAllRead = () => {
@@ -1329,14 +1355,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Blog Management": return (
         <div>
-          <div className="flex items-center justify-between mb-5"><div className="text-sm text-[#52606D]">18 published · 4 drafts · 2 scheduled</div><button onClick={() => setActionModal({title: 'Create New Entry', type: 'form'})}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><BookOpen size={13} /> New Post</button></div>
-          <div className="space-y-3">{blogs.map(({title,cat,author,date,status,views}: any) => (<div key={title} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{title}</div><div className="text-xs text-[#52606D]">{cat} · {author} · {date} {views!=="—"?`· ${views} views`:""}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Published"?"#EAF4F0":status==="Scheduled"?"#FFF4E0":"#EEF1F5",color:status==="Published"?"#087F5B":status==="Scheduled"?"#C8A45D":"#52606D" }}>{status}</span><button onClick={() => setActionModal({title: 'Edit', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button></div></div>))}</div>
+          <div className="flex items-center justify-between mb-5"><div className="text-sm text-[#52606D]">{blogs.length} posts</div><button onClick={() => { setBlogForm({ title: "", content: "", summary: "" }); setActionModal({title: 'New Blog', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><BookOpen size={13} /> New Post</button></div>
+          <div className="space-y-3">{blogs.map(({title,cat,author,date,status,views,_raw}: any) => (<div key={title} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{title}</div><div className="text-xs text-[#52606D]">{cat} · {author} · {date} {views!=="—"?`· ${views} views`:""}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Published"?"#EAF4F0":status==="Scheduled"?"#FFF4E0":"#EEF1F5",color:status==="Published"?"#087F5B":status==="Scheduled"?"#C8A45D":"#52606D" }}>{status}</span><button onClick={() => openEditBlog({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button></div></div>))}</div>
         </div>
       );
       case "Careers Management": return (
         <div>
-          <div className="flex items-center justify-between mb-5"><div className="text-sm text-[#52606D]">5 open positions · 48 total applications</div><button onClick={() => setActionModal({title: 'Create New Entry', type: 'form'})}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Briefcase size={13} /> Post Job</button></div>
-          <div className="space-y-3">{careersList.map(({role,type,loc,apps,status}: any) => (<div key={role} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{role}</div><div className="text-xs text-[#52606D]">{type} · {loc} · {apps} applications</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#102A43",color:status==="Active"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => setActionModal({title: 'View Apps', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">View Apps</button><button onClick={() => setActionModal({title: 'Edit', type: 'form'})}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button></div></div>))}</div>
+          <div className="flex items-center justify-between mb-5"><div className="text-sm text-[#52606D]">{careersList.length} positions</div><button onClick={() => { setCareerForm({ job_title: "", department: "", location: "", description: "", requirements: "" }); setActionModal({title: 'New Job', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Briefcase size={13} /> Post Job</button></div>
+          <div className="space-y-3">{careersList.map(({role,type,loc,apps,status,_raw}: any) => (<div key={role} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{role}</div><div className="text-xs text-[#52606D]">{type} · {loc} · {apps} applications</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#102A43",color:status==="Active"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => openEditCareer({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button></div></div>))}</div>
         </div>
       );
       case "Website CMS": return (
@@ -1632,6 +1658,22 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                 </div>
               </div>
+            ) : (actionModal.title === 'New Blog' || actionModal.title === 'Edit Blog') ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Title *</label><input type="text" value={blogForm.title} onChange={(e) => setBlogForm(p => ({ ...p, title: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Post title" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Summary</label><input type="text" value={blogForm.summary} onChange={(e) => setBlogForm(p => ({ ...p, summary: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Short summary" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Content *</label><textarea value={blogForm.content} onChange={(e) => setBlogForm(p => ({ ...p, content: e.target.value }))} rows={5} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Write the post…" /></div>
+              </div>
+            ) : (actionModal.title === 'New Job' || actionModal.title === 'Edit Job') ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Job Title *</label><input type="text" value={careerForm.job_title} onChange={(e) => setCareerForm(p => ({ ...p, job_title: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="e.g. Senior Auditor" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Department</label><input type="text" value={careerForm.department} onChange={(e) => setCareerForm(p => ({ ...p, department: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Audit" /></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Location</label><input type="text" value={careerForm.location} onChange={(e) => setCareerForm(p => ({ ...p, location: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Hyderabad" /></div>
+                </div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Description *</label><textarea value={careerForm.description} onChange={(e) => setCareerForm(p => ({ ...p, description: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Role description" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Requirements *</label><textarea value={careerForm.requirements} onChange={(e) => setCareerForm(p => ({ ...p, requirements: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Requirements" /></div>
+              </div>
             ) : actionModal.title?.startsWith('Delete') ? (
               <div className="mb-5 text-sm text-[#52606D]">
                 Are you sure you want to delete{" "}
@@ -1681,6 +1723,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 if (actionModal?.title === 'Edit Task')       { handleUpdateTask(); return; }
                 if (actionModal?.title === 'Delete Task')     { handleDeleteTask(); return; }
                 if (actionModal?.title === 'Edit Lead')       { handleUpdateLead(); return; }
+                if (actionModal?.title === 'New Blog')         { handleAddBlog(); return; }
+                if (actionModal?.title === 'Edit Blog')        { handleUpdateBlog(); return; }
+                if (actionModal?.title === 'New Job')          { handleAddCareer(); return; }
+                if (actionModal?.title === 'Edit Job')         { handleUpdateCareer(); return; }
                 showToast(`${actionModal.title} saved successfully!`, 'success');
                 setActionModal(null);
               }}
