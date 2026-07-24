@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 T = TypeVar("T")
 
-MAX_PAGE_SIZE = 100
+MAX_PAGE_SIZE = 200
 
 
 class APIModel(BaseModel):

@@ -264,7 +264,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const openEditClient = (client: { n: string; ca: string; pan: string; gstin: string; svc: number; status: 'Active' | 'Inactive' }) => {
+  const openEditClient = (client: { n: string; ca: string; pan: string; gstin: string; svc: number; status: 'Active' | 'Inactive'; _raw?: any }) => {
     setFormValues({
       clientName: client.n,
       caName: client.ca,
@@ -277,7 +277,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setActionModal({ title: 'Edit Client', type: 'form', section: 'client', item: client });
   };
 
-  const openDeleteClient = (client: { n: string; ca: string; pan: string; gstin: string; svc: number; status: 'Active' | 'Inactive' }) => {
+  const openDeleteClient = (client: { n: string; ca: string; pan: string; gstin: string; svc: number; status: 'Active' | 'Inactive'; _raw?: any }) => {
     setActionModal({ title: 'Delete Client', type: 'form', section: 'client', item: client });
   };
 
@@ -1474,8 +1474,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             </div>
           </div>
           <div className="space-y-3">
-            {clients.filter(c => clientFilter === 'All' || c.status === clientFilter).map(({n,ca,pan,gstin,svc,status}) => (
-              <div key={n} className="p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+            {clients.filter(c => clientFilter === 'All' || c.status === clientFilter).map((c) => {
+              const {n,ca,pan,gstin,svc,status} = c;
+              return (
+              <div key={c._raw?.id ?? n} className="p-4 bg-white rounded-2xl border border-[#E2E8F0]">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm text-white" style={{ background:"linear-gradient(135deg,#102A43,#087F5B)" }}>{n[0]}</div>
@@ -1483,14 +1485,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#FFF0F0",color:status==="Active"?"#087F5B":"#e53e3e" }}>{status}</span>
-                    <button onClick={() => openEditClient({ n, ca, pan, gstin, svc, status })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
+                    <button onClick={() => openEditClient(c)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
                     <button onClick={() => makePdf("Certificate of Engagement", [`Client: ${n}`, `PAN: ${pan}`, `GSTIN: ${gstin}`, `Engaged services: ${svc}`, `Assigned CA: ${ca}`, `Status: ${status}`, "", "This is to certify that the above client is engaged with", "Finovara Chartered Accountants LLP for the services listed."], `certificate-${n.replace(/\s+/g,'-')}.pdf`)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Certificate</button>
-                    <button onClick={() => openDeleteClient({ n, ca, pan, gstin, svc, status })} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
+                    <button onClick={() => openDeleteClient(c)} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
                   </div>
                 </div>
                 <div className="flex gap-4 text-xs text-[#52606D]"><span>PAN: <span className="font-mono font-semibold text-[#102A43]">{pan}</span></span><span>GSTIN: <span className="font-mono font-semibold text-[#102A43]">{gstin}</span></span></div>
               </div>
-            ))}
+            );})}
           </div>
         </div>
       );
