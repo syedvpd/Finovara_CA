@@ -4,7 +4,9 @@ import {
   Briefcase, Zap, UserCheck, PieChart, Flag, Bell, Lock, Mail
 } from "lucide-react";
 import { Page } from "../types/index";
-import financialPlanningImg from "../assets/images/Financial Planning.jpeg";
+import virtualCeoImg from "../assets/images/virtual_ceo.png";
+import newGstImg from "../assets/images/new_gst.png";
+import budgetImg from "../assets/images/budget.png";
 
 export const NAV_ITEMS = [
   { label: "Home", page: "home" as Page },
@@ -228,20 +230,22 @@ export const INSIGHTS = [
     tag: "Tax Update", date: "15 Jan 2025",
     title: "Budget 2025: Key Changes Affecting Indian Businesses",
     excerpt: "A comprehensive breakdown of the Union Budget announcements impacting corporate tax, capital gains, and startup incentives.",
-    readTime: "8 min read"
+    readTime: "8 min read",
+    image: budgetImg
   },
   {
     tag: "GST Advisory", date: "08 Jan 2025",
     title: "New GST Return Filing Mechanism: What You Need to Know",
     excerpt: "Understanding the revised GST filing procedures and how businesses should prepare for the updated compliance framework.",
-    readTime: "6 min read"
+    readTime: "6 min read",
+    image: newGstImg
   },
   {
     tag: "Financial Planning", date: "02 Jan 2025",
     title: "Virtual CFO vs In-House CFO: The 2025 Decision Guide",
     excerpt: "A detailed cost-benefit analysis helping growing businesses decide between hiring full-time financial leadership or outsourcing.",
     readTime: "10 min read",
-    image: financialPlanningImg
+    image: virtualCeoImg
   },
 ];
 

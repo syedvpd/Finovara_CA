@@ -29,7 +29,7 @@ export function ArticleModal({ article, onClose }: { article: any, onClose: () =
           </div>
         </div>
         <div className="h-64 rounded-xl overflow-hidden mb-8 bg-[#EEF1F5]">
-          <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=400&fit=crop" alt="Article Cover" className="w-full h-full object-cover" />
+          <img src={article.image || article.cover || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=400&fit=crop"} alt="Article Cover" className="w-full h-full object-cover" />
         </div>
         <div className="text-sm" style={{ fontFamily: "Inter", color: "#334155", lineHeight: 1.8 }}>
           <p className="text-lg font-medium mb-6 text-[#475569]">{article.excerpt}</p>
