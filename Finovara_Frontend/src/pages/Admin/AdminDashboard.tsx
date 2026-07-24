@@ -32,7 +32,7 @@ const _rowsOf = (r: PromiseSettledResult<any>): any[] => r.status === "fulfilled
 type ActionModalState = { title: string; type: 'form'|'upload'; section?: string; item?: any };
 
 export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) => void, userRole: string }) {
-  const { logout } = useAuth();
+  const { logout, session } = useAuth();
   const handleLogout = async () => { await logout(); setPage("login"); };
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [actionModal, setActionModal] = useState<ActionModalState | null>(null);
@@ -57,6 +57,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [auditForm, setAuditForm] = useState({ clientId: "", serviceId: "", start: "", end: "", type: "statutory", risk: "medium" });
   const [taxForm, setTaxForm] = useState({ income: "", liability: "", refund: "", refundStatus: "pending" });
   const [lateFee, setLateFee] = useState({ days: "0", nil: "no" });
+  const [checklistForm, setChecklistForm] = useState({ auditId: "", item: "", desc: "" });
+  const [obsForm, setObsForm] = useState({ auditId: "", title: "", desc: "", risk: "medium" });
+  const [bankForm, setBankForm] = useState({ clientId: "", csv: "" });
+  const [reminderForm, setReminderForm] = useState({ subject: "", body: "", when: "" });
+  const [payrollProfiles, setPayrollProfiles] = useState<any[]>([]);
+  const [salaryForm, setSalaryForm] = useState({ salary: "" });
+  const [staffCsv, setStaffCsv] = useState({ clientId: "", csv: "" });
+  const [chatForm, setChatForm] = useState({ clientId: "", text: "" });
   const [tbClientId, setTbClientId] = useState("");
   const [formValues, setFormValues] = useState({
     clientName: "",
@@ -148,6 +156,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         resources.payrollRuns.list({ page_size: 100 }),
         resources.ledgerAccounts.list({ page_size: 200 }),
         resources.vouchers.list({ page_size: 100 }),
+        resources.payrollProfiles.list({ page_size: 200 }),
       ]);
 
       setClients(_rowsOf(r[0]).map((c: any) => {
@@ -231,6 +240,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         code: a.account_code, name: a.account_name, type: _tc(a.account_type), balance: _money(a.current_balance ?? a.opening_balance ?? 0), _raw: a })));
       setVouchers(_rowsOf(r[20]).map((v: any) => ({
         no: v.voucher_number ?? v.id?.slice(0, 8), type: _tc(v.voucher_type), date: _date(v.voucher_date ?? v.created_at), amount: _money(v.total_amount ?? 0), status: _tc(v.status), _raw: v })));
+      setPayrollProfiles(_rowsOf(r[21]).map((p: any) => ({
+        name: p.employee_name, code: p.employee_code, salary: _money(p.base_salary), _raw: p })));
       setDataLoading(false);
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
@@ -740,6 +751,79 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     showToast(`${title} downloaded.`, 'success');
   };
 
+  // CSV: date,description,debit,credit[,reference] — one line per transaction.
+  const handleBankImport = () => {
+    const client = clients.find(c => c._raw?.id === bankForm.clientId);
+    if (!client) { showToast('Please select a client.', 'error'); return; }
+    const rows = bankForm.csv.split("\n").map(l => l.trim()).filter(Boolean).map((line) => {
+      const [d, desc, dr, cr, ref] = line.split(",").map(s => (s ?? "").trim());
+      return { transaction_date: d, description: desc || "Bank line",
+        debit_amount: String(Number(dr || 0)), credit_amount: String(Number(cr || 0)),
+        ...(ref ? { reference: ref } : {}) };
+    }).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.transaction_date));
+    if (!rows.length) { showToast('No valid rows. Use: YYYY-MM-DD,description,debit,credit', 'error'); return; }
+    persist(() => api.post("/bank-transactions/import", { client_id: client._raw.id, rows }), `${rows.length} lines imported.`);
+  };
+
+  const handleReviseSalary = () => {
+    const id = actionModal?.item?._raw?.id;
+    const amount = Number((salaryForm.salary || "").replace(/[^0-9.]/g, ""));
+    if (!id) { setActionModal(null); return; }
+    if (!amount) { showToast('Enter a valid salary.', 'error'); return; }
+    persist(() => resources.payrollProfiles.update(id, { base_salary: String(amount) } as any), 'Salary revised.');
+  };
+
+  // CSV: name,code,bank_account,ifsc,salary — one employee per line.
+  const handleStaffBulkImport = async () => {
+    const client = clients.find(c => c._raw?.id === staffCsv.clientId);
+    if (!client) { showToast('Please select a client.', 'error'); return; }
+    const rows = staffCsv.csv.split("\n").map(l => l.trim()).filter(Boolean).map((line) => {
+      const [name, code, acct, ifsc, sal] = line.split(",").map(s => (s ?? "").trim());
+      return { client_id: client._raw.id, employee_name: name, employee_code: code,
+        bank_account_no: acct, bank_ifsc: (ifsc || "").toUpperCase(), base_salary: String(Number(sal || 0)) };
+    }).filter(r => r.employee_name && r.employee_code && r.bank_account_no && r.bank_ifsc && Number(r.base_salary) > 0);
+    if (!rows.length) { showToast('No valid rows. Use: name,code,account,IFSC,salary', 'error'); return; }
+    let ok = 0;
+    for (const row of rows) { try { await resources.payrollProfiles.create(row as any); ok++; } catch { /* skip bad row */ } }
+    await loadData();
+    setActionModal(null);
+    showToast(`${ok}/${rows.length} payroll profiles imported.`, ok ? 'success' : 'error');
+  };
+
+  const handleSendChat = () => {
+    const client = clients.find(c => c._raw?.id === chatForm.clientId);
+    const text = chatForm.text.trim();
+    if (!client) { showToast('Please select a client.', 'error'); return; }
+    if (!text) { showToast('Enter a message.', 'error'); return; }
+    setChatForm(p => ({ ...p, text: "" }));
+    persist(() => resources.messages.create({ client_id: client._raw.id, message_text: text } as any), 'Message sent.');
+  };
+
+  const handleAddReminder = () => {
+    if (!session?.user_id) { showToast('No session user.', 'error'); return; }
+    const body = reminderForm.body.trim() || reminderForm.subject.trim();
+    if (!body) { showToast('Enter a reminder note.', 'error'); return; }
+    const payload: any = { recipient_id: session.user_id, channel: "in_app", body,
+      subject: reminderForm.subject.trim() || "Reminder" };
+    if (reminderForm.when) payload.send_after = new Date(reminderForm.when).toISOString();
+    persist(() => resources.notifications.create(payload), 'Reminder set.');
+  };
+
+  const handleAddChecklist = () => {
+    const item = checklistForm.item.trim();
+    if (!checklistForm.auditId) { showToast('No audit selected.', 'error'); return; }
+    if (item.length < 2) { showToast('Enter a checklist item.', 'error'); return; }
+    persist(() => resources.auditChecklists.create({ audit_id: checklistForm.auditId, item_name: item,
+      description: checklistForm.desc.trim() || undefined } as any), 'Checklist item added.');
+  };
+  const handleAddObservation = () => {
+    const title = obsForm.title.trim(), desc = obsForm.desc.trim();
+    if (!obsForm.auditId) { showToast('No audit selected.', 'error'); return; }
+    if (title.length < 2 || !desc) { showToast('Title and description are required.', 'error'); return; }
+    persist(() => resources.auditObservations.create({ audit_id: obsForm.auditId, title,
+      description: desc, risk_level: obsForm.risk } as any), 'Observation recorded.');
+  };
+
   const handleAddAudit = () => {
     const client = clients.find(c => c._raw?.id === auditForm.clientId);
     const service = services.find(s => s._raw?.id === auditForm.serviceId);
@@ -983,15 +1067,30 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const INV_COLORS = [CHART.emerald, CHART.amber];
   const _inr = (v: number) => v >= 1e7 ? `₹${(v / 1e7).toFixed(1)}Cr` : v >= 1e5 ? `₹${(v / 1e5).toFixed(1)}L` : `₹${v.toLocaleString("en-IN")}`;
 
+  // Spec KPIs (BRD §1). All derived from the loaded backend lists.
+  const activeClients = clients.filter((c: any) => c.status === 'Active').length;
+  const activeAudits = audits.filter((a: any) => _lc(a._raw?.status) !== 'completed').length;
+  const gstPending = gstReturns.filter((g: any) => _lc(g.status) !== 'filed').length;
+  const taxPending = taxReturns.filter((t: any) => _lc(t.status) !== 'filed').length;
+  const payrollRunning = payrollRuns.filter((p: any) => _lc(p._raw?.status) !== 'paid').length;
+  const overdueCompliance = compliance.filter((c: any) => c.urgency === 'critical').length;
+  const utilisation = employees.length
+    ? Math.round((tasks.filter((t: any) => _lc(t._raw?.status) !== 'completed').length / (employees.length * 25)) * 100)
+    : 0;
+
   const kpiCards = [
     { label: "Total Clients",       value: String(clients.length),        change: "live", icon: Users,        color: "#087F5B", bg: "#EAF4F0" },
-    { label: "Services",            value: String(services.length),       change: "live", icon: CheckCircle,  color: "#087F5B", bg: "#EAF4F0" },
-    { label: "Pending Filings",     value: String(pendingFilings),        change: "live", icon: ClipboardList,color: "#C8A45D", bg: "#FFF4E0" },
-    { label: "Overdue Tasks",       value: String(overdueTasks),          change: "live", icon: AlertTriangle,color: "#e53e3e", bg: "#FFF0F0" },
+    { label: "Active Clients",      value: String(activeClients),         change: "live", icon: CheckCircle,  color: "#087F5B", bg: "#EAF4F0" },
     { label: "Revenue (billed)",    value: _inr(revenue),                 change: "live", icon: TrendingUp,   color: "#087F5B", bg: "#EAF4F0" },
-    { label: "Outstanding Invoices",value: _inr(outstanding),             change: "live", icon: ReceiptText,  color: "#C8A45D", bg: "#FFF4E0" },
-    { label: "Open Leads",          value: String(leads.length),          change: "live", icon: HelpCircle,   color: "white",   bg: "#EEF1F5" },
-    { label: "Docs Awaiting Review",value: String(reviewDocs.length),     change: "live", icon: Folder,       color: "#C8A45D", bg: "#FFF4E0" },
+    { label: "Pending Payments",    value: _inr(outstanding),             change: "live", icon: ReceiptText,  color: "#C8A45D", bg: "#FFF4E0" },
+    { label: "Active Audits",       value: String(activeAudits),          change: "live", icon: FileCheck,    color: "#087F5B", bg: "#EAF4F0" },
+    { label: "GST Pending",         value: String(gstPending),            change: "live", icon: BarChart2,    color: "#C8A45D", bg: "#FFF4E0" },
+    { label: "Tax Pending",         value: String(taxPending),            change: "live", icon: FileText,     color: "#C8A45D", bg: "#FFF4E0" },
+    { label: "Payroll Running",     value: String(payrollRunning),        change: "live", icon: Users,        color: "#087F5B", bg: "#EAF4F0" },
+    { label: "Employee Utilization",value: `${utilisation}%`,             change: "live", icon: Briefcase,    color: "white",   bg: "#EEF1F5" },
+    { label: "Due This Week",       value: String(dueTasks.length),       change: "live", icon: Calendar,     color: "#C8A45D", bg: "#FFF4E0" },
+    { label: "Overdue Compliance",  value: String(overdueCompliance),     change: "live", icon: AlertTriangle,color: "#e53e3e", bg: "#FFF0F0" },
+    { label: "Open Queries",        value: String(queries.length),        change: "live", icon: HelpCircle,   color: "white",   bg: "#EEF1F5" },
   ];
 
   const renderContent = () => {
@@ -1047,13 +1146,15 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
           <div className="grid lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl p-5 border border-[#E2E8F0]">
               <div className="font-bold text-[#102A43] mb-4" style={{ fontFamily: "Manrope" }}>Recent Activity</div>
-              {[
-                { a: "ITR filed for Rajesh Mehta", t: "2 min ago", type: "success" },
-                { a: "New client onboarded: ABC Corp", t: "1 hr ago", type: "info" },
-                { a: "Overdue: GSTR-3B for XYZ Ltd", t: "3 hrs ago", type: "warning" },
-                { a: "Invoice INV-2025-0041 paid", t: "5 hrs ago", type: "success" },
-                { a: "Document pending: PAN of Sharma & Co", t: "Yesterday", type: "warning" },
-              ].map(({ a, t, type }) => (
+              {(() => {
+                const feed: { a: string; t: string; type: string }[] = [];
+                for (const d of reviewDocs.slice(0, 2)) feed.push({ a: `Document awaiting review: ${d.doc}`, t: d.uploaded ?? "—", type: "warning" });
+                for (const i of invoices.filter((x: any) => x.status === "Paid").slice(0, 2)) feed.push({ a: `Invoice ${i.inv} paid`, t: i.date, type: "success" });
+                for (const t of taxReturns.filter((x: any) => _lc(x.status) === "filed").slice(0, 1)) feed.push({ a: `${t.itr} filed for ${t.client}`, t: t.date ?? "—", type: "success" });
+                for (const c of compliance.filter((x: any) => x.urgency === "critical").slice(0, 2)) feed.push({ a: `Overdue: ${c.filing}`, t: c.date, type: "warning" });
+                for (const l of leads.slice(0, 1)) feed.push({ a: `New lead: ${l.name}`, t: l.followUp ?? "—", type: "info" });
+                return feed.length ? feed.slice(0, 6) : [{ a: "No recent activity yet.", t: "", type: "info" }];
+              })().map(({ a, t, type }) => (
                 <div key={a} className="flex items-center gap-3 py-2.5 border-t border-[#E2E8F0]">
                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: type==="success"?"#087F5B":type==="warning"?"#C8A45D":"#102A43" }} />
                   <span className="text-sm text-[#102A43] flex-1" style={{ fontFamily: "Inter" }}>{a}</span>
@@ -1064,10 +1165,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <div className="bg-white rounded-2xl p-5 border border-[#E2E8F0]">
               <div className="font-bold text-[#102A43] mb-4" style={{ fontFamily: "Manrope" }}>This Month's Filing Progress</div>
               {[
-                { label: "Income Tax", done: 82, total: 100 },
-                { label: "GST Returns", done: 67, total: 90 },
-                { label: "TDS Filings", done: 54, total: 60 },
-                { label: "ROC Annual", done: 12, total: 30 },
+                { label: "Income Tax", done: taxReturns.filter((t: any) => _lc(t.status) === "filed").length, total: Math.max(taxReturns.length, 1) },
+                { label: "GST Returns", done: gstReturns.filter((g: any) => _lc(g.status) === "filed").length, total: Math.max(gstReturns.length, 1) },
+                { label: "Compliance", done: compliance.filter((c: any) => _lc(c.status) === "filed").length, total: Math.max(compliance.length, 1) },
+                { label: "Tasks", done: tasks.filter((t: any) => _lc(t._raw?.status) === "completed").length, total: Math.max(tasks.length, 1) },
               ].map(({ label, done, total }) => (
                 <div key={label} className="mb-4">
                   <div className="flex justify-between text-xs mb-1">
@@ -1366,7 +1467,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         <div>
           <div className="flex items-center justify-between mb-5">
             <div className="flex gap-2">{([['All',clients.length],['Active',clients.filter(client => client.status === 'Active').length],['Inactive',clients.filter(client => client.status === 'Inactive').length]] as const).map(([f,count]) => <button onClick={() => setClientFilter(f as 'All'|'Active'|'Inactive')} key={f} className={`px-3 py-1.5 rounded-xl border text-xs font-semibold ${clientFilter===f ? 'text-white border-transparent' : 'bg-white border-[#E2E8F0] text-[#102A43]'}`} style={clientFilter===f ? { background:'linear-gradient(135deg,#087F5B,#065a40)' } : undefined}>{f} ({count})</button>)}</div>
-            <button onClick={() => { setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" }); setFormErrors({}); setActionModal({title: 'Add Client', type: 'form'}); }}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Users size={13} /> Add Client</button>
+            <div className="flex gap-2">
+              <button onClick={() => { setChatForm({ clientId: clients[0]?._raw?.id ?? "", text: "" }); setActionModal({title: 'Send Message', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl border border-[#E2E8F0] text-[#52606D]"><HelpCircle size={13} /> Chat</button>
+              <button onClick={() => { setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" }); setFormErrors({}); setActionModal({title: 'Add Client', type: 'form'}); }}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Users size={13} /> Add Client</button>
+            </div>
           </div>
           <div className="space-y-3">
             {clients.filter(c => clientFilter === 'All' || c.status === clientFilter).map(({n,ca,pan,gstin,svc,status}) => (
@@ -1490,7 +1594,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               <div className="flex gap-1 mb-3">{["Planning","Risk Assessment","Field Work","Evidence Review","Reporting","Sign-off"].map((s,i) => (<div key={s} className="flex-1 h-1.5 rounded-full" style={{ background:i<stageNum?"#087F5B":"#E2E8F0" }} />))}</div>
               <div className="flex items-center justify-between text-xs text-[#52606D]">
                 <span>Lead: {lead} · Team: {team.join(", ")} · Stage {stageNum}/6</span>
-                <span className="flex items-center gap-1">Risk:
+                <span className="flex items-center gap-2">
+                  <button onClick={() => { setChecklistForm({ auditId: _raw?.id ?? "", item: "", desc: "" }); setActionModal({ title: 'Add Checklist Item', type: 'form' }); }} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">+ Checklist</button>
+                  <button onClick={() => { setObsForm({ auditId: _raw?.id ?? "", title: "", desc: "", risk: "medium" }); setActionModal({ title: 'Add Observation', type: 'form' }); }} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">+ Observation</button>
+                  Risk:
                   <select value={_lc(_raw?.risk_rating ?? "medium")} onChange={(e) => setAuditRisk({ _raw }, e.target.value)} className="text-xs border border-[#E2E8F0] rounded-lg px-2 py-1">
                     {["low","medium","high"].map(r => <option key={r} value={r}>{_tc(r)}</option>)}
                   </select>
@@ -1592,6 +1699,21 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         </div>
       );
       case "Website CMS": return (
+        <>
+        <div className="flex justify-end mb-4">
+          <label className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white cursor-pointer" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>
+            <UploadCloud size={13} /> Media Upload
+            <input type="file" className="hidden" accept="image/*,.pdf" onChange={async (e) => {
+              const f = e.target.files?.[0]; e.target.value = "";
+              if (!f) return;
+              try {
+                const form = new FormData(); form.append("file", f); form.append("file_category", "general");
+                await api.post("/documents/upload", undefined, { form });
+                showToast(`Uploaded ${f.name}.`, 'success');
+              } catch { showToast('Media upload failed.', 'error'); }
+            }} />
+          </label>
+        </div>
         <div className="grid sm:grid-cols-2 gap-4">
           {[{section:"Homepage",items:"Hero, Services Overview, Stats, Testimonials",lastUpdated:"Today",status:"Live"},{section:"Services Pages",items:"10 service pages with pricing & features",lastUpdated:"18 Jul",status:"Live"},{section:"Industries Page",items:"16 industry cards with service details",lastUpdated:"19 Jul",status:"Live"},{section:"About Us",items:"Team, Milestones, Values, Certifications",lastUpdated:"15 Jul",status:"Live"},{section:"Testimonials",items:"12 client testimonials with ratings",lastUpdated:"12 Jul",status:"Live"},{section:"FAQs",items:"24 categorized FAQs",lastUpdated:"10 Jul",status:"Live"},{section:"Contact Page",items:"Form, Map, Office Hours",lastUpdated:"08 Jul",status:"Live"},{section:"Announcement Banner",items:"Rotating announcement ticker",lastUpdated:"Today",status:"Live"}].map(({section,items,lastUpdated,status}) => (
             <div key={section} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
@@ -1601,6 +1723,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             </div>
           ))}
         </div>
+        </>
       );
       case "Portal Access Requests": return (
         <div className="space-y-3">
@@ -1657,7 +1780,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         <div>
           <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
             <div className="flex gap-3">{[{l:"Total Leads",v:leads.length},{l:"This Month",v:leads.filter(lead => lead.followUp !== "Done").length},{l:"Converted",v:leads.filter(lead => lead.status === "Converted").length}].map(({l,v}) => <div key={l} className="px-4 py-2 bg-white rounded-xl border border-[#E2E8F0] text-center"><div className="font-extrabold text-sm text-[#087F5B]" style={{ fontFamily:"Manrope" }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>)}</div>
-            <button onClick={() => { setLeadFormValues({ name: "", contact: "", email: "", phone: "", source: "Website", service: "", status: "Hot", followUp: "Today" }); setActionModal({title: 'Add Lead', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Target size={13} /> Add Lead</button>
+            <div className="flex gap-2">
+              <button onClick={() => { setReminderForm({ subject: "", body: "", when: "" }); setActionModal({title: 'Set Reminder', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl border border-[#E2E8F0] text-[#52606D]"><Bell size={13} /> Reminder</button>
+              <button onClick={() => { setLeadFormValues({ name: "", contact: "", email: "", phone: "", source: "Website", service: "", status: "Hot", followUp: "Today" }); setActionModal({title: 'Add Lead', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Target size={13} /> Add Lead</button>
+            </div>
           </div>
           <div className="space-y-3">{leads.map(({name,contact,source,service,status,followUp,_raw}) => (<div key={`${name}-${contact}`} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{name} · {contact}</div><div className="text-xs text-[#52606D]">{source} · {service} · Follow-up: {followUp}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Hot"?"#FFF0F0":status==="Warm"?"#FFF4E0":status==="Converted"?"#EAF4F0":"#EEF1F5",color:status==="Hot"?"#e53e3e":status==="Warm"?"#C8A45D":status==="Converted"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => openEditLead(leads.find(x => x._raw?.id === _raw?.id) ?? { _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Update</button>{status !== "Converted" && <button onClick={() => handleConvertLead({ _raw })} className="text-xs px-2 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Convert</button>}</div></div>))}</div>
         </div>
@@ -1746,9 +1872,23 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <div className="text-sm text-[#52606D]">{payrollRuns.length} payroll runs</div>
             <div className="flex gap-2">
               <button onClick={() => { setAttendanceForm({ employee_id: "", period_month: String(new Date().getMonth()+1), period_year: String(new Date().getFullYear()), days_present: "22", total_days: "30" }); setActionModal({ title: 'Record Attendance', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl border border-[#E2E8F0] text-[#52606D]"><CalendarDays size={13} /> Attendance</button>
+              <button onClick={() => { setStaffCsv({ clientId: clients[0]?._raw?.id ?? "", csv: "" }); setActionModal({ title: 'Bulk Import Staff', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl border border-[#E2E8F0] text-[#52606D]"><UploadCloud size={13} /> Bulk Import</button>
               <button onClick={() => { setPayrollForm({ month: String(new Date().getMonth() + 1), year: String(new Date().getFullYear()) }); setActionModal({ title: 'Run Payroll', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Users size={13} /> Run Payroll</button>
             </div>
           </div>
+          {payrollProfiles.length > 0 && (
+            <div className="mb-6">
+              <div className="font-bold text-[#102A43] text-sm mb-2" style={{ fontFamily:"Manrope" }}>Employees on payroll ({payrollProfiles.length})</div>
+              <div className="space-y-2">{payrollProfiles.map(({ name, code, salary, _raw }: any) => (
+                <div key={_raw?.id ?? code} className="flex items-center justify-between p-3 bg-white rounded-xl border border-[#E2E8F0]">
+                  <div><span className="font-semibold text-[#102A43] text-sm">{name}</span> <span className="text-xs text-[#52606D]">· {code}</span></div>
+                  <div className="flex items-center gap-2"><span className="text-sm font-bold text-[#102A43]">{salary}</span>
+                    <button onClick={() => { setSalaryForm({ salary: String(_raw?.base_salary ?? "") }); setActionModal({ title: 'Revise Salary', type: 'form', item: { _raw } }); }} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Revise</button>
+                  </div>
+                </div>
+              ))}</div>
+            </div>
+          )}
           {payrollRuns.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No payroll runs yet.</div>}
           <div className="space-y-3">{payrollRuns.map(({period,status,gross,net,_raw}: any) => (
             <div key={_raw?.id ?? period} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
@@ -1779,6 +1919,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <div className="text-sm text-[#52606D]">{vouchers.length} vouchers</div>
             <div className="flex gap-2">
               <button onClick={() => { setTbClientId(clients[0]?._raw?.id ?? ""); setActionModal({ title: 'Trial Balance', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl border border-[#E2E8F0] text-[#52606D]"><List size={13} /> Trial Balance</button>
+              <button onClick={() => { setBankForm({ clientId: clients[0]?._raw?.id ?? "", csv: "" }); setActionModal({ title: 'Import Bank Statement', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl border border-[#E2E8F0] text-[#52606D]"><UploadCloud size={13} /> Bank Import</button>
               <button onClick={() => { setVoucherForm({ date: new Date().toISOString().split('T')[0], description: "", debit_account: "", credit_account: "", amount: "", clientId: clients[0]?._raw?.id ?? "" }); setActionModal({ title: 'Create Voucher', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Plus size={13} /> Create Voucher</button>
             </div>
           </div>
@@ -2024,6 +2165,65 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                 </div>
               </div>
+            ) : actionModal.title === 'Revise Salary' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div className="text-sm text-[#52606D]">{actionModal.item?._raw?.employee_name} · {actionModal.item?._raw?.employee_code}</div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">New Base Salary (₹) *</label><input type="number" min="1" value={salaryForm.salary} onChange={(e) => setSalaryForm({ salary: e.target.value })} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="50000" /></div>
+              </div>
+            ) : actionModal.title === 'Bulk Import Staff' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
+                  <select value={staffCsv.clientId} onChange={(e) => setStaffCsv(p => ({ ...p, clientId: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="">Select client…</option>{clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}</select>
+                </div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Employees (CSV) *</label>
+                  <textarea value={staffCsv.csv} onChange={(e) => setStaffCsv(p => ({ ...p, csv: e.target.value }))} rows={6} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-mono" placeholder={"Asha Rao,EMP001,123456789012,HDFC0001234,55000\nRavi K,EMP002,987654321098,ICIC0005678,42000"} />
+                  <div className="text-xs text-[#52606D] mt-1">Format: <span className="font-mono">name,code,account,IFSC,salary</span></div>
+                </div>
+                <label className="flex items-center gap-2 text-xs font-semibold text-[#087F5B] cursor-pointer">
+                  <UploadCloud size={14} /> Load a .csv file
+                  <input type="file" accept=".csv,text/csv" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) { const text = await f.text(); setStaffCsv(p => ({ ...p, csv: text })); } }} />
+                </label>
+              </div>
+            ) : actionModal.title === 'Send Message' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
+                  <select value={chatForm.clientId} onChange={(e) => setChatForm(p => ({ ...p, clientId: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="">Select client…</option>{clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}</select>
+                </div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Message *</label><textarea value={chatForm.text} onChange={(e) => setChatForm(p => ({ ...p, text: e.target.value }))} rows={4} maxLength={4000} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="Type your message to the client…" /></div>
+              </div>
+            ) : actionModal.title === 'Import Bank Statement' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
+                  <select value={bankForm.clientId} onChange={(e) => setBankForm(p => ({ ...p, clientId: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="">Select client…</option>{clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}</select>
+                </div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Statement lines (CSV) *</label>
+                  <textarea value={bankForm.csv} onChange={(e) => setBankForm(p => ({ ...p, csv: e.target.value }))} rows={6} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-mono" placeholder={"2026-07-01,NEFT from client,0,25000\n2026-07-03,Bank charges,150,0"} />
+                  <div className="text-xs text-[#52606D] mt-1">Format: <span className="font-mono">YYYY-MM-DD,description,debit,credit[,reference]</span> — duplicates are ignored server-side.</div>
+                </div>
+                <label className="flex items-center gap-2 text-xs font-semibold text-[#087F5B] cursor-pointer">
+                  <UploadCloud size={14} /> Load a .csv file
+                  <input type="file" accept=".csv,text/csv" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) { const text = await f.text(); setBankForm(p => ({ ...p, csv: text })); } }} />
+                </label>
+              </div>
+            ) : actionModal.title === 'Set Reminder' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Subject</label><input type="text" value={reminderForm.subject} onChange={(e) => setReminderForm(p => ({ ...p, subject: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="Follow up with client" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Note *</label><textarea value={reminderForm.body} onChange={(e) => setReminderForm(p => ({ ...p, body: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="What to remember" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Remind at</label><input type="datetime-local" value={reminderForm.when} onChange={(e) => setReminderForm(p => ({ ...p, when: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" /></div>
+              </div>
+            ) : actionModal.title === 'Add Checklist Item' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Item *</label><input type="text" value={checklistForm.item} onChange={(e) => setChecklistForm(p => ({ ...p, item: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="e.g. Verify bank reconciliation" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Description</label><textarea value={checklistForm.desc} onChange={(e) => setChecklistForm(p => ({ ...p, desc: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="Optional detail" /></div>
+              </div>
+            ) : actionModal.title === 'Add Observation' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Title *</label><input type="text" value={obsForm.title} onChange={(e) => setObsForm(p => ({ ...p, title: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="Observation title" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Description *</label><textarea value={obsForm.desc} onChange={(e) => setObsForm(p => ({ ...p, desc: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="What was observed" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Risk Level</label>
+                  <select value={obsForm.risk} onChange={(e) => setObsForm(p => ({ ...p, risk: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm">{["low","medium","high"].map(r => <option key={r} value={r}>{_tc(r)}</option>)}</select>
+                </div>
+              </div>
             ) : actionModal.title === 'Create Audit' ? (
               <div className="space-y-4 mb-5 text-left">
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
@@ -2243,6 +2443,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 if (actionModal?.title === 'Run Payroll')        { handleRunPayroll(); return; }
                 if (actionModal?.title === 'Add Ledger Account')  { handleAddLedger(); return; }
                 if (actionModal?.title === 'Create Audit')        { handleAddAudit(); return; }
+                if (actionModal?.title === 'Revise Salary')       { handleReviseSalary(); return; }
+                if (actionModal?.title === 'Bulk Import Staff')   { handleStaffBulkImport(); return; }
+                if (actionModal?.title === 'Send Message')        { handleSendChat(); return; }
+                if (actionModal?.title === 'Import Bank Statement') { handleBankImport(); return; }
+                if (actionModal?.title === 'Set Reminder')        { handleAddReminder(); return; }
+                if (actionModal?.title === 'Add Checklist Item')  { handleAddChecklist(); return; }
+                if (actionModal?.title === 'Add Observation')     { handleAddObservation(); return; }
                 if (actionModal?.title === 'Tax Details')         { handleSaveTaxDetails(); return; }
                 if (actionModal?.title === 'Create Voucher')      { handleAddVoucher(); return; }
                 if (actionModal?.title === 'Record Attendance')   { handleAddAttendance(); return; }
