@@ -7,9 +7,9 @@ import {
   TrendingUp, Award, Zap, Calendar, MessageCircle, ExternalLink, Play,
   BookOpen, Search, Filter, Heart, Linkedin, Twitter, Instagram, Youtube,
   Facebook, ChevronLeft, PieChart as PieChartIcon, DollarSign, FileCheck, UserCheck,
-  AlertCircle, Info, ArrowUpRight, Target, Layers, Cpu, Lightbulb, Flag,
-  CreditCard, ClipboardList, UploadCloud, AlertTriangle, HelpCircle,
-  ReceiptText, User2, LogOut
+  AlertCircle, Info, ArrowUpRight, Target, Layers, Cpu, Lightbulb, Flag, Plus,
+  CreditCard, ClipboardList, UploadCloud, AlertTriangle, HelpCircle, Settings,
+  ReceiptText, User2, LogOut, List, Eye, RotateCcw, CalendarDays
 } from "lucide-react";
 import { Page } from "../../types/index";
 import { useAuth } from "../../context";
@@ -47,6 +47,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [careerForm, setCareerForm] = useState({ job_title: "", department: "", location: "", description: "", requirements: "" });
   const [invoiceForm, setInvoiceForm] = useState({ clientId: "", due: "", description: "", amount: "" });
   const [queryForm, setQueryForm] = useState({ clientId: "", subject: "", description: "" });
+  const [payrollForm, setPayrollForm] = useState({ month: String(new Date().getMonth() + 1), year: String(new Date().getFullYear()) });
+  const [ledgerForm, setLedgerForm] = useState({ code: "", name: "", type: "asset" });
+  const [voucherForm, setVoucherForm] = useState({ date: "", description: "", debit_account: "", credit_account: "", amount: "", clientId: "" });
+  const [attendanceForm, setAttendanceForm] = useState({ employee_id: "", period_month: String(new Date().getMonth()+1), period_year: String(new Date().getFullYear()), days_present: "22", total_days: "30" });
+  const [meetingForm, setMeetingForm] = useState({ lead_id: "", scheduled_date: "", notes: "" });
+  const [settings, setSettings] = useState<any[]>([]);
+  const [trialBalance, setTrialBalance] = useState<any[]>([]);
+  const [tbClientId, setTbClientId] = useState("");
   const [formValues, setFormValues] = useState({
     clientName: "",
     caName: "",
@@ -107,6 +115,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [queries, setQueries] = useState<any[]>([]);
   const [engagements, setEngagements] = useState<any[]>([]);
   const [contactRequests, setContactRequests] = useState<any[]>([]);
+  const [payrollRuns, setPayrollRuns] = useState<any[]>([]);
+  const [ledgerAccounts, setLedgerAccounts] = useState<any[]>([]);
+  const [vouchers, setVouchers] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   // Load real data and map backend rows into the compact shapes the tabs render.
@@ -131,6 +142,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         resources.queries.list({ page_size: 100 }),
         resources.engagements.list({ page_size: 100 }),
         resources.contactRequests.list({ page_size: 100 }),
+        resources.payrollRuns.list({ page_size: 100 }),
+        resources.ledgerAccounts.list({ page_size: 200 }),
+        resources.vouchers.list({ page_size: 100 }),
       ]);
 
       setClients(_rowsOf(r[0]).map((c: any) => {
@@ -207,6 +221,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       }));
       const soon = _rowsOf(r[3]).filter((t: any) => t.due_date).sort((a: any, b: any) => String(a.due_date).localeCompare(String(b.due_date))).slice(0, 8);
       setDueTasks(soon.map((t: any) => ({ id: t.id, task: t.title, date: _date(t.due_date), staff: t.assignments?.[0]?.assignee_name ?? "—" })));
+      setPayrollRuns(_rowsOf(r[18]).map((p: any) => ({
+        period: `${p.period_month}/${p.period_year}`, status: _tc(p.status),
+        gross: _money(p.total_gross ?? p.gross_amount ?? 0), net: _money(p.total_net ?? p.net_amount ?? 0), _raw: p })));
+      setLedgerAccounts(_rowsOf(r[19]).map((a: any) => ({
+        code: a.account_code, name: a.account_name, type: _tc(a.account_type), balance: _money(a.current_balance ?? a.opening_balance ?? 0), _raw: a })));
+      setVouchers(_rowsOf(r[20]).map((v: any) => ({
+        no: v.voucher_number ?? v.id?.slice(0, 8), type: _tc(v.voucher_type), date: _date(v.voucher_date ?? v.created_at), amount: _money(v.total_amount ?? 0), status: _tc(v.status), _raw: v })));
       setDataLoading(false);
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
@@ -700,6 +721,23 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setInvoiceForm({ clientId: "", due: "", description: "", amount: "" });
     persist(() => resources.invoices.create(body), 'Invoice created.');
   };
+  const handleRunPayroll = () => {
+    const branch_id = clients[0]?._raw?.branch_id ?? employees[0]?._raw?.branch_id;
+    if (!branch_id) { showToast('No branch available to run payroll.', 'error'); return; }
+    persist(() => resources.payrollRuns.create({ branch_id, period_month: Number(payrollForm.month), period_year: Number(payrollForm.year) } as any), 'Payroll run created.');
+  };
+  const advancePayroll = (item: any) => {
+    const order = ["draft", "calculated", "verified", "paid"];
+    const i = order.indexOf(_lc(item._raw?.status ?? ""));
+    const next = i >= 0 && i < order.length - 1 ? order[i + 1] : null;
+    if (!item._raw?.id || !next) { showToast('Payroll already paid.', 'info'); return; }
+    persist(() => resources.payrollRuns.update(item._raw.id, { status: next } as any), `Payroll ${next}.`);
+  };
+  const handleAddLedger = () => {
+    if (!ledgerForm.code.trim() || !ledgerForm.name.trim()) { showToast('Account code and name are required.', 'error'); return; }
+    persist(() => resources.ledgerAccounts.create({ account_code: ledgerForm.code.trim(), account_name: ledgerForm.name.trim(), account_type: ledgerForm.type } as any), 'Ledger account created.');
+  };
+
   const handleAddQuery = () => {
     const client = clients.find(c => c._raw?.id === queryForm.clientId);
     const subject = queryForm.subject.trim();
@@ -722,6 +760,87 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     showToast('All notifications marked as read.', 'success');
   };
 
+  // --- New feature handlers: Settings, Journal Entry, Attendance, Meetings, etc. ---
+  const loadSettings = useCallback(async () => {
+    try {
+      const data = await api.get<any>("/settings/system");
+      setSettings(Array.isArray(data) ? data : data?.data ?? []);
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleSaveSetting = async (key: string, value: string) => {
+    try {
+      await api.put("/settings/system", { key, value });
+      showToast(`Setting ${key} updated.`, 'success');
+      loadSettings();
+    } catch { showToast('Could not update setting.', 'error'); }
+  };
+
+  const handleAddVoucher = () => {
+    const { date, description, debit_account, credit_account, amount, clientId } = voucherForm;
+    if (!date || !description || !amount || !clientId) { showToast('Date, description, amount and client are required.', 'error'); return; }
+    const amt = Number(amount);
+    if (!amt) { showToast('Amount must be a valid number.', 'error'); return; }
+    const client = clients.find(c => c._raw?.id === clientId);
+    if (!client) { showToast('Please select a valid client.', 'error'); return; }
+    persist(() => api.post("/vouchers", {
+      voucher_date: date,
+      description: description.trim(),
+      client_id: clientId,
+      lines: [
+        { account_code_or_id: debit_account || undefined, debit_amount: String(amt), credit_amount: "0" },
+        { account_code_or_id: credit_account || undefined, debit_amount: "0", credit_amount: String(amt) },
+      ],
+    } as any), 'Voucher created.');
+    setVoucherForm({ date: "", description: "", debit_account: "", credit_account: "", amount: "", clientId: "" });
+  };
+
+  const loadTrialBalance = async () => {
+    if (!tbClientId) { showToast('Please select a client.', 'error'); return; }
+    try {
+      const data = await api.get<any>(`/vouchers/trial-balance/${tbClientId}`);
+      const rows = data?.accounts ?? data?.data?.accounts ?? [];
+      setTrialBalance(Array.isArray(rows) ? rows : []);
+      showToast('Trial balance loaded.', 'success');
+    } catch { showToast('Could not load trial balance.', 'error'); }
+  };
+
+  const handleAddAttendance = () => {
+    const { employee_id, period_month, period_year, days_present, total_days } = attendanceForm;
+    if (!employee_id) { showToast('Please select an employee.', 'error'); return; }
+    persist(() => resources.attendance.create({
+      employee_profile_id: employee_id,
+      period_month: Number(period_month),
+      period_year: Number(period_year),
+      days_present: Number(days_present),
+      total_working_days: Number(total_days),
+      month: Number(period_month),
+      year: Number(period_year),
+    } as any), 'Attendance recorded.');
+  };
+
+  const handleAddMeeting = () => {
+    const { lead_id, scheduled_date, notes } = meetingForm;
+    if (!lead_id || !scheduled_date) { showToast('Lead and date are required.', 'error'); return; }
+    persist(() => resources.consultations.create({
+      lead_id,
+      scheduled_at: scheduled_date,
+      notes: notes.trim() || undefined,
+      status: 'scheduled',
+    } as any), 'Meeting scheduled.');
+    setMeetingForm({ lead_id: "", scheduled_date: "", notes: "" });
+  };
+
+  const handleReconcileGst = async (item: any) => {
+    const id = item._raw?.id;
+    if (!id) { showToast('No GST return selected.', 'info'); return; }
+    try {
+      const data = await api.get<any>(`/gst-returns/${id}/reconciliation`);
+      const result = data?.data ?? data;
+      showToast(`Liability: ${_money(result.net_liability ?? 0)} · Late fee: ${_money(result.late_fee ?? 0)}`, 'info');
+    } catch { showToast('Could not run reconciliation.', 'error'); }
+  };
+
   // Role definitions
   const roles = [
     { name: "Super Admin",          desc: "Complete system access",                      color: "#e53e3e", bg: "#FFF0F0", icon: Shield },
@@ -739,14 +858,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   ];
 
   const roleTabMap: Record<string, string[]> = {
-    "Super Admin":          ["Dashboard","Portal Access Requests","Client Management","Employee Management","Service Management","Task Assignment","Compliance Calendar","Document Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Payment Tracking","Notifications","Reports","Blog Management","Careers Management","Website CMS","Lead Management","Role-Based Access","Total Clients","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review","Open Queries","Monthly Revenue","Outstanding Invoices","Staff Workload","Service-wise Client Count"],
-    "Managing Partner":     ["Dashboard","Portal Access Requests","Client Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Reports","Monthly Revenue","Outstanding Invoices","Payment Tracking","Notifications","Staff Workload","Service-wise Client Count","Lead Management","Employee Management","Service Management"],
+    "Super Admin":          ["Dashboard","Settings","Portal Access Requests","Client Management","Employee Management","Service Management","Task Assignment","Compliance Calendar","Document Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Payment Tracking","Payroll","Ledger Accounts","Vouchers","Notifications","Reports","Blog Management","Careers Management","Website CMS","Lead Management","Role-Based Access","Total Clients","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review","Open Queries","Monthly Revenue","Outstanding Invoices","Staff Workload","Service-wise Client Count"],
+    "Managing Partner":     ["Dashboard","Branch Performance","Profit Analysis","Portal Access Requests","Client Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Reports","Monthly Revenue","Outstanding Invoices","Payment Tracking","Notifications","Staff Workload","Service-wise Client Count","Lead Management","Employee Management","Service Management"],
     "Chartered Accountant": ["Dashboard","Client Management","Task Assignment","Compliance Calendar","Document Management","Tax-Return Tracking","GST-Return Tracking","Open Queries","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review"],
     "Audit Manager":        ["Dashboard","Client Management","Audit Workflow","Document Management","Task Assignment","Compliance Calendar","Documents Awaiting Review","Reports","Staff Workload"],
     "Tax Manager":          ["Dashboard","Client Management","Tax-Return Tracking","Compliance Calendar","Task Assignment","Pending Filings","Due This Week","Overdue Tasks","Document Management","Reports"],
     "GST Consultant":       ["Dashboard","Client Management","GST-Return Tracking","Compliance Calendar","Task Assignment","Document Management","Pending Filings","Due This Week","Overdue Tasks"],
-    "Partner Accountant":   ["Dashboard","Client Management","Document Management","Reports","Monthly Revenue","Invoice Management","Payment Tracking"],
-    "Payroll Executive":    ["Dashboard","Client Management","Task Assignment","Document Management","Due This Week","Compliance Calendar"],
+    "Partner Accountant":   ["Dashboard","Ledger Accounts","Vouchers","Client Management","Document Management","Reports","Monthly Revenue","Invoice Management","Payment Tracking"],
+    "Payroll Executive":    ["Dashboard","Payroll","Client Management","Task Assignment","Document Management","Due This Week","Compliance Calendar"],
     "Relationship Manager": ["Dashboard","Client Management","Open Queries","Notifications","Lead Management","Active Services"],
     "Accounts Admin":       ["Dashboard","Invoice Management","Payment Tracking","Outstanding Invoices","Client Management","Reports","Notifications"],
     "Content Manager":      ["Blog Management","Careers Management","Website CMS"],
@@ -774,6 +893,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     { label: "Portal Access Requests",    icon: UserCheck },
     { label: "Lead Management",           icon: Target },
     { label: "Role-Based Access",         icon: Shield },
+    { label: "Payroll",                   icon: Users },
+    { label: "Ledger Accounts",           icon: _PieChartIcon },
+    { label: "Vouchers",                  icon: ReceiptText },
+    { label: "Settings",                  icon: Settings },
+    { label: "Branch Performance",        icon: Building2 },
+    { label: "Profit Analysis",           icon: TrendingUp },
     { label: "Total Clients",             icon: Users },
     { label: "Active Services",           icon: CheckCircle },
     { label: "Pending Filings",           icon: ClipboardList },
@@ -1336,7 +1461,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
           {gstReturns.map(({client,form,period,status,arno,_raw}: any) => (
             <div key={client+form} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{client} · {form}</div><div className="text-xs text-[#52606D]">{period} · ARN: {arno}</div></div>
-              <div className="flex items-center gap-2"><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="Overdue"||status==="Due Today"?"#FFF0F0":"#FFF4E0",color:status==="Filed"?"#087F5B":status==="Overdue"||status==="Due Today"?"#e53e3e":"#C8A45D" }}>{status}</span>{_lc(_raw?.status) !== "acknowledgement_received" && <button onClick={() => advance('gst', { _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}</div>
+              <div className="flex items-center gap-2"><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="Overdue"||status==="Due Today"?"#FFF0F0":"#FFF4E0",color:status==="Filed"?"#087F5B":status==="Overdue"||status==="Due Today"?"#e53e3e":"#C8A45D" }}>{status}</span>
+                {_lc(_raw?.status) !== "acknowledgement_received" && <button onClick={() => advance('gst', { _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}
+                <button onClick={() => handleReconcileGst({ _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Reconcile</button>
+              </div>
             </div>
           ))}
         </div>
@@ -1464,6 +1592,146 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <button onClick={() => { setLeadFormValues({ name: "", contact: "", email: "", phone: "", source: "Website", service: "", status: "Hot", followUp: "Today" }); setActionModal({title: 'Add Lead', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Target size={13} /> Add Lead</button>
           </div>
           <div className="space-y-3">{leads.map(({name,contact,source,service,status,followUp,_raw}) => (<div key={`${name}-${contact}`} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{name} · {contact}</div><div className="text-xs text-[#52606D]">{source} · {service} · Follow-up: {followUp}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Hot"?"#FFF0F0":status==="Warm"?"#FFF4E0":status==="Converted"?"#EAF4F0":"#EEF1F5",color:status==="Hot"?"#e53e3e":status==="Warm"?"#C8A45D":status==="Converted"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => openEditLead(leads.find(x => x._raw?.id === _raw?.id) ?? { _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Update</button>{status !== "Converted" && <button onClick={() => handleConvertLead({ _raw })} className="text-xs px-2 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Convert</button>}</div></div>))}</div>
+        </div>
+      );
+      case "Settings": return (
+        <div>
+          <div className="flex items-center justify-between mb-5">
+            <div className="text-sm text-[#52606D]">{settings.length} settings</div>
+            <button onClick={loadSettings} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><RotateCcw size={13} /> Refresh</button>
+          </div>
+          {settings.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No settings loaded. Click refresh to fetch.</div>}
+          <div className="space-y-3">{settings.map((s: any) => (
+            <div key={s.key ?? s.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+              <div className="flex-1"><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{s.key}</div><div className="text-xs text-[#52606D]">{String(s.value ?? "").slice(0, 80)}</div></div>
+              <button onClick={() => {
+                const v = prompt(`Update ${s.key}:`, String(s.value ?? ""));
+                if (v !== null) handleSaveSetting(s.key, v);
+              }} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Edit</button>
+            </div>
+          ))}</div>
+        </div>
+      );
+      case "Branch Performance": return (
+        <div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {[
+              { label: "Main Branch", clients: clients.filter(c => c._raw?.branch_id === clients[0]?._raw?.branch_id || true).length, revenue: _inr(revenue), employees: employees.length, color: "#087F5B", bg: "#EAF4F0" },
+              { label: "All Branches", clients: clients.length, revenue: _inr(revenue), employees: employees.length, color: "#C8A45D", bg: "#FFF4E0" },
+            ].map(b => (
+              <div key={b.label} className="bg-white rounded-2xl p-5 border border-[#E2E8F0]">
+                <div className="flex items-center gap-2 mb-3"><div className="w-3 h-3 rounded-full" style={{ background: b.color }} /><span className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{b.label}</span></div>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between"><span>Clients</span><span className="font-semibold">{b.clients}</span></div>
+                  <div className="flex justify-between"><span>Revenue</span><span className="font-semibold">{b.revenue}</span></div>
+                  <div className="flex justify-between"><span>Employees</span><span className="font-semibold">{b.employees}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="bg-white rounded-2xl p-5 border border-[#E2E8F0]">
+            <div className="font-bold text-[#102A43] mb-3" style={{ fontFamily:"Manrope" }}>Services by Branch</div>
+            {services.length === 0 && <div className="text-sm text-[#52606D] py-4 text-center">No service data.</div>}
+            <div className="space-y-3">{services.slice(0, 6).map((s: any) => (
+              <div key={s._raw?.id ?? s.svc} className="flex items-center justify-between">
+                <span className="text-sm text-[#102A43]">{s.svc}</span>
+                <span className="text-xs font-semibold text-[#52606D]">{s.cat} · {s.price}</span>
+              </div>
+            ))}</div>
+          </div>
+        </div>
+      );
+      case "Profit Analysis": return (
+        <div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {[
+              { label: "Total Revenue", value: _inr(revenue), color: "#087F5B", bg: "#EAF4F0" },
+              { label: "Outstanding", value: _inr(outstanding), color: "#C8A45D", bg: "#FFF4E0" },
+              { label: "Collected", value: _inr(paidTotal), color: "#087F5B", bg: "#EAF4F0" },
+              { label: "Pending Invoices", value: String(invoices.filter(i => _lc(i.status) !== "paid").length), color: "#e53e3e", bg: "#FFF0F0" },
+            ].map(({ label, value, color, bg }) => (
+              <div key={label} className="bg-white rounded-2xl p-5 border border-[#E2E8F0]">
+                <div className="text-xs text-[#52606D] mb-1">{label}</div>
+                <div className="text-xl font-extrabold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{value}</div>
+              </div>
+            ))}
+          </div>
+          <div className="bg-white rounded-2xl p-5 border border-[#E2E8F0]">
+            <div className="font-bold text-[#102A43] mb-3" style={{ fontFamily:"Manrope" }}>Revenue vs Outstanding</div>
+            {invoiceSplit.length ? (
+              <div className="space-y-3">{invoiceSplit.map((d: any) => (
+                <div key={d.name} className="flex items-center justify-between">
+                  <span className="text-sm text-[#102A43]">{d.name}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 rounded-full" style={{ width: `${Math.min(100, (d.value / Math.max(1, revenue)) * 100)}px`, background: d.name === "Paid" ? "#087F5B" : "#C8A45D" }} />
+                    <span className="text-xs font-semibold">{_inr(d.value)}</span>
+                  </div>
+                </div>
+              ))}</div>
+            ) : <div className="text-sm text-[#52606D] py-4 text-center">No invoice data yet.</div>}
+          </div>
+        </div>
+      );
+      case "Payroll": return (
+        <div>
+          <div className="flex items-center justify-between mb-5">
+            <div className="text-sm text-[#52606D]">{payrollRuns.length} payroll runs</div>
+            <div className="flex gap-2">
+              <button onClick={() => { setAttendanceForm({ employee_id: "", period_month: String(new Date().getMonth()+1), period_year: String(new Date().getFullYear()), days_present: "22", total_days: "30" }); setActionModal({ title: 'Record Attendance', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl border border-[#E2E8F0] text-[#52606D]"><CalendarDays size={13} /> Attendance</button>
+              <button onClick={() => { setPayrollForm({ month: String(new Date().getMonth() + 1), year: String(new Date().getFullYear()) }); setActionModal({ title: 'Run Payroll', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Users size={13} /> Run Payroll</button>
+            </div>
+          </div>
+          {payrollRuns.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No payroll runs yet.</div>}
+          <div className="space-y-3">{payrollRuns.map(({period,status,gross,net,_raw}: any) => (
+            <div key={_raw?.id ?? period} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+              <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>Period {period}</div><div className="text-xs text-[#52606D]">Gross: {gross} · Net: {net}</div></div>
+              <div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Paid"?"#EAF4F0":"#FFF4E0",color:status==="Paid"?"#087F5B":"#C8A45D" }}>{status}</span>{_lc(_raw?.status) !== "paid" && <button onClick={() => advancePayroll({ _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}</div>
+            </div>
+          ))}</div>
+        </div>
+      );
+      case "Ledger Accounts": return (
+        <div>
+          <div className="flex items-center justify-between mb-5">
+            <div className="text-sm text-[#52606D]">{ledgerAccounts.length} accounts</div>
+            <button onClick={() => { setLedgerForm({ code: "", name: "", type: "asset" }); setActionModal({ title: 'Add Ledger Account', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><_PieChartIcon size={13} /> Add Account</button>
+          </div>
+          {ledgerAccounts.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No ledger accounts yet.</div>}
+          <div className="space-y-3">{ledgerAccounts.map(({code,name,type,balance,_raw}: any) => (
+            <div key={_raw?.id ?? code} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+              <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{code} · {name}</div><div className="text-xs text-[#52606D]">{type}</div></div>
+              <div className="font-bold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{balance}</div>
+            </div>
+          ))}</div>
+        </div>
+      );
+      case "Vouchers": return (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-[#52606D]">{vouchers.length} vouchers</div>
+            <div className="flex gap-2">
+              <button onClick={() => { setTbClientId(clients[0]?._raw?.id ?? ""); setActionModal({ title: 'Trial Balance', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl border border-[#E2E8F0] text-[#52606D]"><List size={13} /> Trial Balance</button>
+              <button onClick={() => { setVoucherForm({ date: new Date().toISOString().split('T')[0], description: "", debit_account: "", credit_account: "", amount: "", clientId: clients[0]?._raw?.id ?? "" }); setActionModal({ title: 'Create Voucher', type: 'form' }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Plus size={13} /> Create Voucher</button>
+            </div>
+          </div>
+          {vouchers.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No vouchers yet.</div>}
+          <div className="space-y-3">{vouchers.map(({no,type,date,amount,status,_raw}: any) => (
+            <div key={_raw?.id ?? no} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+              <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{no} · {type}</div><div className="text-xs text-[#52606D]">{date}</div></div>
+              <div className="flex items-center gap-2"><div className="font-bold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{amount}</div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:"#EAF4F0",color:"#087F5B" }}>{status}</span></div>
+            </div>
+          ))}</div>
+          {trialBalance.length > 0 && (
+            <div className="mt-6 bg-white rounded-2xl border border-[#E2E8F0] p-4">
+              <div className="font-bold text-[#102A43] mb-3" style={{ fontFamily:"Manrope" }}>Trial Balance</div>
+              <div className="space-y-2">{trialBalance.map((a: any, i: number) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span className="text-[#102A43]">{a.account_name ?? a.code ?? `Account ${i+1}`}</span>
+                  <span className="font-semibold">{_money(a.balance ?? a.debit ?? a.credit ?? 0)}</span>
+                </div>
+              ))}</div>
+            </div>
+          )}
         </div>
       );
       default: return null;
@@ -1688,6 +1956,79 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                 </div>
               </div>
+            ) : actionModal.title === 'Run Payroll' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Month *</label><input type="number" min="1" max="12" value={payrollForm.month} onChange={(e) => setPayrollForm(p => ({ ...p, month: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" /></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Year *</label><input type="number" min="2000" max="2100" value={payrollForm.year} onChange={(e) => setPayrollForm(p => ({ ...p, year: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" /></div>
+                </div>
+              </div>
+            ) : actionModal.title === 'Record Attendance' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Employee *</label>
+                  <select value={attendanceForm.employee_id} onChange={(e) => setAttendanceForm(p => ({ ...p, employee_id: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
+                    <option value="">Select employee…</option>
+                    {employees.map((e) => <option key={e._raw?.id} value={e._raw?.id}>{e.n}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Month</label><input type="number" min="1" max="12" value={attendanceForm.period_month} onChange={(e) => setAttendanceForm(p => ({ ...p, period_month: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" /></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Year</label><input type="number" min="2000" max="2100" value={attendanceForm.period_year} onChange={(e) => setAttendanceForm(p => ({ ...p, period_year: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Days Present</label><input type="number" min="0" max="31" value={attendanceForm.days_present} onChange={(e) => setAttendanceForm(p => ({ ...p, days_present: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" /></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Total Days</label><input type="number" min="0" max="31" value={attendanceForm.total_days} onChange={(e) => setAttendanceForm(p => ({ ...p, total_days: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" /></div>
+                </div>
+              </div>
+            ) : actionModal.title === 'Create Voucher' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
+                  <select value={voucherForm.clientId} onChange={(e) => setVoucherForm(p => ({ ...p, clientId: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
+                    <option value="">Select client…</option>
+                    {clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Date *</label><input type="date" value={voucherForm.date} onChange={(e) => setVoucherForm(p => ({ ...p, date: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" /></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Amount (₹) *</label><input type="number" min="1" value={voucherForm.amount} onChange={(e) => setVoucherForm(p => ({ ...p, amount: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" /></div>
+                </div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Description *</label><input type="text" value={voucherForm.description} onChange={(e) => setVoucherForm(p => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Description of entry" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Debit Account</label><input type="text" value={voucherForm.debit_account} onChange={(e) => setVoucherForm(p => ({ ...p, debit_account: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="1001" /></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Credit Account</label><input type="text" value={voucherForm.credit_account} onChange={(e) => setVoucherForm(p => ({ ...p, credit_account: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="2001" /></div>
+                </div>
+                <div className="text-xs text-[#52606D]">Debit amount must equal credit amount.</div>
+              </div>
+            ) : actionModal.title === 'Trial Balance' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
+                  <select value={tbClientId} onChange={(e) => setTbClientId(e.target.value)} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
+                    <option value="">Select client…</option>
+                    {clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}
+                  </select>
+                </div>
+              </div>
+            ) : actionModal.title === 'Schedule Meeting' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Lead *</label>
+                  <select value={meetingForm.lead_id} onChange={(e) => setMeetingForm(p => ({ ...p, lead_id: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
+                    <option value="">Select lead…</option>
+                    {leads.map((l) => <option key={l._raw?.id} value={l._raw?.id}>{l.name}</option>)}
+                  </select>
+                </div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Date & Time *</label><input type="datetime-local" value={meetingForm.scheduled_date} onChange={(e) => setMeetingForm(p => ({ ...p, scheduled_date: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Notes</label><textarea value={meetingForm.notes} onChange={(e) => setMeetingForm(p => ({ ...p, notes: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Meeting notes…" /></div>
+              </div>
+            ) : actionModal.title === 'Add Ledger Account' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Account Code *</label><input type="text" value={ledgerForm.code} onChange={(e) => setLedgerForm(p => ({ ...p, code: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="1001" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Account Name *</label><input type="text" value={ledgerForm.name} onChange={(e) => setLedgerForm(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Cash in Hand" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Type</label>
+                  <select value={ledgerForm.type} onChange={(e) => setLedgerForm(p => ({ ...p, type: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
+                    {["asset","liability","equity","income","expense"].map(t => <option key={t} value={t}>{_tc(t)}</option>)}
+                  </select>
+                </div>
+              </div>
             ) : actionModal.title === 'Raise Query' ? (
               <div className="space-y-4 mb-5 text-left">
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
@@ -1785,6 +2126,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 if (actionModal?.title === 'Edit Job')         { handleUpdateCareer(); return; }
                 if (actionModal?.title === 'Create Invoice')   { handleAddInvoice(); return; }
                 if (actionModal?.title === 'Raise Query')      { handleAddQuery(); return; }
+                if (actionModal?.title === 'Run Payroll')        { handleRunPayroll(); return; }
+                if (actionModal?.title === 'Add Ledger Account')  { handleAddLedger(); return; }
+                if (actionModal?.title === 'Create Voucher')      { handleAddVoucher(); return; }
+                if (actionModal?.title === 'Record Attendance')   { handleAddAttendance(); return; }
+                if (actionModal?.title === 'Schedule Meeting')    { handleAddMeeting(); return; }
+                if (actionModal?.title === 'Trial Balance')       { loadTrialBalance(); setActionModal(null); return; }
                 showToast(`${actionModal.title} saved successfully!`, 'success');
                 setActionModal(null);
               }}
