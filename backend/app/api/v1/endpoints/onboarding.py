@@ -19,10 +19,11 @@ import string
 import asyncpg
 import httpx
 from fastapi import APIRouter, Request, status
-from pydantic import EmailStr
+from pydantic import EmailStr, Field
 
 from app.api.deps import AdminUser
 from app.core.config import settings
+from app.core.exceptions import AlreadyExistsError
 from app.core.logging import get_logger
 from app.schemas.common import APIModel, SuccessResponse
 
@@ -41,8 +42,13 @@ def _dsn() -> str:
     return settings.sqlalchemy_url.replace("postgresql+asyncpg://", "postgresql://")
 
 
-async def _create_auth_user(email: str, password: str, full_name: str) -> str:
-    """Create (or reuse) the Supabase identity. Returns the user id."""
+async def _create_auth_user(email: str, password: str, full_name: str, *, reuse_existing: bool = True) -> str:
+    """Create (or, for admin flows, reuse) the Supabase identity. Returns the user id.
+
+    Public self-service registration passes ``reuse_existing=False`` so an
+    already-registered email is rejected rather than re-provisioned — otherwise
+    anyone could POST an existing account's email and downgrade it to a client.
+    """
     base = settings.supabase_url.rstrip("/")
     key = settings.supabase_service_role_key
     if not key:
@@ -63,6 +69,8 @@ async def _create_auth_user(email: str, password: str, full_name: str) -> str:
         if resp.status_code in (200, 201):
             return resp.json()["id"]
         if resp.status_code in (409, 422) or "already" in resp.text.lower():
+            if not reuse_existing:
+                raise AlreadyExistsError("An account with this email already exists. Please sign in instead.")
             listing = await client.get(
                 f"{base}/auth/v1/admin/users", headers=headers, params={"page": 1, "per_page": 200}
             )
@@ -70,6 +78,36 @@ async def _create_auth_user(email: str, password: str, full_name: str) -> str:
                 if user.get("email", "").lower() == email.lower():
                     return user["id"]
         raise ValueError(f"Supabase user creation failed: HTTP {resp.status_code} {resp.text[:200]}")
+
+
+async def _provision_client(
+    conn: asyncpg.Connection, user_id: str, full_name: str,
+    company_name: str | None, client_type: str, phone: str | None = None,
+) -> str:
+    """Assign the client role and create the clients + entity rows. Shared by the
+    admin onboarding and the public self-service registration endpoints."""
+    if not await _wait_for_profile(conn, user_id):
+        raise ValueError("Profile row was not created (handle_new_user)")
+    first, _, last = full_name.partition(" ")
+    await conn.execute(
+        "update public.users set role_id = (select id from public.roles where code = 'client'),"
+        " first_name = $2, last_name = $3, phone = coalesce($4, phone), status = 'active' where id = $1",
+        user_id, first, last or "", phone,
+    )
+    client_id = await conn.fetchval("select id from public.clients where user_id = $1", user_id)
+    if not client_id:
+        branch_id = await conn.fetchval("select id from public.branches order by code limit 1")
+        client_id = await conn.fetchval(
+            "insert into public.clients (user_id, branch_id, client_type, status)"
+            " values ($1, $2, $3, 'active') returning id",
+            user_id, branch_id, client_type,
+        )
+        await conn.execute(
+            "insert into public.client_entities (client_id, legal_name, entity_type, registered_address)"
+            " values ($1, $2, 'pvt_ltd', 'Hyderabad, Telangana, India')",
+            client_id, company_name or full_name,
+        )
+    return str(client_id)
 
 
 async def _wait_for_profile(conn: asyncpg.Connection, user_id: str) -> bool:
@@ -96,6 +134,16 @@ class EmployeeOnboard(APIModel):
     role_code: str = "accountant"
 
 
+class ClientRegister(APIModel):
+    """Public self-service signup. Role is fixed to 'client' server-side."""
+
+    full_name: str = Field(min_length=2, max_length=120)
+    email: EmailStr
+    phone: str = Field(min_length=7, max_length=20)
+    password: str = Field(min_length=8, max_length=72)
+    company_name: str | None = None
+
+
 def _rid(request: Request) -> str | None:
     return getattr(request.state, "request_id", None)
 
@@ -106,33 +154,37 @@ async def onboard_client(request: Request, payload: ClientOnboard, auth: AdminUs
     user_id = await _create_auth_user(payload.email, password, payload.full_name)
     conn = await asyncpg.connect(_dsn(), statement_cache_size=0, timeout=30)
     try:
-        if not await _wait_for_profile(conn, user_id):
-            raise ValueError("Profile row was not created (handle_new_user)")
-        first, _, last = payload.full_name.partition(" ")
-        await conn.execute(
-            "update public.users set role_id = (select id from public.roles where code = 'client'),"
-            " first_name = $2, last_name = $3, status = 'active' where id = $1",
-            user_id, first, last or "",
+        client_id = await _provision_client(
+            conn, user_id, payload.full_name, payload.company_name, payload.client_type
         )
-        client_id = await conn.fetchval("select id from public.clients where user_id = $1", user_id)
-        if not client_id:
-            branch_id = await conn.fetchval("select id from public.branches order by code limit 1")
-            client_id = await conn.fetchval(
-                "insert into public.clients (user_id, branch_id, client_type, status)"
-                " values ($1, $2, $3, 'active') returning id",
-                user_id, branch_id, payload.client_type,
-            )
-            await conn.execute(
-                "insert into public.client_entities (client_id, legal_name, entity_type, registered_address)"
-                " values ($1, $2, 'pvt_ltd', 'Hyderabad, Telangana, India')",
-                client_id, payload.company_name or payload.full_name,
-            )
     finally:
         await conn.close()
     logger.info("client_onboarded", client_id=str(client_id), by=str(auth.user_id))
     return SuccessResponse[dict](
         data={"client_id": str(client_id), "email": payload.email, "temporary_password": password},
         request_id=_rid(request),
+    )
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED, summary="Public self-service client signup")
+async def register_client(request: Request, payload: ClientRegister) -> SuccessResponse[dict]:
+    # No AdminUser dependency: this is intentionally public. Role is hard-coded
+    # to 'client' inside _provision_client, so there is no privilege-escalation
+    # path even though anyone can call it. reuse_existing=False stops a caller
+    # from re-provisioning (and thus corrupting) an already-registered account.
+    user_id = await _create_auth_user(
+        payload.email, payload.password, payload.full_name, reuse_existing=False
+    )
+    conn = await asyncpg.connect(_dsn(), statement_cache_size=0, timeout=30)
+    try:
+        client_id = await _provision_client(
+            conn, user_id, payload.full_name, payload.company_name, "private_limited", payload.phone
+        )
+    finally:
+        await conn.close()
+    logger.info("client_self_registered", client_id=client_id)
+    return SuccessResponse[dict](
+        data={"client_id": client_id, "email": payload.email}, request_id=_rid(request),
     )
 
 
