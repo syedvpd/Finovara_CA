@@ -15,6 +15,7 @@ import { Page } from "../../types/index";
 import { useAuth } from "../../context";
 import { resources, requestPasswordReset } from "../../services";
 import { api, ApiError } from "../../lib/api";
+import { payInvoiceWithRazorpay } from "../../lib/razorpay";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell, PieChart, Pie, Legend, LabelList } from "recharts";
 const _PieChartIcon = PieChartIcon;
 
@@ -264,7 +265,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const openEditClient = (client: { n: string; ca: string; pan: string; gstin: string; svc: number; status: 'Active' | 'Inactive' }) => {
+  const openEditClient = (client: { n: string; ca: string; pan: string; gstin: string; svc: number; status: 'Active' | 'Inactive'; _raw?: any }) => {
     setFormValues({
       clientName: client.n,
       caName: client.ca,
@@ -277,7 +278,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setActionModal({ title: 'Edit Client', type: 'form', section: 'client', item: client });
   };
 
-  const openDeleteClient = (client: { n: string; ca: string; pan: string; gstin: string; svc: number; status: 'Active' | 'Inactive' }) => {
+  const openDeleteClient = (client: { n: string; ca: string; pan: string; gstin: string; svc: number; status: 'Active' | 'Inactive'; _raw?: any }) => {
     setActionModal({ title: 'Delete Client', type: 'form', section: 'client', item: client });
   };
 
@@ -1474,8 +1475,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             </div>
           </div>
           <div className="space-y-3">
-            {clients.filter(c => clientFilter === 'All' || c.status === clientFilter).map(({n,ca,pan,gstin,svc,status}) => (
-              <div key={n} className="p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+            {clients.filter(c => clientFilter === 'All' || c.status === clientFilter).map((c) => {
+              const {n,ca,pan,gstin,svc,status} = c;
+              return (
+              <div key={c._raw?.id ?? n} className="p-4 bg-white rounded-2xl border border-[#E2E8F0]">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm text-white" style={{ background:"linear-gradient(135deg,#102A43,#087F5B)" }}>{n[0]}</div>
@@ -1483,14 +1486,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#FFF0F0",color:status==="Active"?"#087F5B":"#e53e3e" }}>{status}</span>
-                    <button onClick={() => openEditClient({ n, ca, pan, gstin, svc, status })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
+                    <button onClick={() => openEditClient(c)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
                     <button onClick={() => makePdf("Certificate of Engagement", [`Client: ${n}`, `PAN: ${pan}`, `GSTIN: ${gstin}`, `Engaged services: ${svc}`, `Assigned CA: ${ca}`, `Status: ${status}`, "", "This is to certify that the above client is engaged with", "Finovara Chartered Accountants LLP for the services listed."], `certificate-${n.replace(/\s+/g,'-')}.pdf`)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Certificate</button>
-                    <button onClick={() => openDeleteClient({ n, ca, pan, gstin, svc, status })} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
+                    <button onClick={() => openDeleteClient(c)} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
                   </div>
                 </div>
                 <div className="flex gap-4 text-xs text-[#52606D]"><span>PAN: <span className="font-mono font-semibold text-[#102A43]">{pan}</span></span><span>GSTIN: <span className="font-mono font-semibold text-[#102A43]">{gstin}</span></span></div>
               </div>
-            ))}
+            );})}
           </div>
         </div>
       );
@@ -1651,7 +1654,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <div className="flex gap-3">{[{l:"Total",v:_inr(revenue)},{l:"Paid",v:_inr(paidTotal)},{l:"Outstanding",v:_inr(outstanding)}].map(({l,v}) => <div key={l} className="px-4 py-2 bg-white rounded-xl border border-[#E2E8F0] text-center"><div className="font-extrabold text-sm text-[#087F5B]" style={{ fontFamily:"Manrope" }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>)}</div>
             <button onClick={() => { setInvoiceForm({ clientId: "", due: "", description: "", amount: "" }); setActionModal({title: 'Create Invoice', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><ReceiptText size={13} /> Create Invoice</button>
           </div>
-          <div className="space-y-3">{invoices.map(({inv,client,svc,amt,date,status,_raw}: any) => (<div key={inv} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{inv} · {client}</div><div className="text-xs text-[#52606D]">{svc} · {date}</div></div><div className="flex items-center gap-3"><div className="font-bold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{amt}</div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Paid"?"#EAF4F0":"#FFF0F0",color:status==="Paid"?"#087F5B":"#e53e3e" }}>{status}</span>{status!=="Paid" && <button onClick={() => handleMarkInvoicePaid({ _raw })} className="text-xs px-2 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Mark Paid</button>}</div></div>))}</div>
+          <div className="space-y-3">{invoices.map(({inv,client,svc,amt,date,status,_raw}: any) => (<div key={inv} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{inv} · {client}</div><div className="text-xs text-[#52606D]">{svc} · {date}</div></div><div className="flex items-center gap-3"><div className="font-bold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{amt}</div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Paid"?"#EAF4F0":"#FFF0F0",color:status==="Paid"?"#087F5B":"#e53e3e" }}>{status}</span>{status!=="Paid" && <button onClick={async () => { try { const res = await payInvoiceWithRazorpay(_raw.id, { name: _raw?.client?.name, email: _raw?.client?.email }); if (res === "paid") { showToast("Payment received.", "success"); loadData(); } } catch (e) { showToast(e instanceof ApiError ? e.message : "Payment could not be processed.", "error"); } }} className="text-xs px-2 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Pay Now</button>}{status!=="Paid" && <button onClick={() => handleMarkInvoicePaid({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0] text-[#102A43]">Mark Paid</button>}</div></div>))}</div>
         </div>
       );
       case "Payment Tracking": return (

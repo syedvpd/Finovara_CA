@@ -10,6 +10,7 @@ import { Page } from "../../types/index";
 import { useAuth } from "../../context";
 import { resources } from "../../services";
 import { api, ApiError } from "../../lib/api";
+import { payInvoiceWithRazorpay } from "../../lib/razorpay";
 
 // --- formatting helpers -----------------------------------------------------
 const money = (v: unknown) => `₹${Number(v ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -349,10 +350,18 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
                   {!paid && outstanding > 0 && (
                     <button onClick={async () => {
                       try {
-                        await resources.payments.create({ invoice_id: inv.id, amount: String(outstanding), payment_method: "online" } as any);
-                        showToast(`Payment of ${money(outstanding)} recorded.`, "success");
-                        load();
-                      } catch { showToast("Payment could not be processed.", "error"); }
+                        const result = await payInvoiceWithRazorpay(inv.id, {
+                          name: (profile as any)?.company_name ?? (profile as any)?.full_name,
+                          email: (profile as any)?.email,
+                          contact: (profile as any)?.phone ?? (profile as any)?.mobile,
+                        });
+                        if (result === "paid") {
+                          showToast(`Payment of ${money(outstanding)} received.`, "success");
+                          load();
+                        }
+                      } catch (e) {
+                        showToast(e instanceof ApiError ? e.message : "Payment could not be processed.", "error");
+                      }
                     }} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>Pay Now</button>
                   )}
                 </div>

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
+from app.core.compat import StrEnum
 
 
 class Bucket(StrEnum):

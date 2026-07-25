@@ -45,6 +45,17 @@ class Settings(BaseSettings):
     supabase_jwt_algorithm: str = "HS256"
     supabase_jwt_audience: str = "authenticated"
 
+    # --- Payments (Razorpay) -------------------------------------------------
+    payment_gateway: str = "razorpay"
+    payment_currency: str = "INR"
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    razorpay_webhook_secret: str = ""
+
+    @property
+    def razorpay_enabled(self) -> bool:
+        return bool(self.razorpay_key_id and self.razorpay_key_secret)
+
     # --- Redis ---------------------------------------------------------------
     redis_url: str = "redis://localhost:6379/0"
     redis_cache_ttl: int = 300

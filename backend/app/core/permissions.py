@@ -7,7 +7,7 @@ policies are defence in depth. This module is the single source of truth for
 
 from __future__ import annotations
 
-from enum import StrEnum
+from app.core.compat import StrEnum
 
 
 class Role(StrEnum):

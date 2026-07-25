@@ -33,4 +33,16 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  // Dev-server only (ignored by `vite build`). Mirrors vercel.json's /api rewrite
+  // so local dev talks to the deployed backend same-origin (cookies + CSRF work).
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.VITE_DEV_API_TARGET ?? 'https://finovara-ca.onrender.com',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
+  },
 })
