@@ -45,7 +45,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [leads, setLeads] = useState<any[]>([]);
   const [clientFilter, setClientFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
   const [blogForm, setBlogForm] = useState({ title: "", content: "", summary: "", metaTitle: "", metaDesc: "", status: "draft", publishAt: "" });
-  const [careerForm, setCareerForm] = useState({ job_title: "", department: "", location: "", description: "", requirements: "" });
+  const [careerForm, setCareerForm] = useState({ job_title: "", department: "", location: "", description: "", requirements: "", status: "open" });
   const [invoiceForm, setInvoiceForm] = useState({ clientId: "", due: "", description: "", amount: "" });
   const [queryForm, setQueryForm] = useState({ clientId: "", subject: "", description: "" });
   const [payrollForm, setPayrollForm] = useState({ month: String(new Date().getMonth() + 1), year: String(new Date().getFullYear()) });
@@ -108,7 +108,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     phone: "",
     source: "Website",
     service: "",
-    status: "Hot" as 'Hot' | 'Warm' | 'Cold' | 'Converted',
+    status: "new" as string,
     followUp: "Today",
   });
   const [formErrors, setFormErrors] = useState<{ pan?: string; gstin?: string }>({});
@@ -141,7 +141,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         resources.employees.list({ page_size: 100 }),
         resources.tasks.list({ page_size: 100 }),
         resources.leads.list({ page_size: 100 }),
-        resources.documents.list({ page_size: 200 }),
+        resources.documents.list({ page_size: 100 }),
         resources.notifications.list({ page_size: 50 }),
         resources.invoices.list({ page_size: 100 }),
         resources.payments.list({ page_size: 100 }),
@@ -155,9 +155,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         resources.engagements.list({ page_size: 100 }),
         resources.contactRequests.list({ page_size: 100 }),
         resources.payrollRuns.list({ page_size: 100 }),
-        resources.ledgerAccounts.list({ page_size: 200 }),
+        resources.ledgerAccounts.list({ page_size: 100 }),
         resources.vouchers.list({ page_size: 100 }),
-        resources.payrollProfiles.list({ page_size: 200 }),
+        resources.payrollProfiles.list({ page_size: 100 }),
       ]);
 
       setClients(_rowsOf(r[0]).map((c: any) => {
@@ -173,7 +173,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       setTasks(_rowsOf(r[3]).map((t: any) => ({ task: t.title, client: t.client_id?.slice(0, 8) ?? "—", assignee: t.assignments?.[0]?.assignee_name ?? "—",
         due: _date(t.due_date), priority: _tc(t.priority), status: _tc(t.status), _raw: t })));
       setLeads(_rowsOf(r[4]).map((l: any) => ({ name: l.company_name ?? l.name, contact: l.name, source: _tc(l.source),
-        service: "—", status: _tc(l.status), followUp: "—", _raw: l })));
+        service: "—", status: l.status, followUp: "—", _raw: l })));
       const allDocs = _rowsOf(r[5]);
       const pendingDocs = allDocs.filter((d: any) => _lc(d.status) === "pending");
       setReviewDocs(pendingDocs.map((d: any) => ({ id: d.id, doc: d.name, client: d.client_id?.slice(0, 8) ?? "—", uploaded: _date(d.created_at), reviewer: _tc(d.status) })));
@@ -254,8 +254,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       await loadData();
       setActionModal(null);
       showToast(okMsg, "success");
-    } catch {
-      showToast("Server rejected the change. Please check the fields and try again.", "error");
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "Server rejected the change. Please check the fields and try again.", "error");
     }
   };
   const _slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "svc";
@@ -313,14 +313,17 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setActionModal({ title: 'Delete Service', type: 'form', section: 'service', item: service });
   };
 
-  const openEditTask = (taskItem: { task: string; client: string; assignee: string; due: string; priority: string; status: string }) => {
+  const openEditTask = (taskItem: any) => {
+    const r = taskItem._raw ?? {};
     setTaskFormValues({
-      task: taskItem.task,
-      client: taskItem.client,
-      assignee: taskItem.assignee,
-      due: taskItem.due,
-      priority: taskItem.priority,
-      status: taskItem.status,
+      task: r.title ?? taskItem.task ?? "",
+      client: taskItem.client ?? "",
+      clientId: r.client_id ?? "",
+      taskType: r.task_type ?? "general",
+      assignee: taskItem.assignee ?? "",
+      due: r.due_date ? String(r.due_date).slice(0, 10) : "",
+      priority: _tc(r.priority ?? taskItem.priority ?? "medium"),
+      status: _tc(r.status ?? taskItem.status ?? "todo"),
     });
     setActionModal({ title: 'Edit Task', type: 'form', section: 'task', item: taskItem });
   };
@@ -422,16 +425,19 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
     const pan = formValues.pan.trim().toUpperCase();
     const gstin = formValues.gstin.trim().toUpperCase();
-    const panRegex = /^[A-Z]{5}\d{5}$/;
-    const gstinRegex = /^[A-Z0-9]{15}$/;
+    // Real Indian formats. PAN: 5 letters + 4 digits + 1 letter (e.g. ILGPM8672B).
+    // GSTIN: 2-digit state + 10-char PAN + entity + Z + checksum (e.g. 22ABCDE1234F1Z5).
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+    const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$/;
     const nextErrors: { pan?: string; gstin?: string } = {};
 
-    if (!panRegex.test(pan)) {
-      nextErrors.pan = 'PAN must be exactly 10 characters: 5 letters followed by 5 digits.';
+    // PAN/GSTIN are optional; only validate the format when a value is entered.
+    if (pan && !panRegex.test(pan)) {
+      nextErrors.pan = 'Enter a valid PAN, e.g. ABCDE1234F (5 letters, 4 digits, 1 letter).';
     }
 
-    if (!gstinRegex.test(gstin)) {
-      nextErrors.gstin = 'GSTIN must be exactly 15 characters.';
+    if (gstin && !gstinRegex.test(gstin)) {
+      nextErrors.gstin = 'Enter a valid 15-character GSTIN, e.g. 22ABCDE1234F1Z5.';
     }
 
     if (nextErrors.pan || nextErrors.gstin) {
@@ -513,7 +519,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     const status = _lc(taskFormValues.status);       // TASK_STATUSES: backlog|todo|in_progress|review|partner_approval|client_approval|done
     setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "todo" });
     if (!id) { setActionModal(null); return; }
-    persist(() => resources.tasks.update(id, { title: taskTitle, priority, status } as any), 'Task updated successfully.');
+    persist(() => resources.tasks.update(id, { title: taskTitle, priority, status, due_date: taskFormValues.due || undefined } as any), 'Task updated successfully.');
   };
 
   const handleDeleteTask = () => {
@@ -654,20 +660,20 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       source: _lc(leadFormValues.source),
       notes: leadFormValues.service.trim() || undefined,
     };
-    setLeadFormValues({ name: "", contact: "", email: "", phone: "", source: "Website", service: "", status: "Hot", followUp: "Today" });
+    setLeadFormValues({ name: "", contact: "", email: "", phone: "", source: "Website", service: "", status: "new", followUp: "Today" });
     persist(() => resources.leads.create(body), 'Lead added successfully.');
   };
 
   const openEditLead = (item: any) => {
     const l = item._raw ?? {};
-    setLeadFormValues({ name: l.company_name ?? l.name ?? "", contact: l.name ?? "", email: l.email ?? "", phone: l.phone ?? "", source: _tc(l.source) || "Website", service: l.notes ?? "", status: _tc(l.status) as any || "Hot", followUp: "Today" });
+    setLeadFormValues({ name: l.company_name ?? l.name ?? "", contact: l.name ?? "", email: l.email ?? "", phone: l.phone ?? "", source: _tc(l.source) || "Website", service: l.notes ?? "", status: (l.status ?? "new"), followUp: "Today" });
     setActionModal({ title: 'Edit Lead', type: 'form', section: 'lead', item });
   };
 
   const handleUpdateLead = () => {
     const id = actionModal?.item?._raw?.id;
     if (!id) { setActionModal(null); return; }
-    persist(() => resources.leads.update(id, { company_name: leadFormValues.name.trim(), status: _lc(leadFormValues.status), notes: leadFormValues.service.trim() || undefined } as any), 'Lead updated successfully.');
+    persist(() => resources.leads.update(id, { company_name: leadFormValues.name.trim(), status: leadFormValues.status, notes: leadFormValues.service.trim() || undefined } as any), 'Lead updated successfully.');
   };
 
   const handleConvertLead = async (item: any) => {
@@ -678,11 +684,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     try {
       await api.post("/onboarding/clients", { full_name: name, email, company_name: name, client_type: "private_limited" });
       try { await requestPasswordReset(email); } catch { /* email best-effort */ }
-      if (l.id) { try { await resources.leads.update(l.id, { status: "converted" } as any); } catch { /* non-fatal */ } }
+      if (l.id) { try { await resources.leads.update(l.id, { status: "won" } as any); } catch { /* non-fatal */ } }
       await loadData();
       showToast(`Converted — client account created for ${email}.`, 'success');
-    } catch {
-      showToast('Could not convert lead. Email may already exist.', 'error');
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : 'Could not convert lead. The email may already have an account.', 'error');
     }
   };
 
@@ -702,7 +708,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     persist(() => resources.blogs.update(id, body), 'Post updated.');
   };
 
-  const openEditCareer = (item: any) => { const c = item._raw ?? {}; setCareerForm({ job_title: c.job_title ?? "", department: c.department ?? "", location: c.location ?? "", description: c.description ?? "", requirements: c.requirements ?? "" }); setActionModal({ title: 'Edit Job', type: 'form', item }); };
+  const openEditCareer = (item: any) => { const c = item._raw ?? {}; setCareerForm({ job_title: c.job_title ?? "", department: c.department ?? "", location: c.location ?? "", description: c.description ?? "", requirements: c.requirements ?? "", status: c.status ?? "open" }); setActionModal({ title: 'Edit Job', type: 'form', item }); };
+  const handleToggleCareer = (item: any) => { const id = item?._raw?.id; if (!id) return; const next = item._raw.status === "open" ? "closed" : "open"; persist(() => resources.careers.update(id, { status: next } as any), `Job ${next === "open" ? "reopened" : "closed"}.`); };
   const handleAddCareer = () => {
     const { job_title, department, location, description, requirements } = careerForm;
     if (!job_title.trim() || !description.trim() || !requirements.trim()) { showToast('Job title, description and requirements are required.', 'error'); return; }
@@ -711,7 +718,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   };
   const handleUpdateCareer = () => {
     const id = actionModal?.item?._raw?.id; if (!id) { setActionModal(null); return; }
-    persist(() => resources.careers.update(id, { job_title: careerForm.job_title.trim(), description: careerForm.description.trim() || undefined, requirements: careerForm.requirements.trim() || undefined } as any), 'Job updated.');
+    persist(() => resources.careers.update(id, { job_title: careerForm.job_title.trim(), description: careerForm.description.trim() || undefined, requirements: careerForm.requirements.trim() || undefined, status: careerForm.status } as any), 'Job updated.');
   };
 
   // Forward path of each backend state machine (see core/constants.py transitions).
@@ -834,7 +841,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     if (!auditForm.start) { showToast('Please set a start date.', 'error'); return; }
     persist(() => resources.audits.create({ client_id: client._raw.id, service_id: service._raw.id,
       start_date: auditForm.start, end_date: auditForm.end || undefined,
-      audit_type: auditForm.type, risk_rating: auditForm.risk } as any), 'Audit created.');
+      audit_type: _lc(auditForm.type), risk_rating: _lc(auditForm.risk) } as any), 'Audit created.');
   };
   const setAuditRisk = (item: any, risk: string) => {
     if (!item._raw?.id) return;
@@ -862,7 +869,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   };
   const handleAddLedger = () => {
     if (!ledgerForm.code.trim() || !ledgerForm.name.trim()) { showToast('Account code and name are required.', 'error'); return; }
-    persist(() => resources.ledgerAccounts.create({ account_code: ledgerForm.code.trim(), account_name: ledgerForm.name.trim(), account_type: ledgerForm.type } as any), 'Ledger account created.');
+    persist(() => resources.ledgerAccounts.create({ account_code: ledgerForm.code.trim(), account_name: ledgerForm.name.trim(), account_type: _lc(ledgerForm.type) } as any), 'Ledger account created.');
   };
 
   const handleAddQuery = () => {
@@ -911,13 +918,16 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     if (!amt) { showToast('Amount must be a valid number.', 'error'); return; }
     const client = clients.find(c => c._raw?.id === clientId);
     if (!client) { showToast('Please select a valid client.', 'error'); return; }
+    if (!debit_account || !credit_account) { showToast('Select both a debit and a credit account.', 'error'); return; }
     persist(() => api.post("/vouchers", {
-      voucher_date: date,
-      description: description.trim(),
       client_id: clientId,
+      branch_id: client._raw.branch_id,
+      voucher_type: "journal",
+      voucher_date: date,
+      narration: description.trim(),
       lines: [
-        { account_code_or_id: debit_account || undefined, debit_amount: String(amt), credit_amount: "0" },
-        { account_code_or_id: credit_account || undefined, debit_amount: "0", credit_amount: String(amt) },
+        { account_id: debit_account, debit_amount: String(amt), credit_amount: "0" },
+        { account_id: credit_account, debit_amount: "0", credit_amount: String(amt) },
       ],
     } as any), 'Voucher created.');
     setVoucherForm({ date: "", description: "", debit_account: "", credit_account: "", amount: "", clientId: "" });
@@ -1547,14 +1557,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <div className="text-sm text-[#52606D]">{tasks.length} open tasks across {new Set(tasks.map(task => task.assignee)).size} staff members</div>
             <button onClick={() => { setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "todo" }); setActionModal({title: 'Assign Task', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><ClipboardList size={13} /> Assign Task</button>
           </div>
-          {tasks.map(({task,client,assignee,due,priority,status}) => (
+          {tasks.map(({task,client,assignee,due,priority,status,_raw}: any) => (
             <div key={task} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex-1"><div className="font-bold text-[#102A43] text-sm mb-1" style={{ fontFamily:"Manrope" }}>{task}</div><div className="flex gap-3 text-xs text-[#52606D]"><span>Client: {client}</span><span>Assignee: {assignee}</span><span>Due: {due}</span></div></div>
               <div className="flex items-center gap-2 ml-4">
                 <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:priority==="High"?"#FFF0F0":priority==="Medium"?"#FFF4E0":"#EAF4F0",color:priority==="High"?"#e53e3e":priority==="Medium"?"#C8A45D":"#087F5B" }}>{priority}</span>
                 <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="In Progress"?"#EAF4F0":status==="Pending"?"#FFF4E0":"#EEF1F5",color:status==="In Progress"?"#087F5B":status==="Pending"?"#C8A45D":"#52606D" }}>{status}</span>
-                <button onClick={() => openEditTask({ task, client, assignee, due, priority, status })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
-                <button onClick={() => openDeleteTask({ task, client, assignee, due, priority, status })} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
+                <button onClick={() => openEditTask({ task, client, assignee, due, priority, status, _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
+                <button onClick={() => openDeleteTask({ task, client, assignee, due, priority, status, _raw })} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
               </div>
             </div>
           ))}
@@ -1699,7 +1709,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Careers Management": return (
         <div>
           <div className="flex items-center justify-between mb-5"><div className="text-sm text-[#52606D]">{careersList.length} positions</div><button onClick={() => { setCareerForm({ job_title: "", department: "", location: "", description: "", requirements: "" }); setActionModal({title: 'New Job', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Briefcase size={13} /> Post Job</button></div>
-          <div className="space-y-3">{careersList.map(({role,type,loc,apps,status,_raw}: any) => (<div key={role} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{role}</div><div className="text-xs text-[#52606D]">{type} · {loc} · {apps} applications</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#102A43",color:status==="Active"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => openEditCareer({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button></div></div>))}</div>
+          <div className="space-y-3">{careersList.map(({role,type,loc,apps,status,_raw}: any) => (<div key={role} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{role}</div><div className="text-xs text-[#52606D]">{type} · {loc} · {apps} applications</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#102A43",color:status==="Active"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => handleToggleCareer({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">{_raw?.status === "open" ? "Close" : "Reopen"}</button><button onClick={() => openEditCareer({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button></div></div>))}</div>
         </div>
       );
       case "Website CMS": return (
@@ -1786,13 +1796,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Lead Management": return (
         <div>
           <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-            <div className="flex gap-3">{[{l:"Total Leads",v:leads.length},{l:"This Month",v:leads.filter(lead => lead.followUp !== "Done").length},{l:"Converted",v:leads.filter(lead => lead.status === "Converted").length}].map(({l,v}) => <div key={l} className="px-4 py-2 bg-white rounded-xl border border-[#E2E8F0] text-center"><div className="font-extrabold text-sm text-[#087F5B]" style={{ fontFamily:"Manrope" }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>)}</div>
+            <div className="flex gap-3">{[{l:"Total Leads",v:leads.length},{l:"This Month",v:leads.filter(lead => lead.followUp !== "Done").length},{l:"Converted",v:leads.filter(lead => lead.status === "won").length}].map(({l,v}) => <div key={l} className="px-4 py-2 bg-white rounded-xl border border-[#E2E8F0] text-center"><div className="font-extrabold text-sm text-[#087F5B]" style={{ fontFamily:"Manrope" }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>)}</div>
             <div className="flex gap-2">
               <button onClick={() => { setReminderForm({ subject: "", body: "", when: "" }); setActionModal({title: 'Set Reminder', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl border border-[#E2E8F0] text-[#52606D]"><Bell size={13} /> Reminder</button>
-              <button onClick={() => { setLeadFormValues({ name: "", contact: "", email: "", phone: "", source: "Website", service: "", status: "Hot", followUp: "Today" }); setActionModal({title: 'Add Lead', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Target size={13} /> Add Lead</button>
+              <button onClick={() => { setLeadFormValues({ name: "", contact: "", email: "", phone: "", source: "Website", service: "", status: "new", followUp: "Today" }); setActionModal({title: 'Add Lead', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Target size={13} /> Add Lead</button>
             </div>
           </div>
-          <div className="space-y-3">{leads.map(({name,contact,source,service,status,followUp,_raw}) => (<div key={`${name}-${contact}`} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{name} · {contact}</div><div className="text-xs text-[#52606D]">{source} · {service} · Follow-up: {followUp}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Hot"?"#FFF0F0":status==="Warm"?"#FFF4E0":status==="Converted"?"#EAF4F0":"#EEF1F5",color:status==="Hot"?"#e53e3e":status==="Warm"?"#C8A45D":status==="Converted"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => openEditLead(leads.find(x => x._raw?.id === _raw?.id) ?? { _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Update</button>{status !== "Converted" && <button onClick={() => handleConvertLead({ _raw })} className="text-xs px-2 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Convert</button>}</div></div>))}</div>
+          <div className="space-y-3">{leads.map(({name,contact,source,service,status,followUp,_raw}) => (<div key={`${name}-${contact}`} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{name} · {contact}</div><div className="text-xs text-[#52606D]">{source} · {service} · Follow-up: {followUp}</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="won"?"#EAF4F0":status==="lost"?"#FFF0F0":"#FFF4E0",color:status==="won"?"#087F5B":status==="lost"?"#e53e3e":"#C8A45D" }}>{_tc(status)}</span><button onClick={() => openEditLead(leads.find(x => x._raw?.id === _raw?.id) ?? { _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Update</button>{status !== "won" && status !== "lost" && <button onClick={() => handleConvertLead({ _raw })} className="text-xs px-2 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Convert</button>}</div></div>))}</div>
         </div>
       );
       case "Settings": return (
@@ -1958,7 +1968,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     <div className="h-screen flex flex-col overflow-hidden relative" style={{ background: "#F7F9FC" }}>
       {actionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md border border-[#E2E8F0] animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md border border-[#E2E8F0] animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-5">
               <h3 className="text-lg font-bold text-[#102A43]">{actionModal.title}</h3>
               <button onClick={() => setActionModal(null)} className="text-[#52606D] hover:text-[#102A43]"><X size={20} /></button>
@@ -2117,11 +2127,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-[#102A43] mb-1">Status</label>
-                    <select value={leadFormValues.status} onChange={(e) => setLeadFormValues(prev => ({ ...prev, status: e.target.value as 'Hot' | 'Warm' | 'Cold' | 'Converted' }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
-                      <option value="Hot">Hot</option>
-                      <option value="Warm">Warm</option>
-                      <option value="Cold">Cold</option>
-                      <option value="Converted">Converted</option>
+                    <select value={leadFormValues.status} onChange={(e) => setLeadFormValues(prev => ({ ...prev, status: e.target.value as string }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]">
+                      <option value="new">New</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="consultation_scheduled">Consultation</option>
+                      <option value="proposal_sent">Proposal Sent</option>
+                      <option value="onboarding">Onboarding</option>
+                      <option value="won">Won</option>
+                      <option value="lost">Lost</option>
                     </select>
                   </div>
                   <div>
@@ -2299,8 +2312,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 </div>
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Description *</label><input type="text" value={voucherForm.description} onChange={(e) => setVoucherForm(p => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Description of entry" /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Debit Account</label><input type="text" value={voucherForm.debit_account} onChange={(e) => setVoucherForm(p => ({ ...p, debit_account: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="1001" /></div>
-                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Credit Account</label><input type="text" value={voucherForm.credit_account} onChange={(e) => setVoucherForm(p => ({ ...p, credit_account: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="2001" /></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Debit Account</label><select value={voucherForm.debit_account} onChange={(e) => setVoucherForm(p => ({ ...p, debit_account: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B]"><option value="">Select account…</option>{ledgerAccounts.map((a: any) => <option key={a._raw?.id} value={a._raw?.id}>{a.code} · {a.name}</option>)}</select></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Credit Account</label><select value={voucherForm.credit_account} onChange={(e) => setVoucherForm(p => ({ ...p, credit_account: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B]"><option value="">Select account…</option>{ledgerAccounts.map((a: any) => <option key={a._raw?.id} value={a._raw?.id}>{a.code} · {a.name}</option>)}</select></div>
                 </div>
                 <div className="text-xs text-[#52606D]">Debit amount must equal credit amount.</div>
               </div>
@@ -2389,6 +2402,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 </div>
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Description *</label><textarea value={careerForm.description} onChange={(e) => setCareerForm(p => ({ ...p, description: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Role description" /></div>
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Requirements *</label><textarea value={careerForm.requirements} onChange={(e) => setCareerForm(p => ({ ...p, requirements: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Requirements" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Status</label><select value={careerForm.status} onChange={(e) => setCareerForm(p => ({ ...p, status: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B]"><option value="open">Open (accepting applications)</option><option value="closed">Closed</option></select></div>
               </div>
             ) : actionModal.title?.startsWith('Delete') ? (
               <div className="mb-5 text-sm text-[#52606D]">

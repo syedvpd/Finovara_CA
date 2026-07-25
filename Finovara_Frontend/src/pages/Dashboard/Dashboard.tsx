@@ -57,6 +57,8 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
   const [notifications, setNotifications] = useState<Row[]>([]);
   const [queries, setQueries] = useState<Row[]>([]);
   const [reports, setReports] = useState<Row[]>([]);
+  const [messages, setMessages] = useState<Row[]>([]);
+  const [chatText, setChatText] = useState("");
 
   const rows = (r: PromiseSettledResult<any>): Row[] =>
     r.status === "fulfilled" ? (r.value?.data ?? r.value ?? []) : [];
@@ -71,7 +73,7 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
       api.get<Row>("/auth/me"),
       resources.engagements.list({ page_size: 50 }),   // client_services (ClientServiceRead)
       resources.tasks.list({ page_size: 100 }),
-      resources.documents.list({ page_size: 200 }),
+      resources.documents.list({ page_size: 100 }),
       resources.documentRequests.list({ page_size: 50 }),
       resources.invoices.list({ page_size: 50, sort_by: "issue_date" }),
       resources.payments.list({ page_size: 50 }),
@@ -79,6 +81,7 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
       resources.queries.list({ page_size: 50 }),
       resources.reports.list({ page_size: 50 }),
       resources.services.list({ page_size: 100 }),      // catalogue for id → name
+      resources.messages.list({ page_size: 100 }),      // chat with assigned consultant
     ]);
     if (r[0].status === "fulfilled") setProfile(r[0].value);
     setServices(rows(r[1]));
@@ -92,6 +95,7 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
     setReports(rows(r[9]));
     const catalogue = rows(r[10]);
     setServiceNames(Object.fromEntries(catalogue.map((s) => [s.id, s.name])));
+    setMessages(rows(r[11]));
     setLoading(false);
   }, []);
 
@@ -142,6 +146,30 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
       showToast(err instanceof ApiError ? err.message : "Upload failed. Please try again.", "error");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDownloadReport = async (report: Row) => {
+    try {
+      const res = await api.get<Row>(`/reports/${report.id}/download`);
+      const url = res?.url ?? res?.signed_url ?? res?.download_url;
+      if (url) { window.open(url, "_blank", "noopener"); return; }
+      showToast("This report isn't ready to download yet.", "error");
+    } catch {
+      showToast("Could not fetch the report link.", "error");
+    }
+  };
+
+  const handleSendMessage = async () => {
+    const text = chatText.trim();
+    if (!text) return;
+    if (!session?.client_id) { showToast("No client profile linked to this account.", "error"); return; }
+    try {
+      await api.post("/messages", { client_id: session.client_id, message_text: text });
+      setChatText("");
+      setMessages((await resources.messages.list({ page_size: 100 })).data);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Message could not be sent.", "error");
     }
   };
 
@@ -325,7 +353,12 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#EAF4F0" }}><BarChart2 size={16} style={{ color: "#087F5B" }} /></div>
                 <div><div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{r.title}</div><div className="text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>{titleCase(r.report_type)} · {titleCase(r.status)}{r.generated_at ? ` · ${fmtDate(r.generated_at)}` : ""}</div></div>
               </div>
-              <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: r.status === "completed" ? "#EAF4F0" : "#FFF4E0", color: r.status === "completed" ? "#087F5B" : "#C8A45D" }}>{titleCase(r.status)}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: (r.status === "completed" || r.status === "ready") ? "#EAF4F0" : "#FFF4E0", color: (r.status === "completed" || r.status === "ready") ? "#087F5B" : "#C8A45D" }}>{titleCase(r.status)}</span>
+                {r.status !== "queued" && r.status !== "generating" && r.status !== "failed" && (
+                  <button onClick={() => handleDownloadReport(r)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>Download</button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -460,8 +493,8 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
         );
       }
       case "Assigned Consultant": return (
-        <div className="max-w-sm">
-          <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0]">
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] w-full lg:max-w-sm">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-xl text-white mb-4" style={{ background: "linear-gradient(135deg, #102A43, #087F5B)", fontFamily: "Manrope" }}>FC</div>
             <div className="font-bold text-[#102A43] text-xl mb-1" style={{ fontFamily: "Manrope" }}>Your Finovara Team</div>
             <div className="text-sm mb-4" style={{ color: "#087F5B", fontFamily: "Inter" }}>Relationship Manager assigned</div>
@@ -472,6 +505,27 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
               </div>
             ))}
             <button onClick={() => { setActiveTab("Open Queries"); }} className="mt-4 w-full py-3 rounded-xl text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)", fontFamily: "Inter" }}>Raise a Query</button>
+          </div>
+          <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] flex-1 flex flex-col" style={{ minHeight: 440 }}>
+            <div className="font-bold text-[#102A43] text-lg mb-4" style={{ fontFamily: "Manrope" }}>Chat with your consultant</div>
+            <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1" style={{ maxHeight: 360 }}>
+              {messages.length === 0 && <div className="text-sm text-[#52606D] text-center py-10">No messages yet. Start the conversation with your consultant.</div>}
+              {messages.map((m) => {
+                const mine = m.sender_type === "client";
+                return (
+                  <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm ${mine ? "text-white" : "text-[#102A43]"}`} style={{ background: mine ? "linear-gradient(135deg,#087F5B,#065a40)" : "#EAF4F0", fontFamily: "Inter" }}>
+                      <div>{m.message_text}</div>
+                      <div className="text-[10px] mt-1 opacity-70">{fmtDate(m.created_at)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              <input value={chatText} onChange={(e) => setChatText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSendMessage(); }} placeholder="Type a message…" className="flex-1 px-4 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B]" />
+              <button onClick={handleSendMessage} className="px-5 py-2 rounded-xl text-white text-sm font-semibold" style={{ background: "linear-gradient(135deg,#087F5B,#065a40)" }}>Send</button>
+            </div>
           </div>
         </div>
       );
