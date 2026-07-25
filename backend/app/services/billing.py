@@ -7,13 +7,16 @@ outstanding amounts are maintained by the database reconciliation trigger.
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.constants import INVOICE_TRANSITIONS
 from app.core.exceptions import (
     AlreadyExistsError,
@@ -246,6 +249,149 @@ class PaymentService(BaseService[Payment, PaymentRepository]):
                 "reconciled_at": datetime.now(timezone.utc),
             },
             actor_id=auth.user_id,
+        )
+
+    # --- Razorpay online payments -------------------------------------------
+
+    async def _outstanding(self, invoice: Invoice) -> Decimal:
+        already = await self.repo.cleared_total(invoice.id)
+        credited = await CreditNoteRepository(self.repo.session).active_total(invoice.id)
+        return money(invoice.total_amount - credited - already)
+
+    async def _payment_by_txn(self, ref: str) -> Payment | None:
+        result = await self.repo.session.execute(
+            select(Payment).where(Payment.transaction_id == ref)
+        )
+        return result.scalar_one_or_none()
+
+    async def create_razorpay_order(self, invoice_id: UUID, auth: AuthContext) -> dict[str, Any]:
+        """Create a Razorpay order for an invoice's outstanding balance."""
+        from app.services.razorpay import RazorpayGateway
+
+        self._require(auth, Action.CREATE)
+        invoice = await InvoiceRepository(self.repo.session).get(invoice_id)
+        if invoice is None:
+            raise NotFoundError("Invoice", invoice_id)
+        if auth.is_client and invoice.client_id != auth.client_id:
+            raise ForbiddenError("You can only pay your own invoices.")
+        if invoice.status == "void":
+            raise ConflictError("This invoice has been voided.")
+        if invoice.status == "draft":
+            raise ConflictError("This invoice has not been issued yet.")
+
+        outstanding = await self._outstanding(invoice)
+        if outstanding <= ZERO:
+            raise ConflictError("This invoice is already fully paid.")
+
+        amount_paise = int((outstanding * 100).to_integral_value())
+        order = await RazorpayGateway.create_order(
+            amount_paise=amount_paise,
+            currency=settings.payment_currency.upper(),
+            receipt=invoice.invoice_number,
+            notes={"invoice_id": str(invoice.id), "client_id": str(invoice.client_id)},
+        )
+
+        # Record a pending payment keyed by the order id; capture flips it to cleared.
+        if not await self._payment_by_txn(order["id"]):
+            await self.repo.create(
+                {
+                    "invoice_id": invoice.id,
+                    "client_id": invoice.client_id,
+                    "amount": outstanding,
+                    "payment_date": date.today(),
+                    "payment_method": "card",
+                    "transaction_id": order["id"],
+                    "status": "pending",
+                },
+                actor_id=auth.user_id,
+            )
+
+        return {
+            "order_id": order["id"],
+            "amount": amount_paise,
+            "currency": order["currency"],
+            "key_id": settings.razorpay_key_id,
+            "invoice_number": invoice.invoice_number,
+            "name": "Finovara Chartered Accountants LLP",
+        }
+
+    async def record_razorpay_capture(
+        self, order_id: str, payment_id: str, signature: str, auth: AuthContext
+    ) -> Payment:
+        """Verify the checkout callback and settle the payment (client-facing)."""
+        self._require(auth, Action.CREATE)
+        return await self._settle_capture(
+            order_id, payment_id, signature, actor_id=auth.user_id, verify_sig=True
+        )
+
+    async def handle_razorpay_webhook(self, raw_body: bytes, signature: str) -> dict[str, Any]:
+        """Gateway-to-server webhook: settle on payment.captured (idempotent)."""
+        from app.services.razorpay import RazorpayGateway
+
+        if not RazorpayGateway.verify_webhook_signature(raw_body, signature):
+            raise ForbiddenError("Invalid webhook signature.")
+        event = json.loads(raw_body or b"{}")
+        if event.get("event") != "payment.captured":
+            return {"ignored": event.get("event")}
+        entity = (event.get("payload") or {}).get("payment", {}).get("entity", {})
+        order_id, payment_id = entity.get("order_id"), entity.get("id")
+        if not order_id or not payment_id:
+            return {"ignored": "missing_ids"}
+        await self._settle_capture(
+            order_id, payment_id, signature="", actor_id=None,
+            verify_sig=False, method=entity.get("method"),
+        )
+        return {"processed": payment_id}
+
+    async def _settle_capture(
+        self, order_id: str, payment_id: str, signature: str, *,
+        actor_id: UUID | None, verify_sig: bool, method: str | None = None,
+    ) -> Payment:
+        from app.services.razorpay import RazorpayGateway, map_method
+
+        if verify_sig and not RazorpayGateway.verify_payment_signature(order_id, payment_id, signature):
+            raise ForbiddenError("Payment signature verification failed.")
+
+        # Authoritative: re-fetch from Razorpay and confirm it was actually captured.
+        entity = await RazorpayGateway.fetch_payment(payment_id)
+        if entity.get("order_id") != order_id:
+            raise ConflictError("Payment does not match the order.")
+        if entity.get("status") not in ("captured", "authorized"):
+            raise ConflictError(f"Payment not captured (status={entity.get('status')}).")
+
+        # Idempotency — already settled under the gateway payment id.
+        settled = await self._payment_by_txn(payment_id)
+        if settled and settled.status == "cleared":
+            return settled
+
+        method_code = map_method(method or entity.get("method"))
+        pending = await self._payment_by_txn(order_id)
+        if pending is not None:
+            return await self.repo.update(
+                pending,
+                {"status": "cleared", "transaction_id": payment_id, "payment_method": method_code},
+                actor_id=actor_id,
+            )
+
+        # Fallback (webhook without a pre-recorded order row): create from notes.
+        invoice_id = (entity.get("notes") or {}).get("invoice_id")
+        if not invoice_id:
+            logger.warning("razorpay_capture_no_invoice", order_id=order_id, payment_id=payment_id)
+            raise ConflictError("Could not map the payment to an invoice.")
+        invoice = await InvoiceRepository(self.repo.session).get(UUID(invoice_id))
+        if invoice is None:
+            raise NotFoundError("Invoice", invoice_id)
+        return await self.repo.create(
+            {
+                "invoice_id": invoice.id,
+                "client_id": invoice.client_id,
+                "amount": money(Decimal(entity["amount"]) / 100),
+                "payment_date": date.today(),
+                "payment_method": method_code,
+                "transaction_id": payment_id,
+                "status": "cleared",
+            },
+            actor_id=actor_id,
         )
 
 

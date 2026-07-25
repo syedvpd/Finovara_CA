@@ -83,6 +83,7 @@ api_router.include_router(accounting.bank_router, prefix="/bank-transactions", t
 # Billing
 api_router.include_router(billing.router, prefix="/invoices", tags=["Invoices"])
 api_router.include_router(billing.payments_router, prefix="/payments", tags=["Payments"])
+api_router.include_router(billing.razorpay_webhook_router, prefix="/payments", tags=["Payments"])
 api_router.include_router(billing.credit_notes_router, prefix="/credit-notes", tags=["Payments · Credit Notes"])
 api_router.include_router(billing.refunds_router, prefix="/refunds", tags=["Payments · Refunds"])
 

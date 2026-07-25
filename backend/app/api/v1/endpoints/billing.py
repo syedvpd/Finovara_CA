@@ -3,7 +3,8 @@
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Request, status
+from fastapi import APIRouter, Header, Query, Request, status
+from pydantic import BaseModel
 
 from app.api.crud_router import build_crud_router
 from app.api.deps import CurrentUser, DbSession
@@ -139,6 +140,61 @@ async def reconcile_payment(
     return SuccessResponse[PaymentRead](
         data=PaymentRead.model_validate(payment), request_id=_rid(request)
     )
+
+
+# --- Razorpay online payments ------------------------------------------------
+
+
+class RazorpayOrderRequest(BaseModel):
+    invoice_id: UUID
+
+
+class RazorpayVerifyRequest(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+
+@payments_router.post(
+    "/razorpay/order",
+    response_model=SuccessResponse[dict],
+    summary="Create a Razorpay order for an invoice's outstanding balance",
+)
+async def razorpay_order(
+    request: Request, body: RazorpayOrderRequest, session: DbSession, auth: CurrentUser
+) -> SuccessResponse[dict]:
+    data = await payment_service(session).create_razorpay_order(body.invoice_id, auth)
+    return SuccessResponse[dict](data=data, request_id=_rid(request))
+
+
+@payments_router.post(
+    "/razorpay/verify",
+    response_model=SuccessResponse[PaymentRead],
+    summary="Verify a Razorpay checkout callback and settle the payment",
+)
+async def razorpay_verify(
+    request: Request, body: RazorpayVerifyRequest, session: DbSession, auth: CurrentUser
+) -> SuccessResponse[PaymentRead]:
+    payment = await payment_service(session).record_razorpay_capture(
+        body.razorpay_order_id, body.razorpay_payment_id, body.razorpay_signature, auth
+    )
+    return SuccessResponse[PaymentRead](
+        data=PaymentRead.model_validate(payment), request_id=_rid(request)
+    )
+
+
+# Public, unauthenticated: Razorpay calls this server-to-server. Verified by the
+# webhook HMAC signature, not by a session cookie.
+razorpay_webhook_router: APIRouter = APIRouter()
+
+
+@razorpay_webhook_router.post("/razorpay/webhook", summary="Razorpay payment webhook")
+async def razorpay_webhook(
+    request: Request, session: DbSession, x_razorpay_signature: str = Header(default="")
+) -> dict[str, Any]:
+    raw = await request.body()
+    result = await payment_service(session).handle_razorpay_webhook(raw, x_razorpay_signature)
+    return {"success": True, **result}
 
 
 # --- Credit notes and refunds ------------------------------------------------
