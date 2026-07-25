@@ -841,7 +841,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     if (!auditForm.start) { showToast('Please set a start date.', 'error'); return; }
     persist(() => resources.audits.create({ client_id: client._raw.id, service_id: service._raw.id,
       start_date: auditForm.start, end_date: auditForm.end || undefined,
-      audit_type: auditForm.type, risk_rating: auditForm.risk } as any), 'Audit created.');
+      audit_type: _lc(auditForm.type), risk_rating: _lc(auditForm.risk) } as any), 'Audit created.');
   };
   const setAuditRisk = (item: any, risk: string) => {
     if (!item._raw?.id) return;
