@@ -79,9 +79,9 @@ TASK_STATUSES: tuple[str, ...] = (
 #: The documented task lifecycle. Any task may be sent back for rework.
 TASK_TRANSITIONS: dict[str, set[str]] = {
     "backlog": {"todo"},
-    "todo": {"in_progress", "backlog"},
-    "in_progress": {"review", "todo"},
-    "review": {"partner_approval", "in_progress"},
+    "todo": {"in_progress", "backlog", "done"},
+    "in_progress": {"review", "todo", "done"},
+    "review": {"partner_approval", "in_progress", "done"},
     "partner_approval": {"client_approval", "done", "in_progress"},
     "client_approval": {"done", "in_progress"},
     "done": set(),
