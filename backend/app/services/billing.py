@@ -116,7 +116,9 @@ class InvoiceService(BaseService[Invoice, InvoiceRepository]):
                 "branch_id": payload["branch_id"],
                 "issue_date": payload.get("issue_date") or date.today(),
                 "due_date": payload["due_date"],
-                "status": "draft",
+                # Issued on creation so the client can pay immediately (workflow:
+                # Invoice Generated -> Payment). Void to cancel.
+                "status": "sent",
                 "subtotal": money(subtotal),
                 "discount_amount": discount,
                 "discount_approved_by": discount_approver,

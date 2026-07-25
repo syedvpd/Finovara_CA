@@ -866,7 +866,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   };
   const handleAddLedger = () => {
     if (!ledgerForm.code.trim() || !ledgerForm.name.trim()) { showToast('Account code and name are required.', 'error'); return; }
-    persist(() => resources.ledgerAccounts.create({ account_code: ledgerForm.code.trim(), account_name: ledgerForm.name.trim(), account_type: ledgerForm.type } as any), 'Ledger account created.');
+    persist(() => resources.ledgerAccounts.create({ account_code: ledgerForm.code.trim(), account_name: ledgerForm.name.trim(), account_type: _lc(ledgerForm.type) } as any), 'Ledger account created.');
   };
 
   const handleAddQuery = () => {
@@ -915,13 +915,16 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     if (!amt) { showToast('Amount must be a valid number.', 'error'); return; }
     const client = clients.find(c => c._raw?.id === clientId);
     if (!client) { showToast('Please select a valid client.', 'error'); return; }
+    if (!debit_account || !credit_account) { showToast('Select both a debit and a credit account.', 'error'); return; }
     persist(() => api.post("/vouchers", {
-      voucher_date: date,
-      description: description.trim(),
       client_id: clientId,
+      branch_id: client._raw.branch_id,
+      voucher_type: "journal",
+      voucher_date: date,
+      narration: description.trim(),
       lines: [
-        { account_code_or_id: debit_account || undefined, debit_amount: String(amt), credit_amount: "0" },
-        { account_code_or_id: credit_account || undefined, debit_amount: "0", credit_amount: String(amt) },
+        { account_id: debit_account, debit_amount: String(amt), credit_amount: "0" },
+        { account_id: credit_account, debit_amount: "0", credit_amount: String(amt) },
       ],
     } as any), 'Voucher created.');
     setVoucherForm({ date: "", description: "", debit_account: "", credit_account: "", amount: "", clientId: "" });
@@ -2306,8 +2309,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 </div>
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Description *</label><input type="text" value={voucherForm.description} onChange={(e) => setVoucherForm(p => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="Description of entry" /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Debit Account</label><input type="text" value={voucherForm.debit_account} onChange={(e) => setVoucherForm(p => ({ ...p, debit_account: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="1001" /></div>
-                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Credit Account</label><input type="text" value={voucherForm.credit_account} onChange={(e) => setVoucherForm(p => ({ ...p, credit_account: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B]" placeholder="2001" /></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Debit Account</label><select value={voucherForm.debit_account} onChange={(e) => setVoucherForm(p => ({ ...p, debit_account: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B]"><option value="">Select account…</option>{ledgerAccounts.map((a: any) => <option key={a._raw?.id} value={a._raw?.id}>{a.code} · {a.name}</option>)}</select></div>
+                  <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Credit Account</label><select value={voucherForm.credit_account} onChange={(e) => setVoucherForm(p => ({ ...p, credit_account: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:border-[#087F5B]"><option value="">Select account…</option>{ledgerAccounts.map((a: any) => <option key={a._raw?.id} value={a._raw?.id}>{a.code} · {a.name}</option>)}</select></div>
                 </div>
                 <div className="text-xs text-[#52606D]">Debit amount must equal credit amount.</div>
               </div>
