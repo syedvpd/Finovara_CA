@@ -313,14 +313,17 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setActionModal({ title: 'Delete Service', type: 'form', section: 'service', item: service });
   };
 
-  const openEditTask = (taskItem: { task: string; client: string; assignee: string; due: string; priority: string; status: string }) => {
+  const openEditTask = (taskItem: any) => {
+    const r = taskItem._raw ?? {};
     setTaskFormValues({
-      task: taskItem.task,
-      client: taskItem.client,
-      assignee: taskItem.assignee,
-      due: taskItem.due,
-      priority: taskItem.priority,
-      status: taskItem.status,
+      task: r.title ?? taskItem.task ?? "",
+      client: taskItem.client ?? "",
+      clientId: r.client_id ?? "",
+      taskType: r.task_type ?? "general",
+      assignee: taskItem.assignee ?? "",
+      due: r.due_date ? String(r.due_date).slice(0, 10) : "",
+      priority: _tc(r.priority ?? taskItem.priority ?? "medium"),
+      status: _tc(r.status ?? taskItem.status ?? "todo"),
     });
     setActionModal({ title: 'Edit Task', type: 'form', section: 'task', item: taskItem });
   };
@@ -516,7 +519,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     const status = _lc(taskFormValues.status);       // TASK_STATUSES: backlog|todo|in_progress|review|partner_approval|client_approval|done
     setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "todo" });
     if (!id) { setActionModal(null); return; }
-    persist(() => resources.tasks.update(id, { title: taskTitle, priority, status } as any), 'Task updated successfully.');
+    persist(() => resources.tasks.update(id, { title: taskTitle, priority, status, due_date: taskFormValues.due || undefined } as any), 'Task updated successfully.');
   };
 
   const handleDeleteTask = () => {
@@ -1554,14 +1557,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <div className="text-sm text-[#52606D]">{tasks.length} open tasks across {new Set(tasks.map(task => task.assignee)).size} staff members</div>
             <button onClick={() => { setTaskFormValues({ task: "", client: "", clientId: "", taskType: "general", assignee: "", due: "", priority: "Medium", status: "todo" }); setActionModal({title: 'Assign Task', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><ClipboardList size={13} /> Assign Task</button>
           </div>
-          {tasks.map(({task,client,assignee,due,priority,status}) => (
+          {tasks.map(({task,client,assignee,due,priority,status,_raw}: any) => (
             <div key={task} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex-1"><div className="font-bold text-[#102A43] text-sm mb-1" style={{ fontFamily:"Manrope" }}>{task}</div><div className="flex gap-3 text-xs text-[#52606D]"><span>Client: {client}</span><span>Assignee: {assignee}</span><span>Due: {due}</span></div></div>
               <div className="flex items-center gap-2 ml-4">
                 <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:priority==="High"?"#FFF0F0":priority==="Medium"?"#FFF4E0":"#EAF4F0",color:priority==="High"?"#e53e3e":priority==="Medium"?"#C8A45D":"#087F5B" }}>{priority}</span>
                 <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="In Progress"?"#EAF4F0":status==="Pending"?"#FFF4E0":"#EEF1F5",color:status==="In Progress"?"#087F5B":status==="Pending"?"#C8A45D":"#52606D" }}>{status}</span>
-                <button onClick={() => openEditTask({ task, client, assignee, due, priority, status })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
-                <button onClick={() => openDeleteTask({ task, client, assignee, due, priority, status })} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
+                <button onClick={() => openEditTask({ task, client, assignee, due, priority, status, _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
+                <button onClick={() => openDeleteTask({ task, client, assignee, due, priority, status, _raw })} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
               </div>
             </div>
           ))}
