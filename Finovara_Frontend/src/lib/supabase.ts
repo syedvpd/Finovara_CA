@@ -10,6 +10,14 @@ if (!url || !anonKey) {
   );
 }
 
+// Snapshot the recovery/invite marker the instant this module evaluates —
+// synchronously, BEFORE createClient's detectSessionInUrl (async) strips the
+// tokens from the URL. Without this, the login page misses the set-password
+// screen whenever the PASSWORD_RECOVERY event fires before React mounts.
+export const arrivedViaRecovery =
+  typeof window !== "undefined" &&
+  /type=(recovery|invite|signup)/.test(window.location.hash + "&" + window.location.search);
+
 // persistSession:false — the backend holds the tokens in HTTP-only cookies.
 // Supabase-js is used only to verify the password and mint the JWT, which we
 // immediately hand to POST /auth/session. Keeping the token out of

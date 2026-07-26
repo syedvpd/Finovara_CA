@@ -4,7 +4,7 @@ import { Page } from "../../types/index";
 import { useAuth, landingPage } from "../../context";
 import { sendOtp, requestPasswordReset } from "../../services/auth";
 import { ApiError } from "../../lib/api";
-import { supabase } from "../../lib/supabase";
+import { supabase, arrivedViaRecovery } from "../../lib/supabase";
 
 type AuthView = 'login' | 'otp' | 'forgot' | 'recovery';
 
@@ -24,7 +24,7 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
     // Recovery/invite links land with the tokens in the URL hash
     // (#access_token=...&type=recovery). Route straight to the set-password
     // screen as a backstop, in case the PASSWORD_RECOVERY event races the mount.
-    if (/type=(recovery|invite|signup)/.test(window.location.hash)) return 'recovery';
+    if (arrivedViaRecovery || /type=(recovery|invite|signup)/.test(window.location.hash)) return 'recovery';
     const params = new URLSearchParams(window.location.search);
     if (params.get('type') === 'recovery') return 'recovery';
     const v = params.get('view');
