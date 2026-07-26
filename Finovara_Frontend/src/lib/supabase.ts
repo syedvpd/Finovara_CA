@@ -24,5 +24,10 @@ export const supabase = createClient(url || "https://placeholder.supabase.co", a
     persistSession: false,
     autoRefreshToken: false,
     detectSessionInUrl: true, // password-reset links land back here
+    // implicit (hash) flow, not PKCE: PKCE needs a code_verifier persisted in
+    // storage, which persistSession:false disables — so recovery/invite links
+    // would silently fail (and break entirely if opened on another device).
+    // Implicit returns the tokens in the URL hash, firing PASSWORD_RECOVERY.
+    flowType: "implicit",
   },
 });

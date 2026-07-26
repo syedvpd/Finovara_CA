@@ -21,7 +21,12 @@ export function LoginPage({ setPage }: { setPage: (p: Page) => void }) {
     return () => data.subscription.unsubscribe();
   }, []);
   const [view, setView] = useState<AuthView>(() => {
+    // Recovery/invite links land with the tokens in the URL hash
+    // (#access_token=...&type=recovery). Route straight to the set-password
+    // screen as a backstop, in case the PASSWORD_RECOVERY event races the mount.
+    if (/type=(recovery|invite|signup)/.test(window.location.hash)) return 'recovery';
     const params = new URLSearchParams(window.location.search);
+    if (params.get('type') === 'recovery') return 'recovery';
     const v = params.get('view');
     return (v === 'otp' || v === 'forgot') ? (v as AuthView) : 'login';
   });
