@@ -180,14 +180,16 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
     try {
       const updated = await api.patch<any>("/auth/me", {
         first_name: first_name.trim(),
-        last_name: last_name.trim(),
+        // Omit when blank: the Name schema rejects "" (min_length 1), so an
+        // empty last name would 422 instead of clearing to null.
+        last_name: last_name.trim() || undefined,
         phone: phone.trim() || undefined,
       });
       setProfile(updated);
       setEditingProfile(false);
       showToast("Profile updated successfully.", "success");
-    } catch {
-      showToast("Could not update profile. Try again.", "error");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Could not update profile. Try again.", "error");
     } finally {
       setSavingProfile(false);
     }
