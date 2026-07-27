@@ -155,7 +155,9 @@ class DownloadService(BaseService[Download, DownloadRepository]):
 class ContactRequestService(BaseService[ContactRequest, ContactRequestRepository]):
     module = Module.LEADS
     transitions = {
-        "new": {"contacted", "closed", "spam"},
+        # An admin can onboard (convert) or dismiss (close) a brand-new request
+        # in one click from Portal Access Requests, so both are reachable from "new".
+        "new": {"contacted", "converted", "closed", "spam"},
         "contacted": {"converted", "closed"},
         "converted": set(),
         "closed": {"contacted"},

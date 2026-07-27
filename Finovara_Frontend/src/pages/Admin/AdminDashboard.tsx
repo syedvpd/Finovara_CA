@@ -1786,7 +1786,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         </>
       );
       case "Portal Access Requests": {
-        const openRequests = contactRequests.filter((r: any) => !["converted", "dismissed"].includes(_lc(r.status)));
+        const openRequests = contactRequests.filter((r: any) => !["converted", "closed", "spam"].includes(_lc(r.status)));
         return (
         <div className="space-y-3">
           <div className="flex items-center justify-between mb-2">
@@ -1836,7 +1836,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   onClick={async () => {
                     setBusyIds(prev => new Set(prev).add(reqId));
                     try {
-                      if (_raw?.id) await resources.contactRequests.update(_raw.id, { status: "dismissed" } as any);
+                      if (_raw?.id) await resources.contactRequests.update(_raw.id, { status: "closed" } as any);
                       await loadData();
                       showToast(`Dismissed request from ${name}`, "info");
                     } catch (e) {
