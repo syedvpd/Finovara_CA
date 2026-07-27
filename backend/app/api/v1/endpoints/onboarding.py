@@ -21,10 +21,22 @@ import httpx
 from fastapi import APIRouter, Request, status
 from pydantic import EmailStr
 
-from app.api.deps import AdminUser
+from typing import Annotated
+
+from fastapi import Depends
+
+from app.api.deps import AdminUser, require_roles
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.security import AuthContext
+from app.core.permissions import Role
 from app.schemas.common import APIModel, SuccessResponse
+
+# Relationship managers convert their own leads into clients from the Lead
+# Management tab; admins/managing partners onboard from Portal Access Requests.
+ClientOnboardUser = Annotated[
+    AuthContext, Depends(require_roles(Role.SUPER_ADMIN, Role.MANAGING_PARTNER, Role.RELATIONSHIP_MANAGER))
+]
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -101,7 +113,7 @@ def _rid(request: Request) -> str | None:
 
 
 @router.post("/clients", status_code=status.HTTP_201_CREATED, summary="Onboard a client (auto-provisions the login)")
-async def onboard_client(request: Request, payload: ClientOnboard, auth: AdminUser) -> SuccessResponse[dict]:
+async def onboard_client(request: Request, payload: ClientOnboard, auth: ClientOnboardUser) -> SuccessResponse[dict]:
     password = _temp_password()
     user_id = await _create_auth_user(payload.email, password, payload.full_name)
     conn = await asyncpg.connect(_dsn(), statement_cache_size=0, timeout=30)
