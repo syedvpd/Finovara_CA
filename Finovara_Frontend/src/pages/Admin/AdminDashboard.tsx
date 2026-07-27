@@ -1727,7 +1727,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
           {notifications.map(({title,msg,t,type}: any) => (
             <div key={title} className="flex items-start gap-4 p-4 rounded-2xl border" style={{ background:type==="critical"?"#FFF8F8":"#102A43",borderColor:type==="critical"?"rgba(229,62,62,0.2)":"rgba(0,0,0,0.05)" }}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background:type==="success"?"#EAF4F0":type==="critical"||type==="warning"?"#FFF0F0":"#EEF1F5" }}>{type==="success"?<CheckCircle size={15} style={{ color:"#087F5B" }} />:type==="critical"?<AlertTriangle size={15} style={{ color:"#e53e3e" }} />:type==="warning"?<Bell size={15} style={{ color:"#C8A45D" }} />:<Info size={15} style={{ color: "white" }} />}</div>
-              <div className="flex-1"><div className="font-bold text-[#102A43] text-sm mb-1" style={{ fontFamily:"Manrope" }}>{title}</div><p className="text-xs text-[#52606D] leading-relaxed">{msg}</p><div className="text-xs text-[#52606D] mt-1">{t}</div></div>
+              <div className="flex-1"><div className="font-bold text-sm mb-1" style={{ fontFamily:"Manrope", color: type==="critical"?"#102A43":"#ffffff" }}>{title}</div><p className="text-xs leading-relaxed" style={{ color: type==="critical"?"#52606D":"rgba(255,255,255,0.75)" }}>{msg}</p><div className="text-xs mt-1" style={{ color: type==="critical"?"#52606D":"rgba(255,255,255,0.5)" }}>{t}</div></div>
             </div>
           ))}
         </div>
@@ -2609,7 +2609,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                       </div>
                       <div>
                         <div className="text-[#102A43] font-bold text-sm" style={{ fontFamily: "Manrope" }}>{r.name}</div>
-                        <div className="text-[#52606D] text-xs" style={{ fontFamily: "Inter" }}>{tabs.length} modules</div>
+                        
                       </div>
                     </div>
                     <div className="text-xs text-[#52606D] leading-relaxed" style={{ fontFamily: "Inter" }}>{r.desc}</div>
