@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu, X, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Phone, Mail,
   MapPin, Shield, Clock, FileText, BarChart2, Users, Briefcase, CheckCircle,
@@ -1619,27 +1620,72 @@ function ServicesPage({ setPage }: { setPage: (p: Page) => void }) {
                 </div>
 
                 {"workflow" in service && service.workflow && (
-                  <div className="mb-8 p-6 bg-white/5 rounded-2xl border border-white/10">
-                    <h4 className="font-bold text-white mb-4" style={{ fontFamily: "Manrope" }}>Audit Workflow</h4>
-                    <div className="flex flex-wrap gap-2 mb-6">
+                  <div className="mb-10 p-6 lg:p-8 bg-white/5 rounded-2xl border border-white/10 shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -mt-20 -mr-20 w-64 h-64 bg-[#087F5B]/5 rounded-full blur-3xl pointer-events-none"></div>
+                    <h4 className="font-bold text-white mb-8 text-xl relative z-10" style={{ fontFamily: "Manrope" }}>Audit Workflow</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-10 relative z-10">
                       {service.workflow.map((item: any, idx: number) => (
-                        <div key={item.step} className="flex items-center gap-2">
-                          <button onClick={() => setActiveStep(idx)} className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all cursor-pointer shadow-sm hover:shadow-md group ${activeStep === idx ? "bg-[#EAF4F0] border-[#087F5B] scale-105" : "bg-[#102A43] border-white/10 hover:bg-[#EAF4F0] hover:border-[#087F5B]/30 hover:-translate-y-0.5"}`}>
-                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white transition-transform group-hover:scale-110 ${activeStep === idx ? "shadow-md" : ""}`} style={{ background: "#087F5B" }}>
+                        <div key={item.step} className="relative flex w-full">
+                          <button onClick={() => setActiveStep(idx)} 
+                                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all duration-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#087F5B]/50 group ${
+                                    activeStep === idx 
+                                      ? "bg-[#087F5B] border-[#087F5B] shadow-[0_4px_20px_rgba(8,127,91,0.3)]" 
+                                      : "bg-[#102A43] border-white/10 hover:bg-[#1A365D] hover:border-white/20 hover:-translate-y-0.5"
+                                  }`}>
+                            <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-transform duration-300 group-hover:scale-110 ${
+                              activeStep === idx 
+                                ? "bg-white text-[#087F5B] shadow-sm" 
+                                : "bg-[#087F5B]/20 text-white border border-[#087F5B]/30"
+                            }`}>
                               {idx + 1}
                             </span>
-                            <span className="text-xs font-semibold text-white" style={{ fontFamily: "Inter" }}>{item.step}</span>
+                            <span className={`text-sm font-semibold text-left transition-colors duration-300 ${
+                              activeStep === idx ? "text-white" : "text-white/90 group-hover:text-white"
+                            }`} style={{ fontFamily: "Inter" }}>
+                              {item.step}
+                            </span>
                           </button>
-                          {idx < service.workflow.length - 1 && (
-                            <ArrowRight size={14} className="text-[#087F5B]/50" />
+                          
+                          {/* Desktop Arrows */}
+                          {idx < service.workflow.length - 1 && (idx + 1) % 3 !== 0 && (
+                            <div className="hidden lg:flex absolute top-1/2 -right-3 translate-x-1/2 -translate-y-1/2 z-10 text-[#087F5B]/50 pointer-events-none">
+                              <ArrowRight size={20} />
+                            </div>
+                          )}
+                          {/* Tablet Arrows */}
+                          {idx < service.workflow.length - 1 && (idx + 1) % 2 !== 0 && (
+                            <div className="hidden md:flex lg:hidden absolute top-1/2 -right-2 translate-x-1/2 -translate-y-1/2 z-10 text-[#087F5B]/50 pointer-events-none">
+                              <ArrowRight size={20} />
+                            </div>
                           )}
                         </div>
                       ))}
                     </div>
                     
-                    <div className="bg-[#102A43] p-4 rounded-xl border border-white/10">
-                       <h5 className="font-bold text-white text-sm mb-1" style={{ fontFamily: "Manrope" }}>Step {activeStep + 1}: {service.workflow[activeStep].step}</h5>
-                       <p className="text-sm text-[#94A3B8] leading-relaxed" style={{ fontFamily: "Inter" }}>{service.workflow[activeStep].desc}</p>
+                    <div className="relative bg-gradient-to-br from-[#102A43] to-[#0A1929] p-6 lg:p-8 rounded-2xl border border-white/10 shadow-xl overflow-hidden min-h-[140px] flex flex-col justify-center">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-[#087F5B]"></div>
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={activeStep}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          transition={{ duration: 0.2 }}
+                          className="relative z-10"
+                        >
+                          <div className="flex items-center gap-3 mb-3">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-md bg-[#087F5B]/20 text-[#087F5B] text-sm font-bold border border-[#087F5B]/30">
+                              {activeStep + 1}
+                            </span>
+                            <h5 className="font-bold text-white text-lg" style={{ fontFamily: "Manrope" }}>
+                              {service.workflow[activeStep].step}
+                            </h5>
+                          </div>
+                          <p className="text-[15px] text-[#94A3B8] leading-relaxed max-w-3xl pl-11" style={{ fontFamily: "Inter" }}>
+                            {service.workflow[activeStep].desc}
+                          </p>
+                        </motion.div>
+                      </AnimatePresence>
                     </div>
                   </div>
                 )}
