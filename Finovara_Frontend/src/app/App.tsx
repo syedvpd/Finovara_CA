@@ -14,7 +14,7 @@ import {
 
 type Page =
   | "home" | "about" | "services" | "industries" | "insights"
-  | "resources" | "blogs" | "faqs" | "testimonials" | "careers"
+  | "resources" | "faqs" | "testimonials" | "careers"
   | "contact" | "book" | "login" | "dashboard" | "admin";
 
 const NAV_ITEMS = [
@@ -27,8 +27,6 @@ const NAV_ITEMS = [
   {
     label: "Resources", page: "resources" as Page,
     children: [
-      { label: "Resources", page: "resources" as Page },
-      { label: "Blog", page: "blogs" as Page },
       { label: "FAQs", page: "faqs" as Page },
       { label: "Testimonials", page: "testimonials" as Page },
     ]
@@ -4084,7 +4082,6 @@ export default function App() {
           {page === "industries" && <IndustriesPage setPage={navigateTo} />}
           {page === "insights" && <InsightsPage />}
           {page === "resources" && <ResourcesPage />}
-          {page === "blogs" && <BlogsPage />}
           {page === "faqs" && <FaqsPage />}
           {page === "testimonials" && <TestimonialsPage />}
           {page === "careers" && <CareersPage setPage={navigateTo} />}
