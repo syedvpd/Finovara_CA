@@ -1,0 +1,10 @@
+{
+  "/login/page": "app/login/page.js",
+  "/(public)/page": "app/(public)/page.js",
+  "/(public)/about/page": "app/(public)/about/page.js",
+  "/(public)/services/page": "app/(public)/services/page.js",
+  "/(public)/industries/page": "app/(public)/industries/page.js",
+  "/(public)/insights/page": "app/(public)/insights/page.js",
+  "/(public)/blogs/page": "app/(public)/blogs/page.js",
+  "/(public)/careers/page": "app/(public)/careers/page.js"
+}

@@ -1,0 +1,56 @@
+import { crud } from "./crud";
+
+export * from "./auth";
+export * from "./public";
+export { publicApi } from "./public";
+export { crud } from "./crud";
+export type { CrudService, ListParams } from "./crud";
+
+export const resources = {
+  users: crud("/users"),
+  branches: crud("/branches"),
+  employees: crud("/employees"),
+  leads: crud("/leads"),
+  consultations: crud("/consultations"),
+  proposals: crud("/proposals"),
+  contactRequests: crud("/contact-requests"),
+  clients: crud("/clients"),
+  clientEntities: crud("/client-entities"),
+  kycDocuments: crud("/kyc-documents"),
+  services: crud("/services"),
+  engagements: crud("/engagements"),
+  documents: crud("/documents"),
+  documentFolders: crud("/document-folders"),
+  documentRequests: crud("/document-requests"),
+  tasks: crud("/tasks"),
+  complianceTypes: crud("/compliance-types"),
+  complianceCalendar: crud("/compliance-calendar"),
+  audits: crud("/audits"),
+  auditChecklists: crud("/audit-checklists"),
+  auditObservations: crud("/audit-observations"),
+  taxReturns: crud("/tax-returns"),
+  gstReturns: crud("/gst-returns"),
+  payrollRuns: crud("/payroll-runs"),
+  payrollProfiles: crud("/payroll-profiles"),
+  attendance: crud("/attendance"),
+  statutoryRates: crud("/statutory-rates"),
+  ledgerAccounts: crud("/ledger-accounts"),
+  vouchers: crud("/vouchers"),
+  bankTransactions: crud("/bank-transactions"),
+  invoices: crud("/invoices"),
+  payments: crud("/payments"),
+  creditNotes: crud("/credit-notes"),
+  refunds: crud("/refunds"),
+  notifications: crud("/notifications"),
+  notificationTemplates: crud("/notification-templates"),
+  queries: crud("/queries"),
+  messages: crud("/messages"),
+  reports: crud("/reports"),
+  analytics: crud("/analytics"),
+  blogs: crud("/blogs"),
+  careers: crud("/careers"),
+  careerApplications: crud("/career-applications"),
+  downloads: crud("/downloads"),
+  testimonials: crud("/testimonials"),
+  categories: crud("/categories"),
+} as const;
