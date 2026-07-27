@@ -18,7 +18,6 @@ export const NAV_ITEMS = [
   {
     label: "Resources", page: "resources" as Page,
     children: [
-      { label: "Blog", page: "blogs" as Page },
       { label: "FAQs", page: "faqs" as Page },
       { label: "Testimonials", page: "testimonials" as Page },
     ]

@@ -144,7 +144,7 @@ export function ServicesPage({ setPage }: { setPage: (p: Page) => void }) {
                             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white transition-transform group-hover:scale-110 ${activeStep === idx ? "shadow-md" : ""}`} style={{ background: "#087F5B" }}>
                               {idx + 1}
                             </span>
-                            <span className="text-xs font-semibold text-white" style={{ fontFamily: "Inter" }}>{item.step}</span>
+                            <span className={`text-xs font-semibold transition-colors ${activeStep === idx ? "text-[#087F5B]" : "text-white group-hover:text-[#087F5B]"}`} style={{ fontFamily: "Inter" }}>{item.step}</span>
                           </button>
                           {idx < service.workflow.length - 1 && (
                             <ArrowRight size={14} className="text-[#087F5B]/50" />
