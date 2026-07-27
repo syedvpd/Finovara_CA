@@ -690,7 +690,7 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
 
       <div className="flex-shrink-0 border-b bg-white z-10 relative shadow-sm" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <button onClick={() => setActiveTab("Active Services")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
               <span className="text-white font-bold text-lg" style={{ fontFamily: "Manrope" }}>F</span>
             </div>
@@ -698,7 +698,7 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
               <span className="font-bold text-[#102A43]" style={{ fontFamily: "Manrope" }}>Finovara</span>
               <span className="block text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>Client Portal</span>
             </div>
-          </div>
+          </button>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{displayName}</div>
