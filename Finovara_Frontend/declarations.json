@@ -1,0 +1,242 @@
+[
+  {
+    "type": "ImportDeclaration",
+    "name": "UNKNOWN",
+    "startLine": 1,
+    "endLine": 1
+  },
+  {
+    "type": "ImportDeclaration",
+    "name": "UNKNOWN",
+    "startLine": 2,
+    "endLine": 12
+  },
+  {
+    "type": "TypeAliasDeclaration",
+    "name": "Page",
+    "startLine": 14,
+    "endLine": 17
+  },
+  {
+    "type": "FirstStatement",
+    "name": "NAV_ITEMS",
+    "startLine": 19,
+    "endLine": 38
+  },
+  {
+    "type": "FirstStatement",
+    "name": "STATS",
+    "startLine": 40,
+    "endLine": 49
+  },
+  {
+    "type": "FirstStatement",
+    "name": "SERVICES",
+    "startLine": 51,
+    "endLine": 125
+  },
+  {
+    "type": "FirstStatement",
+    "name": "INDUSTRIES",
+    "startLine": 127,
+    "endLine": 144
+  },
+  {
+    "type": "FirstStatement",
+    "name": "FEATURES",
+    "startLine": 146,
+    "endLine": 156
+  },
+  {
+    "type": "FirstStatement",
+    "name": "WORKFLOW",
+    "startLine": 158,
+    "endLine": 167
+  },
+  {
+    "type": "FirstStatement",
+    "name": "FEATURED_ASSIGNMENTS",
+    "startLine": 169,
+    "endLine": 173
+  },
+  {
+    "type": "FirstStatement",
+    "name": "COMPLIANCE_CALENDAR",
+    "startLine": 175,
+    "endLine": 180
+  },
+  {
+    "type": "FirstStatement",
+    "name": "TESTIMONIALS",
+    "startLine": 182,
+    "endLine": 208
+  },
+  {
+    "type": "FirstStatement",
+    "name": "INSIGHTS",
+    "startLine": 210,
+    "endLine": 229
+  },
+  {
+    "type": "FirstStatement",
+    "name": "FAQS",
+    "startLine": 231,
+    "endLine": 256
+  },
+  {
+    "type": "FirstStatement",
+    "name": "OPEN_POSITIONS",
+    "startLine": 258,
+    "endLine": 264
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "useCountUp",
+    "startLine": 266,
+    "endLine": 281
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "StatCard",
+    "startLine": 283,
+    "endLine": 293
+  },
+  {
+    "type": "FirstStatement",
+    "name": "handleAddCalendar",
+    "startLine": 295,
+    "endLine": 324
+  },
+  {
+    "type": "FirstStatement",
+    "name": "handleDownloadResource",
+    "startLine": 326,
+    "endLine": 507
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "Navbar",
+    "startLine": 509,
+    "endLine": 612
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "AnnouncementBar",
+    "startLine": 614,
+    "endLine": 628
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "ArticleModal",
+    "startLine": 630,
+    "endLine": 666
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "HomePage",
+    "startLine": 668,
+    "endLine": 1365
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "AboutPage",
+    "startLine": 1367,
+    "endLine": 1520
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "ServicesPage",
+    "startLine": 1522,
+    "endLine": 1662
+  },
+  {
+    "type": "FirstStatement",
+    "name": "INDUSTRY_DETAILS",
+    "startLine": 1664,
+    "endLine": 1681
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "IndustriesPage",
+    "startLine": 1683,
+    "endLine": 1810
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "InsightsPage",
+    "startLine": 1814,
+    "endLine": 1890
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "TestimonialsPage",
+    "startLine": 1892,
+    "endLine": 1931
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "FaqsPage",
+    "startLine": 1933,
+    "endLine": 1964
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "ResourcesPage",
+    "startLine": 1966,
+    "endLine": 2009
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "BlogsPage",
+    "startLine": 2011,
+    "endLine": 2059
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "CareersPage",
+    "startLine": 2061,
+    "endLine": 2215
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "ContactPage",
+    "startLine": 2217,
+    "endLine": 2346
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "BookPage",
+    "startLine": 2348,
+    "endLine": 2530
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "LoginPage",
+    "startLine": 2532,
+    "endLine": 2687
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "DashboardPage",
+    "startLine": 2689,
+    "endLine": 3095
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "Footer",
+    "startLine": 3097,
+    "endLine": 3232
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "AdminDashboardPage",
+    "startLine": 3234,
+    "endLine": 3986
+  },
+  {
+    "type": "FunctionDeclaration",
+    "name": "App",
+    "startLine": 3988,
+    "endLine": 4057
+  }
+]
