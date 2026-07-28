@@ -2053,10 +2053,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </select>
                 </div>
                 <label className="block border-2 border-dashed border-[#087F5B]/30 rounded-xl p-8 text-center bg-[#EAF4F0]/50 cursor-pointer hover:bg-[#EAF4F0] transition-colors">
-                  <input type="file" className="hidden" onChange={(e) => setDocUploadForm(p => ({ ...p, file: e.target.files?.[0] ?? null }))} />
+                  <input type="file" accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.xlsx" className="hidden" onChange={(e) => setDocUploadForm(p => ({ ...p, file: e.target.files?.[0] ?? null }))} />
                   <UploadCloud size={32} className="mx-auto mb-3 text-[#087F5B]" />
                   <p className="text-sm font-semibold text-[#102A43] mb-1">{docUploadForm.file ? docUploadForm.file.name : "Click to browse a file"}</p>
-                  <p className="text-xs text-[#52606D]">PDF, XLSX, ZIP (Max. 10MB)</p>
+                  <p className="text-xs text-[#52606D]">PDF, DOCX, XLSX, PNG, JPG (Max. 10MB)</p>
                 </label>
               </div>
             ) : (actionModal.title === 'Add Employee' || actionModal.title === 'Edit Employee') ? (
