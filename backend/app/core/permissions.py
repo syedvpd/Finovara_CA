@@ -66,6 +66,7 @@ class Module(StrEnum):
     NOTIFICATIONS = "notifications"
     QUERIES = "queries"
     CHAT = "chat"
+    COMMUNICATION_LOG = "communication_log"
     REPORTS = "reports"
     ANALYTICS = "analytics"
     CMS = "cms"
@@ -93,7 +94,7 @@ def _ro(*modules: Module) -> set[str]:
 _STAFF_BASE: set[str] = _ro(
     Module.CLIENTS, Module.SERVICES, Module.BRANCHES, Module.EMPLOYEES,
     Module.COMPLIANCE, Module.REPORTS,
-) | _rw(Module.TASKS, Module.QUERIES, Module.CHAT, Module.DOCUMENTS) | {
+) | _rw(Module.TASKS, Module.QUERIES, Module.CHAT, Module.COMMUNICATION_LOG, Module.DOCUMENTS) | {
     perm(Module.NOTIFICATIONS, Action.READ),
     perm(Module.NOTIFICATIONS, Action.UPDATE),
     perm(Module.ANALYTICS, Action.READ),

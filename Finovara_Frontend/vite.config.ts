@@ -39,7 +39,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: process.env.VITE_DEV_API_TARGET ?? 'https://finovara-ca.onrender.com',
+        target: process.env.VITE_DEV_API_TARGET ?? 'https://kedhareswarivpd.onrender.com',
         changeOrigin: true,
         secure: true,
       },

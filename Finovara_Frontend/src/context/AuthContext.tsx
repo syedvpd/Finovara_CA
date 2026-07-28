@@ -76,6 +76,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    // The app's own session cookie expires in 15 minutes (access_token_ttl_seconds),
+    // far sooner than the Supabase JWT does — without this, any save made after
+    // ~15 minutes of activity fails with "Authentication is required" until the
+    // page is reloaded. Re-exchange on a shorter cycle to rotate the cookie first.
+    if (!session) return;
+    const id = setInterval(async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        try { await exchangeSession(data.session.access_token, data.session.refresh_token); }
+        catch { /* next tick retries; a real sign-out will surface on the next request */ }
+      }
+    }, 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [session]);
+
   const login = useCallback(async (email: string, password: string) => {
     const s = await doLogin(email, password);
     setSession(s);

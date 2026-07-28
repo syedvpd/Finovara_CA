@@ -12,6 +12,7 @@ from app.models.content import (
     Career,
     CareerApplication,
     ChatMessage,
+    CommunicationLog,
     Download,
     Notification,
     NotificationTemplate,
@@ -129,6 +130,13 @@ class ChatMessageRepository(BaseRepository[ChatMessage]):
         )
         await self.session.flush()
         return int(result.rowcount or 0)
+
+
+class CommunicationLogRepository(BaseRepository[CommunicationLog]):
+    model = CommunicationLog
+    searchable_fields = ("subject", "body")
+    sortable_fields = ("created_at", "communication_type", "direction")
+    client_column = "client_id"
 
 
 class BlogRepository(BaseRepository[Blog]):

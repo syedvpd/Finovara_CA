@@ -68,6 +68,7 @@ export const resources = {
   notificationTemplates: crud("/notification-templates"),
   queries: crud("/queries"),
   messages: crud("/messages"),
+  communicationLogs: crud("/communication-logs"),
   // Reporting
   reports: crud("/reports"),
   analytics: crud("/analytics"),

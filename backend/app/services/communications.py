@@ -13,10 +13,11 @@ from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, Va
 from app.core.logging import get_logger
 from app.core.permissions import Action, Module
 from app.core.security import AuthContext
-from app.models.content import ChatMessage, Notification, NotificationTemplate, Query
+from app.models.content import ChatMessage, CommunicationLog, Notification, NotificationTemplate, Query
 from app.repositories.clients import ClientRepository
 from app.repositories.content import (
     ChatMessageRepository,
+    CommunicationLogRepository,
     NotificationRepository,
     NotificationTemplateRepository,
     QueryRepository,
@@ -185,6 +186,21 @@ class ChatService(BaseService[ChatMessage, ChatMessageRepository]):
         return await self.repo.mark_thread_read(client_id, auth.is_client)
 
 
+class CommunicationLogService(BaseService[CommunicationLog, CommunicationLogRepository]):
+    """Staff-only, append-only interaction records for a client timeline."""
+
+    module = Module.COMMUNICATION_LOG
+
+    async def _before_create(self, data: dict[str, Any], auth: AuthContext) -> dict[str, Any]:
+        if not auth.is_staff:
+            raise ForbiddenError("Only firm personnel may create communication logs.")
+        if await ClientRepository(self.repo.session).get(data["client_id"]) is None:
+            raise NotFoundError("Client", data["client_id"])
+        data["created_by"] = auth.user_id
+        data.setdefault("created_at", datetime.now(timezone.utc))
+        return data
+
+
 def notification_service(s: AsyncSession) -> NotificationService:
     return NotificationService(NotificationRepository(s))
 
@@ -199,3 +215,7 @@ def query_service(s: AsyncSession) -> QueryService:
 
 def chat_service(s: AsyncSession) -> ChatService:
     return ChatService(ChatMessageRepository(s))
+
+
+def communication_log_service(s: AsyncSession) -> CommunicationLogService:
+    return CommunicationLogService(CommunicationLogRepository(s))

@@ -21,7 +21,6 @@ import { ServicesPage } from "./pages/Services/Services";
 import { IndustriesPage } from "./pages/Industries/Industries";
 import { InsightsPage } from "./pages/Insights/Insights";
 import { ResourcesPage } from "./pages/Resources/Resources";
-import { BlogsPage } from "./pages/Blogs/Blogs";
 import { FaqsPage } from "./pages/Faqs/Faqs";
 import { TestimonialsPage } from "./pages/Testimonials/Testimonials";
 import { CareersPage } from "./pages/Careers/Careers";
@@ -126,7 +125,6 @@ export default function App() {
             {page === "industries" && <IndustriesPage setPage={navigateTo} />}
             {page === "insights" && <InsightsPage />}
             {page === "resources" && <ResourcesPage />}
-            {page === "blogs" && <BlogsPage />}
             {page === "faqs" && <FaqsPage />}
             {page === "testimonials" && <TestimonialsPage />}
             {page === "careers" && <CareersPage setPage={navigateTo} />}

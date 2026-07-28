@@ -13,6 +13,8 @@ from app.schemas.content import (
     BroadcastRequest,
     ChatMessageCreate,
     ChatMessageRead,
+    CommunicationLogCreate,
+    CommunicationLogRead,
     NotificationCreate,
     NotificationRead,
     NotificationTemplateCreate,
@@ -26,6 +28,7 @@ from app.schemas.content import (
 )
 from app.services.communications import (
     chat_service,
+    communication_log_service,
     notification_service,
     notification_template_service,
     query_service,
@@ -152,6 +155,25 @@ async def reply_to_query(
 
 async def chat_filters(client_id: Annotated[UUID | None, Query()] = None) -> dict[str, Any]:
     return {"client_id": client_id} if client_id else {}
+
+
+async def communication_log_filters(
+    client_id: Annotated[UUID | None, Query()] = None,
+    communication_type: Annotated[str | None, Query(pattern="^(call|email|handoff)$")] = None,
+) -> dict[str, Any]:
+    return {k: v for k, v in {"client_id": client_id, "communication_type": communication_type}.items() if v}
+
+
+communication_logs_router: APIRouter = build_crud_router(
+    service_factory=communication_log_service,
+    read_schema=CommunicationLogRead,
+    create_schema=CommunicationLogCreate,
+    update_schema=None,
+    module=Module.COMMUNICATION_LOG,
+    resource_name="communication log",
+    filter_dependency=communication_log_filters,
+    enable_delete=False,
+)
 
 
 chat_router: APIRouter = build_crud_router(

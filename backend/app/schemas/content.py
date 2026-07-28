@@ -144,6 +144,33 @@ class ChatMessageCreate(APIModel):
     message_text: Annotated[str, Field(min_length=1, max_length=4000)]
 
 
+class CommunicationLogRead(APIModel):
+    id: uuid.UUID
+    client_id: uuid.UUID
+    created_by: uuid.UUID
+    communication_type: str
+    direction: str
+    subject: str
+    body: str
+    created_at: datetime
+
+
+class CommunicationLogCreate(APIModel):
+    client_id: uuid.UUID
+    communication_type: Annotated[str, Field(pattern="^(call|email|handoff)$")]
+    direction: Annotated[str, Field(pattern="^(inbound|outbound|internal)$")]
+    subject: Annotated[str, Field(min_length=2, max_length=200)]
+    body: Annotated[str, Field(min_length=1, max_length=10000)]
+
+    @model_validator(mode="after")
+    def _handoff_is_internal(self) -> CommunicationLogCreate:
+        if self.communication_type == "handoff" and self.direction != "internal":
+            raise ValueError("A handoff note must be marked internal.")
+        if self.communication_type != "handoff" and self.direction == "internal":
+            raise ValueError("Only handoff notes may be marked internal.")
+        return self
+
+
 # --- Reports -----------------------------------------------------------------
 
 

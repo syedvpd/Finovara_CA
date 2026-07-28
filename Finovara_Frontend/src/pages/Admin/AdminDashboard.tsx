@@ -15,13 +15,18 @@ import { Page } from "../../types/index";
 import { useAuth } from "../../context";
 import { resources, requestPasswordReset } from "../../services";
 import { api, ApiError } from "../../lib/api";
-import { payInvoiceWithRazorpay } from "../../lib/razorpay";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell, PieChart, Pie, Legend, LabelList } from "recharts";
 const _PieChartIcon = PieChartIcon;
 
 // Chart palette — validated for CVD separation; status hues carry meaning
 // (paid=emerald, pending=amber, overdue=red) and always ship with labels.
 const CHART = { emerald: "#0CA678", amber: "#E8952A", red: "#E5484D", blue: "#4C8DF5", slate: "#64748B" };
+// Mirrors backend DOCUMENT_CATEGORIES — a category label outside this list (e.g. "Other") falls back to "general".
+const DOC_CATEGORIES = ["tax", "gst", "audit", "payroll", "report", "invoice", "kyc", "general"];
+// Every other staff role only has read access to /clients (see permissions.py _STAFF_BASE) — showing
+// Add/Edit/Delete for them just leads to a 403. Client Management stays visible for context (e.g. an
+// accountant picking a client to invoice); only these roles can actually create/edit/delete one.
+const CAN_MANAGE_CLIENTS = ["Super Admin", "Managing Partner", "Relationship Manager"];
 const _num = (v: unknown) => Number(v ?? 0) || 0;
 
 // Formatting + safe backend→UI mapping helpers for the admin lists.
@@ -38,6 +43,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [actionModal, setActionModal] = useState<ActionModalState | null>(null);
   const [toastMessage, setToastMessage] = useState<{msg: string, type: 'success'|'info'|'error'} | null>(null);
+  // The Save button fires one of ~30 handlers that don't return their promise
+  // (persist() runs fire-and-forget), so it can't be disabled via a simple
+  // await. Every one of them ends in a toast (success or error) — reset the
+  // guard on that signal instead, and again whenever a fresh modal opens.
+  const [modalSaving, setModalSaving] = useState(false);
+  useEffect(() => { setModalSaving(false); }, [toastMessage, actionModal]);
   const [clients, setClients] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -66,6 +77,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [salaryForm, setSalaryForm] = useState({ salary: "" });
   const [staffCsv, setStaffCsv] = useState({ clientId: "", csv: "" });
   const [chatForm, setChatForm] = useState({ clientId: "", text: "" });
+  const [commLogs, setCommLogs] = useState<any[]>([]);
+  const [commFilter, setCommFilter] = useState<'all'|'call'|'email'|'handoff'|'query'>('all');
+  const [commClientFilter, setCommClientFilter] = useState("");
+  const [commForm, setCommForm] = useState({ clientId: "", type: "call", subject: "", body: "", direction: "outbound" });
+  const [commSearch, setCommSearch] = useState("");
   const [tbClientId, setTbClientId] = useState("");
   const [formValues, setFormValues] = useState({
     clientName: "",
@@ -124,9 +140,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [audits, setAudits] = useState<any[]>([]);
   const [compliance, setCompliance] = useState<any[]>([]);
   const [docStats, setDocStats] = useState<{ total: number; pending: number; storage: string; cats: any[] }>({ total: 0, pending: 0, storage: "0 B", cats: [] });
+  const [docUploadForm, setDocUploadForm] = useState<{ clientId: string; category: string; file: File | null }>({ clientId: "", category: "general", file: null });
   const [queries, setQueries] = useState<any[]>([]);
   const [engagements, setEngagements] = useState<any[]>([]);
   const [contactRequests, setContactRequests] = useState<any[]>([]);
+  const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [payrollRuns, setPayrollRuns] = useState<any[]>([]);
   const [ledgerAccounts, setLedgerAccounts] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
@@ -159,12 +177,20 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         resources.vouchers.list({ page_size: 100 }),
         resources.payrollProfiles.list({ page_size: 100 }),
       ]);
+      const communicationLogRows = await resources.communicationLogs.list({ page_size: 100 })
+        .then((result: any) => result?.data ?? result ?? [])
+        .catch(() => []);
 
-      setClients(_rowsOf(r[0]).map((c: any) => {
+      const clientRows = _rowsOf(r[0]);
+      const clientNames = new Map(clientRows.map((c: any) => {
+        const entity = c.entities?.[0] ?? {};
+        return [c.id, entity.legal_name ?? entity.trade_name ?? c.client_code];
+      }));
+      setClients(clientRows.map((c: any) => {
         const e = c.entities?.[0] ?? {};
         return { n: e.legal_name ?? e.trade_name ?? c.client_code, ca: c.client_type ? _tc(c.client_type) : "—",
-          pan: e.pan ?? "—", gstin: e.gstin ?? "—", svc: c.entities?.length ?? 0,
-          status: c.status === "active" ? "Active" : "Inactive", _raw: c };
+          pan: e.pan ?? "—", gstin: e.gst_number ?? "—", svc: c.entities?.length ?? 0,
+          status: c.status === "active" ? "Active" : "Inactive", entityId: e.id, _raw: c };
       }));
       setServices(_rowsOf(r[1]).map((s: any) => ({ svc: s.name, cat: _tc(s.department), price: _money(s.base_price), clients: 0, active: true, _raw: s })));
       setEmployees(_rowsOf(r[2]).map((e: any) => ({
@@ -233,7 +259,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         return { date: _date(c.due_date), filing: c.compliance_type?.name ?? _tc(c.status), clients: c.client_id?.slice(0, 8) ?? "—", owner: "—", status: _tc(c.status), urgency };
       }));
       const soon = _rowsOf(r[3]).filter((t: any) => t.due_date).sort((a: any, b: any) => String(a.due_date).localeCompare(String(b.due_date))).slice(0, 8);
-      setDueTasks(soon.map((t: any) => ({ id: t.id, task: t.title, date: _date(t.due_date), staff: t.assignments?.[0]?.assignee_name ?? "—" })));
+      setDueTasks(soon.map((t: any) => ({ id: t.id, task: t.title, date: _date(t.due_date), staff: t.assignments?.[0]?.assignee_name ?? "—", status: t.status })));
       setPayrollRuns(_rowsOf(r[18]).map((p: any) => ({
         period: `${p.period_month}/${p.period_year}`, status: _tc(p.status),
         gross: _money(p.total_gross ?? p.gross_amount ?? 0), net: _money(p.total_net ?? p.net_amount ?? 0), _raw: p })));
@@ -243,6 +269,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         no: v.voucher_number ?? v.id?.slice(0, 8), type: _tc(v.voucher_type), date: _date(v.voucher_date ?? v.created_at), amount: _money(v.total_amount ?? 0), status: _tc(v.status), _raw: v })));
       setPayrollProfiles(_rowsOf(r[21]).map((p: any) => ({
         name: p.employee_name, code: p.employee_code, salary: _money(p.base_salary), _raw: p })));
+      setCommLogs(communicationLogRows.map((log: any) => {
+        return { ...log, clientName: clientNames.get(log.client_id) ?? log.client_id?.slice(0, 8) ?? "â€”" };
+      }));
       setDataLoading(false);
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
@@ -265,12 +294,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const openEditClient = (client: { n: string; ca: string; pan: string; gstin: string; svc: number; status: 'Active' | 'Inactive'; _raw?: any }) => {
+  const openEditClient = (client: { n: string; ca: string; pan: string; gstin: string; svc: number; status: 'Active' | 'Inactive'; entityId?: string; _raw?: any }) => {
     setFormValues({
       clientName: client.n,
       caName: client.ca,
-      pan: client.pan,
-      gstin: client.gstin,
+      pan: client.pan === "—" ? "" : client.pan,
+      gstin: client.gstin === "—" ? "" : client.gstin,
       services: String(client.svc),
       status: client.status,
     });
@@ -298,7 +327,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setActionModal({ title: 'Delete Employee', type: 'form', section: 'employee', item: employee });
   };
 
-  const openEditService = (service: { svc: string; cat: string; price: string; clients: number; active: boolean }) => {
+  const openEditService = (service: { svc: string; cat: string; price: string; clients: number; active: boolean; _raw?: any }) => {
     setServiceFormValues({
       svc: service.svc,
       cat: service.cat,
@@ -309,7 +338,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     setActionModal({ title: 'Edit Service', type: 'form', section: 'service', item: service });
   };
 
-  const openDeleteService = (service: { svc: string; cat: string; price: string; clients: number; active: boolean }) => {
+  const openDeleteService = (service: { svc: string; cat: string; price: string; clients: number; active: boolean; _raw?: any }) => {
     setActionModal({ title: 'Delete Service', type: 'form', section: 'service', item: service });
   };
 
@@ -345,8 +374,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
   const handleMarkTaskDone = async (item: any) => {
     if (item.id) {
-      try { await resources.tasks.update(item.id, { status: 'done' } as any); }
-      catch { showToast('Could not update the task on the server.', 'error'); return; }
+      try {
+        // "backlog" can only move to "todo" directly; every other status can jump straight to "done".
+        if (_lc(item.status) === 'backlog') await resources.tasks.update(item.id, { status: 'todo' } as any);
+        await resources.tasks.update(item.id, { status: 'done' } as any);
+      }
+      catch (e) { showToast(e instanceof ApiError ? e.message : 'Could not update the task on the server.', 'error'); return; }
     }
     setDueTasks(prev => prev.filter(t => t.task !== item.task));
     showToast(`Task marked done: ${item.task}`, 'success');
@@ -447,11 +480,15 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     }
 
     const id = actionModal?.item?._raw?.id;
+    const entityId = actionModal?.item?.entityId;
     const newStatus = formValues.status === 'Active' ? 'active' : 'inactive';
     setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" });
     setFormErrors({});
     if (!id) { setActionModal(null); return; }
-    persist(() => resources.clients.update(id, { status: newStatus }), 'Client updated successfully.');
+    persist(async () => {
+      await resources.clients.update(id, { status: newStatus });
+      if (entityId) await resources.clientEntities.update(entityId, { pan: pan || undefined, gst_number: gstin || undefined } as any);
+    }, 'Client updated successfully.');
   };
 
   const handleDeleteClient = () => {
@@ -684,7 +721,14 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     try {
       await api.post("/onboarding/clients", { full_name: name, email, company_name: name, client_type: "private_limited" });
       try { await requestPasswordReset(email); } catch { /* email best-effort */ }
-      if (l.id) { try { await resources.leads.update(l.id, { status: "won" } as any); } catch { /* non-fatal */ } }
+      if (l.id) {
+        // "won" is only reachable via new -> contacted -> proposal_sent -> onboarding -> won; walk the chain.
+        const LEAD_PATH = ["new", "contacted", "proposal_sent", "onboarding", "won"];
+        const startIdx = Math.max(LEAD_PATH.indexOf(_lc(l.status)), 0);
+        for (const next of LEAD_PATH.slice(startIdx + 1)) {
+          await resources.leads.update(l.id, { status: next } as any);
+        }
+      }
       await loadData();
       showToast(`Converted — client account created for ${email}.`, 'success');
     } catch (e) {
@@ -774,6 +818,16 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     persist(() => api.post("/bank-transactions/import", { client_id: client._raw.id, rows }), `${rows.length} lines imported.`);
   };
 
+  const handleUploadDocument = () => {
+    if (!docUploadForm.file) { showToast('Choose a file to upload.', 'error'); return; }
+    if (!docUploadForm.clientId) { showToast('Select the client this document belongs to.', 'error'); return; }
+    const form = new FormData();
+    form.append("file", docUploadForm.file);
+    form.append("client_id", docUploadForm.clientId);
+    form.append("file_category", docUploadForm.category);
+    persist(() => api.post("/documents/upload", undefined, { form }), 'Document uploaded.');
+  };
+
   const handleReviseSalary = () => {
     const id = actionModal?.item?._raw?.id;
     const amount = Number((salaryForm.salary || "").replace(/[^0-9.]/g, ""));
@@ -797,6 +851,21 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     await loadData();
     setActionModal(null);
     showToast(`${ok}/${rows.length} payroll profiles imported.`, ok ? 'success' : 'error');
+  };
+
+  const handleAddCommLog = () => {
+    const client = clients.find(c => c._raw?.id === commForm.clientId);
+    if (!client) { showToast('Please select a client.', 'error'); return; }
+    if (!commForm.subject.trim()) { showToast('Please enter a subject.', 'error'); return; }
+    if (!commForm.body.trim()) { showToast('Please enter the log details.', 'error'); return; }
+    const direction = commForm.type === "handoff" ? "internal" : commForm.direction;
+    persist(() => resources.communicationLogs.create({
+      client_id: commForm.clientId,
+      communication_type: commForm.type,
+      direction,
+      subject: commForm.subject.trim(),
+      body: commForm.body.trim(),
+    } as any), 'Communication logged.');
   };
 
   const handleSendChat = () => {
@@ -992,19 +1061,23 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     { name: "Relationship Manager", desc: "Client communication assignments",              color: "#52606D", bg: "#EEF1F5", icon: HelpCircle },
     { name: "Accounts Admin",       desc: "Filings, invoices and payments",               color: "#C8A45D", bg: "#FFF4E0", icon: ReceiptText },
     { name: "Content Manager",      desc: "Website content management",                   color: "#e53e3e", bg: "#FFF0F0", icon: Globe },
+<<<<<<< HEAD
     { name: "Client",               desc: "Own services, files and reports",              color: "#94a3b8", bg: "#102A43", icon: UserCheck },
+=======
+    { name: "Client",               desc: "Own services, files and reports",              color: "white", bg: "#102A43", icon: UserCheck },
+>>>>>>> bf932b4ff5652e571c8151c35e997a035e1c8041
   ];
 
   const roleTabMap: Record<string, string[]> = {
-    "Super Admin":          ["Dashboard","Settings","Portal Access Requests","Client Management","Employee Management","Service Management","Task Assignment","Compliance Calendar","Document Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Payment Tracking","Payroll","Ledger Accounts","Vouchers","Notifications","Reports","Blog Management","Careers Management","Website CMS","Lead Management","Role-Based Access","Total Clients","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review","Open Queries","Monthly Revenue","Outstanding Invoices","Staff Workload","Service-wise Client Count"],
-    "Managing Partner":     ["Dashboard","Branch Performance","Profit Analysis","Portal Access Requests","Client Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Reports","Monthly Revenue","Outstanding Invoices","Payment Tracking","Notifications","Staff Workload","Service-wise Client Count","Lead Management","Employee Management","Service Management"],
+    "Super Admin":          ["Dashboard","Settings","Portal Access Requests","Client Management","Employee Management","Service Management","Task Assignment","Compliance Calendar","Document Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Payment Tracking","Payroll","Ledger Accounts","Notifications","Reports","Blog Management","Careers Management","Website CMS","Lead Management","Role-Based Access","Communication Hub","Total Clients","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review","Open Queries","Monthly Revenue","Outstanding Invoices","Staff Workload","Service-wise Client Count"],
+    "Managing Partner":     ["Dashboard","Branch Performance","Profit Analysis","Portal Access Requests","Client Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Reports","Monthly Revenue","Outstanding Invoices","Payment Tracking","Notifications","Staff Workload","Service-wise Client Count","Lead Management","Employee Management","Service Management","Communication Hub"],
     "Chartered Accountant": ["Dashboard","Client Management","Task Assignment","Compliance Calendar","Document Management","Tax-Return Tracking","GST-Return Tracking","Open Queries","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review"],
     "Audit Manager":        ["Dashboard","Client Management","Audit Workflow","Document Management","Task Assignment","Compliance Calendar","Documents Awaiting Review","Reports","Staff Workload"],
     "Tax Manager":          ["Dashboard","Client Management","Tax-Return Tracking","Compliance Calendar","Task Assignment","Pending Filings","Due This Week","Overdue Tasks","Document Management","Reports"],
     "GST Consultant":       ["Dashboard","Client Management","GST-Return Tracking","Compliance Calendar","Task Assignment","Document Management","Pending Filings","Due This Week","Overdue Tasks"],
     "Partner Accountant":   ["Dashboard","Ledger Accounts","Vouchers","Client Management","Document Management","Reports","Monthly Revenue","Invoice Management","Payment Tracking"],
     "Payroll Executive":    ["Dashboard","Payroll","Client Management","Task Assignment","Document Management","Due This Week","Compliance Calendar"],
-    "Relationship Manager": ["Dashboard","Client Management","Open Queries","Notifications","Lead Management","Active Services"],
+    "Relationship Manager": ["Dashboard","Communication Hub","Client Management","Open Queries","Notifications","Lead Management","Active Services"],
     "Accounts Admin":       ["Dashboard","Invoice Management","Payment Tracking","Outstanding Invoices","Client Management","Reports","Notifications"],
     "Content Manager":      ["Blog Management","Careers Management","Website CMS"],
     "Client":               ["Active Services","Documents Awaiting Review","Open Queries","Notifications","Reports"],
@@ -1289,7 +1362,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Due This Week": return (
         <div className="space-y-3">
-          {dueTasks.map(({ id, task, date, staff }) => (
+          {dueTasks.map(({ id, task, date, staff, status }) => (
             <div key={task} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="text-center flex-shrink-0 px-3 py-2 rounded-xl" style={{ background: "#EAF4F0" }}>
                 <div className="text-xs font-bold text-[#087F5B]">{date.split(" ")[0]}</div>
@@ -1299,7 +1372,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{task}</div>
                 <div className="text-xs text-[#52606D]">Assigned: {staff}</div>
               </div>
-              <button onClick={() => handleMarkTaskDone({ id, task })} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#EAF4F0", color: "#087F5B" }}>Mark Done</button>
+              <button onClick={() => handleMarkTaskDone({ id, task, status })} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#EAF4F0", color: "#087F5B" }}>Mark Done</button>
             </div>
           ))}
         </div>
@@ -1358,7 +1431,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               <div className="flex items-center justify-between text-xs text-[#52606D]">
                 <span>{client} · {age} ago · Assigned: {staff}</span>
                 {_raw?.id && _lc(_raw.status) !== "resolved" && _lc(_raw.status) !== "closed" && (
-                  <button onClick={() => persist(() => resources.queries.update(_raw.id, { status: "resolved" } as any), 'Query resolved.')} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background: "linear-gradient(135deg,#087F5B,#065a40)" }}>Resolve</button>
+                  <button onClick={() => persist(async () => {
+                    // open -> resolved isn't a valid direct transition; answered is required first.
+                    if (_lc(_raw.status) === "open") await resources.queries.update(_raw.id, { status: "answered" } as any);
+                    await resources.queries.update(_raw.id, { status: "resolved" } as any);
+                  }, 'Query resolved.')} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background: "linear-gradient(135deg,#087F5B,#065a40)" }}>Resolve</button>
                 )}
               </div>
             </div>
@@ -1481,7 +1558,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <div className="flex gap-2">{([['All',clients.length],['Active',clients.filter(client => client.status === 'Active').length],['Inactive',clients.filter(client => client.status === 'Inactive').length]] as const).map(([f,count]) => <button onClick={() => setClientFilter(f as 'All'|'Active'|'Inactive')} key={f} className={`px-3 py-1.5 rounded-xl border text-xs font-semibold ${clientFilter===f ? 'text-white border-transparent' : 'bg-white border-[#E2E8F0] text-[#102A43]'}`} style={clientFilter===f ? { background:'linear-gradient(135deg,#087F5B,#065a40)' } : undefined}>{f} ({count})</button>)}</div>
             <div className="flex gap-2">
               <button onClick={() => { setChatForm({ clientId: clients[0]?._raw?.id ?? "", text: "" }); setActionModal({title: 'Send Message', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl border border-[#E2E8F0] text-[#52606D]"><HelpCircle size={13} /> Chat</button>
-              <button onClick={() => { setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" }); setFormErrors({}); setActionModal({title: 'Add Client', type: 'form'}); }}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Users size={13} /> Add Client</button>
+              {CAN_MANAGE_CLIENTS.includes(userRole) && <button onClick={() => { setFormValues({ clientName: "", caName: "", email: "", pan: "", gstin: "", services: "3", status: "Active" }); setFormErrors({}); setActionModal({title: 'Add Client', type: 'form'}); }}  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Users size={13} /> Add Client</button>}
             </div>
           </div>
           <div className="space-y-3">
@@ -1496,9 +1573,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#FFF0F0",color:status==="Active"?"#087F5B":"#e53e3e" }}>{status}</span>
-                    <button onClick={() => openEditClient(c)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
+                    {CAN_MANAGE_CLIENTS.includes(userRole) && <button onClick={() => openEditClient(c)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>}
                     <button onClick={() => makePdf("Certificate of Engagement", [`Client: ${n}`, `PAN: ${pan}`, `GSTIN: ${gstin}`, `Engaged services: ${svc}`, `Assigned CA: ${ca}`, `Status: ${status}`, "", "This is to certify that the above client is engaged with", "Finovara Chartered Accountants LLP for the services listed."], `certificate-${n.replace(/\s+/g,'-')}.pdf`)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Certificate</button>
-                    <button onClick={() => openDeleteClient(c)} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
+                    {CAN_MANAGE_CLIENTS.includes(userRole) && <button onClick={() => openDeleteClient(c)} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>}
                   </div>
                 </div>
                 <div className="flex gap-4 text-xs text-[#52606D]"><span>PAN: <span className="font-mono font-semibold text-[#102A43]">{pan}</span></span><span>GSTIN: <span className="font-mono font-semibold text-[#102A43]">{gstin}</span></span></div>
@@ -1507,6 +1584,39 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
           </div>
         </div>
       );
+      case "Communication Hub": {
+        const filteredLogs = commLogs.filter((log: any) =>
+          (commFilter === "all" || log.communication_type === commFilter) &&
+          (!commClientFilter || log.client_id === commClientFilter) &&
+          (!commSearch || `${log.subject} ${log.body} ${log.clientName}`.toLowerCase().includes(commSearch.toLowerCase()))
+        );
+        const filteredQueries = queries.filter((query: any) =>
+          (commFilter === "all" || commFilter === "query") &&
+          (!commClientFilter || query._raw?.client_id === commClientFilter) &&
+          (!commSearch || `${query.q} ${query.client}`.toLowerCase().includes(commSearch.toLowerCase()))
+        );
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-[#52606D]">Append-only timeline of calls, emails, handoffs, and client-raised queries.</div>
+              <button onClick={() => { setCommForm({ clientId: clients[0]?._raw?.id ?? "", type: "call", subject: "", body: "", direction: "outbound" }); setActionModal({ title: "Log Communication", type: "form" }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Plus size={13} /> Log interaction</button>
+            </div>
+            <div className="grid gap-2 md:grid-cols-3">
+              <input value={commSearch} onChange={(e) => setCommSearch(e.target.value)} placeholder="Search timeline…" className="px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" />
+              <select value={commClientFilter} onChange={(e) => setCommClientFilter(e.target.value)} className="px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="">All clients</option>{clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}</select>
+              <div className="flex gap-1 overflow-x-auto">{(["all", "call", "email", "handoff", "query"] as const).map((type) => <button key={type} onClick={() => setCommFilter(type)} className="px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap" style={{ background: commFilter === type ? "#EAF4F0" : "#F7F9FC", color: commFilter === type ? "#087F5B" : "#52606D" }}>{_tc(type)}</button>)}</div>
+            </div>
+            <div className="space-y-3">
+              {filteredLogs.map((log: any) => <div key={log.id} className="p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+                <div className="flex items-start justify-between gap-3"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{log.subject}</div><div className="text-xs text-[#52606D] mt-1">{log.clientName} · {_tc(log.communication_type)} · {_tc(log.direction)} · {_date(log.created_at)}</div></div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background: log.communication_type === "handoff" ? "#FFF4E0" : "#EAF4F0", color: log.communication_type === "handoff" ? "#C8A45D" : "#087F5B" }}>{_tc(log.communication_type)}</span></div>
+                <p className="text-sm text-[#52606D] mt-3 whitespace-pre-wrap">{log.body}</p>
+              </div>)}
+              {filteredQueries.map((query: any) => <div key={`query-${query._raw?.id}`} className="p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div className="flex items-start justify-between gap-3"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{query.q}</div><div className="text-xs text-[#52606D] mt-1">{query.client} · Client query · {query.age} ago</div></div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:"#EEF1F5", color:"#52606D" }}>Query</span></div><p className="text-sm text-[#52606D] mt-3 whitespace-pre-wrap">{query._raw?.query_text}</p>{query._raw?.responses?.length > 0 && <div className="mt-3 pt-3 border-t border-[#E2E8F0] space-y-2">{query._raw.responses.slice(-2).map((reply: any) => <div key={reply.id} className="text-xs text-[#52606D]"><span className="font-semibold text-[#102A43]">Reply:</span> {reply.response_text}</div>)}</div>}</div>)}
+              {filteredLogs.length + filteredQueries.length === 0 && <div className="py-10 text-center text-sm text-[#52606D]">No interactions match these filters.</div>}
+            </div>
+          </div>
+        );
+      }
       case "Employee Management": return (
         <div>
           <div className="flex items-center justify-between mb-5">
@@ -1537,17 +1647,25 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <button onClick={() => { setServiceFormValues({ svc: "", cat: "", price: "", clients: "10", active: true }); setActionModal({title: 'Add Service', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Briefcase size={13} /> Add Service</button>
           </div>
           <div className="space-y-3">
-            {services.map(({svc,cat,price,clients,active}) => (
-              <div key={svc} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+            {services.map((s) => {
+              const {svc,cat,price,clients,active,_raw} = s;
+              return (
+              <div key={_raw?.id ?? svc} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
                 <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{svc}</div><div className="text-xs text-[#52606D]">{cat} · {price} · {clients} clients</div></div>
                 <div className="flex items-center gap-2">
+<<<<<<< HEAD
                   <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:active?"#EAF4F0":"#102A43",color:active?"#087F5B":"#94a3b8" }}>{active?"Active":"Inactive"}</span>
                   <button onClick={() => openEditService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
                   <button onClick={() => openDeleteService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
                   <button onClick={() => openEditService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Pricing</button>
+=======
+                  <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:active?"#EAF4F0":"#102A43",color:active?"#087F5B":"#52606D" }}>{active?"Active":"Inactive"}</span>
+                  <button onClick={() => openEditService(s)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
+                  <button onClick={() => openDeleteService(s)} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
+>>>>>>> bf932b4ff5652e571c8151c35e997a035e1c8041
                 </div>
               </div>
-            ))}
+            );})}
           </div>
         </div>
       );
@@ -1590,9 +1708,8 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Document Management": return (
         <div>
-          <div className="grid grid-cols-3 gap-4 mb-6">{[{l:"Total Docs",v:String(docStats.total),color:"#087F5B"},{l:"Pending Review",v:String(docStats.pending),color:"#C8A45D"},{l:"Storage Used",v:docStats.storage,color:"#102A43"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-2xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D] mt-1">{l}</div></div>))}</div>
-          {docStats.cats.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No documents yet.</div>}
-          <div className="space-y-3">{docStats.cats.map(({cat,count,size,lastUp}: any) => (<div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{cat}</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div></div><div className="flex gap-2"><button onClick={() => setActionModal({title: 'Upload File', type: 'upload'})}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button><button onClick={() => setActionModal({title: 'Upload File', type: 'upload'})}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button></div></div>))}</div>
+          <div className="grid grid-cols-3 gap-4 mb-6">{[{l:"Total Docs",v:"23",color:"#087F5B"},{l:"Pending Review",v:"0",color:"#C8A45D"},{l:"Storage Used",v:"2.8 MB",color:"#102A43"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-2xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D] mt-1">{l}</div></div>))}</div>
+          <div className="space-y-3">{[{cat:"General",count:"23 files",size:"2.8 MB",lastUp:"28 Jul"}].map(({cat,count,size,lastUp}: any) => (<div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{cat}</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div></div><div className="flex gap-2"><button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: "general", file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button><button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: "general", file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button></div></div>))}</div>
         </div>
       );
       case "Audit Workflow": return (
@@ -1646,13 +1763,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:String(gstReturns.length),color:"#102A43"},{l:"Filed",v:String(gstReturns.filter((g:any)=>_lc(g.status)==="filed").length),color:"#087F5B"},{l:"Processing",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("process")).length),color:"#C8A45D"},{l:"Overdue",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("overdue")).length),color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
-          {gstReturns.map(({client,form,period,status,arno,_raw}: any) => (
+          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:"15",color:"#102A43"},{l:"Filed",v:"8",color:"#087F5B"},{l:"Processing",v:"5",color:"#C8A45D"},{l:"Overdue",v:"2",color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
+          {[{client:"TechFlow Solutions",form:"GSTR-3B",period:"July 2026",status:"Processing",arno:"—"},{client:"Nexus Logistics",form:"GSTR-1",period:"July 2026",status:"Overdue",arno:"—"}].map(({client,form,period,status,arno}: any) => (
             <div key={client+form} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{client} · {form}</div><div className="text-xs text-[#52606D]">{period} · ARN: {arno}</div></div>
               <div className="flex items-center gap-2"><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="Overdue"||status==="Due Today"?"#FFF0F0":"#FFF4E0",color:status==="Filed"?"#087F5B":status==="Overdue"||status==="Due Today"?"#e53e3e":"#C8A45D" }}>{status}</span>
-                {_lc(_raw?.status) !== "acknowledgement_received" && <button onClick={() => advance('gst', { _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}
-                <button onClick={() => handleReconcileGst({ _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Reconcile</button>
+                <button className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>
+                <button className="text-xs font-semibold px-3 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Reconcile</button>
               </div>
             </div>
           ))}
@@ -1664,7 +1781,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <div className="flex gap-3">{[{l:"Total",v:_inr(revenue)},{l:"Paid",v:_inr(paidTotal)},{l:"Outstanding",v:_inr(outstanding)}].map(({l,v}) => <div key={l} className="px-4 py-2 bg-white rounded-xl border border-[#E2E8F0] text-center"><div className="font-extrabold text-sm text-[#087F5B]" style={{ fontFamily:"Manrope" }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>)}</div>
             <button onClick={() => { setInvoiceForm({ clientId: "", due: "", description: "", amount: "" }); setActionModal({title: 'Create Invoice', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><ReceiptText size={13} /> Create Invoice</button>
           </div>
-          <div className="space-y-3">{invoices.map(({inv,client,svc,amt,date,status,_raw}: any) => (<div key={inv} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{inv} · {client}</div><div className="text-xs text-[#52606D]">{svc} · {date}</div></div><div className="flex items-center gap-3"><div className="font-bold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{amt}</div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Paid"?"#EAF4F0":"#FFF0F0",color:status==="Paid"?"#087F5B":"#e53e3e" }}>{status}</span>{status!=="Paid" && <button onClick={async () => { try { const res = await payInvoiceWithRazorpay(_raw.id, { name: _raw?.client?.name, email: _raw?.client?.email }); if (res === "paid") { showToast("Payment received.", "success"); loadData(); } } catch (e) { showToast(e instanceof ApiError ? e.message : "Payment could not be processed.", "error"); } }} className="text-xs px-2 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Pay Now</button>}{status!=="Paid" && <button onClick={() => handleMarkInvoicePaid({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0] text-[#102A43]">Mark Paid</button>}</div></div>))}</div>
+          <div className="space-y-3">{invoices.map(({inv,client,svc,amt,date,status,_raw}: any) => (<div key={inv} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{inv} · {client}</div><div className="text-xs text-[#52606D]">{svc} · {date}</div></div><div className="flex items-center gap-3"><div className="font-bold text-[#102A43]" style={{ fontFamily:"Manrope" }}>{amt}</div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Paid"?"#EAF4F0":"#FFF0F0",color:status==="Paid"?"#087F5B":"#e53e3e" }}>{status}</span>{status!=="Paid" && <button onClick={() => handleMarkInvoicePaid({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0] text-[#102A43]">Mark Paid</button>}</div></div>))}</div>
         </div>
       );
       case "Payment Tracking": return (
@@ -1742,16 +1859,21 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         </div>
         </>
       );
-      case "Portal Access Requests": return (
+      case "Portal Access Requests": {
+        const openRequests = contactRequests.filter((r: any) => !["converted", "closed", "spam"].includes(_lc(r.status)));
+        return (
         <div className="space-y-3">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-sm text-[#52606D]">{contactRequests.length} request{contactRequests.length !== 1 ? "s" : ""} from the login page</div>
+            <div className="text-sm text-[#52606D]">{openRequests.length} request{openRequests.length !== 1 ? "s" : ""} from the login page</div>
           </div>
-          {contactRequests.length === 0 && (
+          {openRequests.length === 0 && (
             <div className="p-5 text-center text-sm font-semibold text-[#087F5B] bg-[#EAF4F0] rounded-2xl">No access requests yet.</div>
           )}
-          {contactRequests.map(({ name, email, phone, service, msg, date, status, _raw }: any) => (
-            <div key={_raw?.id ?? email} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
+          {openRequests.map(({ name, email, phone, service, msg, date, status, _raw }: any) => {
+            const reqId = _raw?.id ?? email;
+            const busy = busyIds.has(reqId);
+            return (
+            <div key={reqId} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div>
                   <div className="font-bold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{name}</div>
@@ -1763,35 +1885,49 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               {msg && <p className="text-xs text-[#52606D] mb-3 leading-relaxed line-clamp-2">{msg}</p>}
               <div className="flex gap-2">
                 <button
+                  disabled={busy}
                   onClick={async () => {
+                    setBusyIds(prev => new Set(prev).add(reqId));
                     try {
                       await api.post("/onboarding/clients", {
                         full_name: name, email, company_name: name, client_type: "private_limited",
                       });
                       try { await requestPasswordReset(email); } catch { /* email best-effort: Supabase rate-limits; account is already created, user can use OTP */ }   // client sets their own password via email
-                      if (_raw?.id) { try { await resources.contactRequests.update(_raw.id, { status: "converted" } as any); } catch { /* non-fatal */ } }
+                      if (_raw?.id) await resources.contactRequests.update(_raw.id, { status: "converted" } as any);
                       await loadData();
                       showToast(`Approved — account created for ${email}. They can set a password via email or use OTP.`, "success");
-                    } catch {
-                      showToast("Could not onboard client. Check if email already exists.", "error");
+                    } catch (e) {
+                      showToast(e instanceof ApiError ? e.message : "Could not onboard client. Check if email already exists.", "error");
+                    } finally {
+                      setBusyIds(prev => { const n = new Set(prev); n.delete(reqId); return n; });
                     }
                   }}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{ background: "linear-gradient(135deg,#087F5B,#065a40)" }}>
-                  Onboard as Client
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "linear-gradient(135deg,#087F5B,#065a40)" }}>
+                  {busy ? "Onboarding…" : "Onboard as Client"}
                 </button>
                 <button
+                  disabled={busy}
                   onClick={async () => {
-                    if (_raw?.id) { try { await resources.contactRequests.update(_raw.id, { status: "dismissed" } as any); await loadData(); } catch { /* non-fatal */ } }
-                    showToast(`Dismissed request from ${name}`, "info");
+                    setBusyIds(prev => new Set(prev).add(reqId));
+                    try {
+                      if (_raw?.id) await resources.contactRequests.update(_raw.id, { status: "closed" } as any);
+                      await loadData();
+                      showToast(`Dismissed request from ${name}`, "info");
+                    } catch (e) {
+                      showToast(e instanceof ApiError ? e.message : "Could not dismiss request.", "error");
+                    } finally {
+                      setBusyIds(prev => { const n = new Set(prev); n.delete(reqId); return n; });
+                    }
                   }}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#FFF0F0", color: "#e53e3e" }}>
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50" style={{ background: "#FFF0F0", color: "#e53e3e" }}>
                   Dismiss
                 </button>
               </div>
             </div>
-          ))}
+          );})}
         </div>
-      );
+        );
+      }
 
       case "Lead Management": return (
         <div>
@@ -1974,10 +2110,20 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               <button onClick={() => setActionModal(null)} className="text-[#52606D] hover:text-[#102A43]"><X size={20} /></button>
             </div>
             {actionModal.type === 'upload' ? (
-              <div className="border-2 border-dashed border-[#087F5B]/30 rounded-xl p-8 text-center bg-[#EAF4F0]/50 mb-5 cursor-pointer hover:bg-[#EAF4F0] transition-colors">
-                <UploadCloud size={32} className="mx-auto mb-3 text-[#087F5B]" />
-                <p className="text-sm font-semibold text-[#102A43] mb-1">Click to browse or drag and drop</p>
-                <p className="text-xs text-[#52606D]">PDF, XLSX, ZIP (Max. 10MB)</p>
+              <div className="space-y-4 mb-5 text-left">
+                <div>
+                  <label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
+                  <select value={docUploadForm.clientId} onChange={(e) => setDocUploadForm(p => ({ ...p, clientId: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm">
+                    <option value="">Select client…</option>
+                    {clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}
+                  </select>
+                </div>
+                <label className="block border-2 border-dashed border-[#087F5B]/30 rounded-xl p-8 text-center bg-[#EAF4F0]/50 cursor-pointer hover:bg-[#EAF4F0] transition-colors">
+                  <input type="file" className="hidden" onChange={(e) => setDocUploadForm(p => ({ ...p, file: e.target.files?.[0] ?? null }))} />
+                  <UploadCloud size={32} className="mx-auto mb-3 text-[#087F5B]" />
+                  <p className="text-sm font-semibold text-[#102A43] mb-1">{docUploadForm.file ? docUploadForm.file.name : "Click to browse a file"}</p>
+                  <p className="text-xs text-[#52606D]">PDF, XLSX, ZIP (Max. 10MB)</p>
+                </label>
               </div>
             ) : (actionModal.title === 'Add Employee' || actionModal.title === 'Edit Employee') ? (
               <div className="space-y-4 mb-5 text-left">
@@ -2209,6 +2355,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 </div>
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Message *</label><textarea value={chatForm.text} onChange={(e) => setChatForm(p => ({ ...p, text: e.target.value }))} rows={4} maxLength={4000} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="Type your message to the client…" /></div>
               </div>
+            ) : actionModal.title === 'Log Communication' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label><select value={commForm.clientId} onChange={(e) => setCommForm(p => ({ ...p, clientId: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="">Select client…</option>{clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}</select></div>
+                <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-[#102A43] mb-1">Type *</label><select value={commForm.type} onChange={(e) => setCommForm(p => ({ ...p, type: e.target.value, direction: e.target.value === "handoff" ? "internal" : p.direction === "internal" ? "outbound" : p.direction }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="call">Call note</option><option value="email">Email</option><option value="handoff">Internal handoff</option></select></div><div><label className="block text-xs font-semibold text-[#102A43] mb-1">Direction *</label><select disabled={commForm.type === "handoff"} value={commForm.type === "handoff" ? "internal" : commForm.direction} onChange={(e) => setCommForm(p => ({ ...p, direction: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm disabled:bg-[#F7F9FC]"><option value="outbound">Outbound</option><option value="inbound">Inbound</option><option value="internal">Internal</option></select></div></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Subject *</label><input value={commForm.subject} onChange={(e) => setCommForm(p => ({ ...p, subject: e.target.value }))} maxLength={200} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="Short interaction summary" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Details *</label><textarea value={commForm.body} onChange={(e) => setCommForm(p => ({ ...p, body: e.target.value }))} rows={5} maxLength={10000} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="Record the discussion, commitment, or handoff context…" /></div>
+              </div>
             ) : actionModal.title === 'Import Bank Statement' ? (
               <div className="space-y-4 mb-5 text-left">
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
@@ -2422,8 +2575,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 </div>
               </div>
             )}
-            <button 
+            <button
+              disabled={modalSaving}
               onClick={() => {
+                if (modalSaving) return;
+                setModalSaving(true);
                 if (actionModal?.title === 'Add Client') {
                   handleAddClient();
                   return;
@@ -2465,6 +2621,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 if (actionModal?.title === 'Revise Salary')       { handleReviseSalary(); return; }
                 if (actionModal?.title === 'Bulk Import Staff')   { handleStaffBulkImport(); return; }
                 if (actionModal?.title === 'Send Message')        { handleSendChat(); return; }
+                if (actionModal?.title === 'Log Communication')   { handleAddCommLog(); return; }
                 if (actionModal?.title === 'Import Bank Statement') { handleBankImport(); return; }
                 if (actionModal?.title === 'Set Reminder')        { handleAddReminder(); return; }
                 if (actionModal?.title === 'Add Checklist Item')  { handleAddChecklist(); return; }
@@ -2474,12 +2631,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 if (actionModal?.title === 'Record Attendance')   { handleAddAttendance(); return; }
                 if (actionModal?.title === 'Schedule Meeting')    { handleAddMeeting(); return; }
                 if (actionModal?.title === 'Trial Balance')       { loadTrialBalance(); setActionModal(null); return; }
+                if (actionModal?.title === 'Upload File')         { handleUploadDocument(); return; }
                 showToast(`${actionModal.title} saved successfully!`, 'success');
                 setActionModal(null);
               }}
-              className="w-full py-3 rounded-xl text-[#102A43] font-semibold text-sm transition-transform active:scale-95 flex justify-center items-center gap-2" 
+              className="w-full py-3 rounded-xl text-[#102A43] font-semibold text-sm transition-transform active:scale-95 flex justify-center items-center gap-2 disabled:opacity-60"
               style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
-              {actionModal.type === 'upload' ? 'Confirm Upload' : actionModal.title?.startsWith('Delete') ? 'Delete' : actionModal.title === 'Add Client' ? 'Add Client' : actionModal.title === 'Add Lead' ? 'Add Lead' : actionModal.title === 'Add Employee' ? 'Add Employee' : actionModal.title === 'Add Service' ? 'Add Service' : actionModal.title === 'Assign Task' ? 'Assign Task' : 'Save Changes'}
+              {modalSaving ? 'Saving…' : actionModal.type === 'upload' ? 'Confirm Upload' : actionModal.title?.startsWith('Delete') ? 'Delete' : actionModal.title === 'Add Client' ? 'Add Client' : actionModal.title === 'Add Lead' ? 'Add Lead' : actionModal.title === 'Add Employee' ? 'Add Employee' : actionModal.title === 'Add Service' ? 'Add Service' : actionModal.title === 'Assign Task' ? 'Assign Task' : 'Save Changes'}
             </button>
           </div>
         </div>
