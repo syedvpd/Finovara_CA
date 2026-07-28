@@ -1307,13 +1307,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Pending Filings": return (
         <div className="space-y-3">
-          {[
+          {( [
             ...taxReturns.filter((t:any) => _lc(t.status) !== "filed").map((t:any) => ({ client: t.client, filing: `${t.itr} ${t.fy}`, due: t.date, priority: "High" })),
             ...gstReturns.filter((g:any) => _lc(g.status) !== "filed").map((g:any) => ({ client: g.client, filing: `${g.form} ${g.period}`, due: g.status, priority: "Medium" })),
           ].length === 0 ? [{ client: "—", filing: "No pending filings", due: "", priority: "Low" }] : [
             ...taxReturns.filter((t:any) => _lc(t.status) !== "filed").map((t:any) => ({ client: t.client, filing: `${t.itr} ${t.fy}`, due: t.date, priority: "High" })),
             ...gstReturns.filter((g:any) => _lc(g.status) !== "filed").map((g:any) => ({ client: g.client, filing: `${g.form} ${g.period}`, due: g.status, priority: "Medium" })),
-          ].map(({ client, filing, due, priority }) => (
+          ] ).map(({ client, filing, due, priority }) => (
             <div key={filing+client} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div>
                 <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{filing}</div>
