@@ -30,7 +30,11 @@ export const arrivedViaRecovery =
 export const supabase = createClient(url || "https://placeholder.supabase.co", anonKey || "placeholder-anon-key", {
   auth: {
     persistSession: false,
-    autoRefreshToken: false,
+    // Keeps the in-memory Supabase session alive past its own JWT expiry.
+    // AuthContext separately re-exchanges it into the app's (shorter-lived)
+    // cookie session on a timer, since that cookie expires well before the
+    // Supabase JWT would naturally trigger this.
+    autoRefreshToken: true,
     detectSessionInUrl: true, // password-reset links land back here
     // implicit (hash) flow, not PKCE: PKCE needs a code_verifier persisted in
     // storage, which persistSession:false disables — so recovery/invite links

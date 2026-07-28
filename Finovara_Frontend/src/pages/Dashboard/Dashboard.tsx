@@ -690,7 +690,7 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
 
       <div className="flex-shrink-0 border-b bg-white z-10 relative shadow-sm" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <button onClick={() => setActiveTab("Active Services")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #087F5B, #065a40)" }}>
               <span className="text-white font-bold text-lg" style={{ fontFamily: "Manrope" }}>F</span>
             </div>
@@ -698,7 +698,7 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
               <span className="font-bold text-[#102A43]" style={{ fontFamily: "Manrope" }}>Finovara</span>
               <span className="block text-xs text-[#52606D]" style={{ fontFamily: "Inter" }}>Client Portal</span>
             </div>
-          </div>
+          </button>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{displayName}</div>
@@ -715,11 +715,7 @@ export function DashboardPage({ setPage }: { setPage: (p: Page) => void }) {
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 gap-6">
         <aside className="w-64 flex-shrink-0 hidden lg:flex flex-col h-full pb-2">
           <div className="bg-white rounded-2xl border border-[#E2E8F0] flex flex-col h-full overflow-hidden shadow-sm">
-            <div className="flex-shrink-0 p-5 border-b" style={{ background: "#F7F9FC", borderColor: "rgba(255,255,255,0.1)" }}>
-              <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#C8A45D", fontFamily: "Inter" }}>Open Items</div>
-              <div className="text-4xl font-extrabold text-[#102A43]" style={{ fontFamily: "Manrope" }}>{loading ? "—" : pendingTasks.length}</div>
-              <div className="text-xs text-[#52606D] mt-1" style={{ fontFamily: "Inter" }}>Pending tasks</div>
-            </div>
+
             <nav className="flex-1 overflow-y-auto p-2">
               {tabs.map(({ label, icon: Icon }) => (
                 <button key={label} onClick={() => setActiveTab(label)}

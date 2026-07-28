@@ -36,10 +36,18 @@ export async function login(email: string, password: string): Promise<SessionInf
   return exchange(data.session.access_token, data.session.refresh_token);
 }
 
-/** Send an email OTP (magic-code) for passwordless sign-in. */
+/**
+ * Send an email OTP (magic-code) for passwordless sign-in.
+ *
+ * Routed through the backend, not supabase.auth.signInWithOtp directly:
+ * that call defaults to creating a new Supabase user for any email typed in,
+ * so it would email an OTP to (and silently provision) addresses with no
+ * account here. The backend endpoint only emails accounts that exist and
+ * always reports the same success message either way, so the response can't
+ * be used to enumerate registered emails.
+ */
 export async function sendOtp(email: string): Promise<void> {
-  const { error } = await supabase.auth.signInWithOtp({ email });
-  if (error) throw new ApiError(400, "otp_send_failed", error.message);
+  await api.post("/auth/otp/request", { email });
 }
 
 /** Verify the 6-digit OTP → cookie session. */

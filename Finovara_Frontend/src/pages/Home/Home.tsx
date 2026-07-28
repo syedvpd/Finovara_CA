@@ -49,9 +49,18 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
     .map(t => ({ name: t.author_name, role: t.author_title ?? "", text: t.content, avatar: t.author_name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), rating: t.rating ?? 5 }));
   const displayTestimonials = mappedLiveTestimonials.length ? mappedLiveTestimonials : TESTIMONIALS;
 
+  const getStaticImage = (title: string) => {
+    const t = title.toLowerCase();
+    if (t.includes("budget")) return INSIGHTS[0].image;
+    if (t.includes("gst")) return INSIGHTS[1].image;
+    if (t.includes("cfo") || t.includes("virtual")) return INSIGHTS[2].image;
+    return null;
+  };
+
+  const staticImageMap = Object.fromEntries(INSIGHTS.map(i => [i.title, i.image]));
   const displayBlogs = liveBlogs.length
-    ? liveBlogs.map(b => ({ title: b.title, tag: b.category_id ?? "Article", date: b.published_at ? new Date(b.published_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "", excerpt: b.excerpt ?? "", readTime: b.read_time_minutes ? `${b.read_time_minutes} min read` : "", cover: b.cover_image_url, _raw: b }))
-    : INSIGHTS.map(i => ({ ...i, cover: null, _raw: i }));
+    ? liveBlogs.map(b => { const img = b.cover_image_url || staticImageMap[b.title] || getStaticImage(b.title) || null; return { title: b.title, tag: b.category_id ?? "Article", date: b.published_at ? new Date(b.published_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "", excerpt: b.excerpt ?? "", readTime: b.read_time_minutes ? `${b.read_time_minutes} min read` : "", cover: img, image: img, _raw: { ...b, image: img } }; })
+    : INSIGHTS.map(i => ({ ...i, cover: i.image, _raw: i }));
 
   useEffect(() => {
     const observer = new IntersectionObserver(

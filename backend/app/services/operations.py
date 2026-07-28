@@ -72,7 +72,14 @@ class TaskService(BaseService[Task, TaskRepository]):
 
     async def _before_update(self, entity: Task, data: dict[str, Any], auth: AuthContext) -> dict[str, Any]:
         new_status = data.get("status")
-        if new_status == "done" and entity.status not in ("partner_approval", "client_approval"):
+        # Regular staff must route a task through the approval chain before it can
+        # be completed; admins/managing partners may close it out directly from
+        # the dashboard quick actions (the transition table already permits it).
+        if (
+            new_status == "done"
+            and entity.status not in ("partner_approval", "client_approval")
+            and not auth.is_admin
+        ):
             raise ConflictError("A task must clear approval before it can be completed.")
         return data
 
