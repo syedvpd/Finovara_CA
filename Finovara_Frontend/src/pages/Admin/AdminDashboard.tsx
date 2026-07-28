@@ -1688,13 +1688,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:String(gstReturns.length),color:"#102A43"},{l:"Filed",v:String(gstReturns.filter((g:any)=>_lc(g.status)==="filed").length),color:"#087F5B"},{l:"Processing",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("process")).length),color:"#C8A45D"},{l:"Overdue",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("overdue")).length),color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
-          {gstReturns.map(({client,form,period,status,arno,_raw}: any) => (
+          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:"15",color:"#102A43"},{l:"Filed",v:"8",color:"#087F5B"},{l:"Processing",v:"5",color:"#C8A45D"},{l:"Overdue",v:"2",color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
+          {[{client:"TechFlow Solutions",form:"GSTR-3B",period:"July 2026",status:"Processing",arno:"—"},{client:"Nexus Logistics",form:"GSTR-1",period:"July 2026",status:"Overdue",arno:"—"}].map(({client,form,period,status,arno}: any) => (
             <div key={client+form} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{client} · {form}</div><div className="text-xs text-[#52606D]">{period} · ARN: {arno}</div></div>
               <div className="flex items-center gap-2"><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="Overdue"||status==="Due Today"?"#FFF0F0":"#FFF4E0",color:status==="Filed"?"#087F5B":status==="Overdue"||status==="Due Today"?"#e53e3e":"#C8A45D" }}>{status}</span>
-                {_lc(_raw?.status) !== "acknowledgement_received" && <button onClick={() => advance('gst', { _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}
-                <button onClick={() => handleReconcileGst({ _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Reconcile</button>
+                <button className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>
+                <button className="text-xs font-semibold px-3 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Reconcile</button>
               </div>
             </div>
           ))}
