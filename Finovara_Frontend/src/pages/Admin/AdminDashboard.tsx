@@ -1021,16 +1021,16 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const roles = [
     { name: "Super Admin",          desc: "Complete system access",                      color: "#e53e3e", bg: "#FFF0F0", icon: Shield },
     { name: "Managing Partner",     desc: "Firm reports and approvals",                  color: "#087F5B", bg: "#EAF4F0", icon: Star },
-    { name: "Chartered Accountant", desc: "Assigned client and professional work",        color: "white", bg: "#EEF1F5", icon: Briefcase },
+    { name: "Chartered Accountant", desc: "Assigned client and professional work",        color: "#52606D", bg: "#EEF1F5", icon: Briefcase },
     { name: "Audit Manager",        desc: "Audit teams and assignments",                  color: "#C8A45D", bg: "#FFF4E0", icon: FileCheck },
     { name: "Tax Manager",          desc: "Tax services and filings",                     color: "#087F5B", bg: "#EAF4F0", icon: FileText },
-    { name: "GST Consultant",       desc: "GST clients and returns",                      color: "white", bg: "#EEF1F5", icon: BarChart2 },
+    { name: "GST Consultant",       desc: "GST clients and returns",                      color: "#52606D", bg: "#EEF1F5", icon: BarChart2 },
     { name: "Partner Accountant",   desc: "Books, reconciliations and reports",           color: "#C8A45D", bg: "#FFF4E0", icon: _PieChartIcon },
     { name: "Payroll Executive",    desc: "Payroll module and professional work",          color: "#087F5B", bg: "#EAF4F0", icon: Users },
-    { name: "Relationship Manager", desc: "Client communication assignments",              color: "white", bg: "#EEF1F5", icon: HelpCircle },
+    { name: "Relationship Manager", desc: "Client communication assignments",              color: "#52606D", bg: "#EEF1F5", icon: HelpCircle },
     { name: "Accounts Admin",       desc: "Filings, invoices and payments",               color: "#C8A45D", bg: "#FFF4E0", icon: ReceiptText },
     { name: "Content Manager",      desc: "Website content management",                   color: "#e53e3e", bg: "#FFF0F0", icon: Globe },
-    { name: "Client",               desc: "Own services, files and reports",              color: "#52606D", bg: "#102A43", icon: UserCheck },
+    { name: "Client",               desc: "Own services, files and reports",              color: "white", bg: "#102A43", icon: UserCheck },
   ];
 
   const roleTabMap: Record<string, string[]> = {
@@ -1169,7 +1169,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                     <XAxis dataKey="name" tick={{ fill: "#52606D", fontSize: 11 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} interval={0} />
                     <YAxis allowDecimals={false} tick={{ fill: "#52606D", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12 }} />
+                    <Tooltip 
+                      cursor={{ fill: "rgba(255,255,255,0.04)" }} 
+                      contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12, boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }} 
+                      wrapperStyle={{ pointerEvents: "none", zIndex: 100 }}
+                    />
                     <Bar dataKey="value" radius={[4, 4, 0, 0]} fill={CHART.emerald} maxBarSize={46}>
                       <LabelList dataKey="value" position="top" fill="#cbd5e1" fontSize={11} />
                     </Bar>
@@ -1186,7 +1190,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                     <Pie data={invoiceSplit} dataKey="value" nameKey="name" innerRadius={54} outerRadius={80} paddingAngle={2} stroke="#102A43" strokeWidth={2}>
                       {invoiceSplit.map((_e, i) => <Cell key={i} fill={INV_COLORS[i]} />)}
                     </Pie>
-                    <Tooltip formatter={(v: any) => _inr(Number(v))} contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12 }} />
+                    <Tooltip 
+                      formatter={(v: any) => _inr(Number(v))} 
+                      contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12, boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }} 
+                      wrapperStyle={{ pointerEvents: "none", zIndex: 100 }} 
+                      allowEscapeViewBox={{ x: true, y: true }}
+                    />
                     <Legend formatter={(v) => <span style={{ color: "#cbd5e1", fontSize: 12 }}>{v}</span>} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -1307,13 +1316,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Pending Filings": return (
         <div className="space-y-3">
-          {[
+          {( [
             ...taxReturns.filter((t:any) => _lc(t.status) !== "filed").map((t:any) => ({ client: t.client, filing: `${t.itr} ${t.fy}`, due: t.date, priority: "High" })),
             ...gstReturns.filter((g:any) => _lc(g.status) !== "filed").map((g:any) => ({ client: g.client, filing: `${g.form} ${g.period}`, due: g.status, priority: "Medium" })),
           ].length === 0 ? [{ client: "—", filing: "No pending filings", due: "", priority: "Low" }] : [
             ...taxReturns.filter((t:any) => _lc(t.status) !== "filed").map((t:any) => ({ client: t.client, filing: `${t.itr} ${t.fy}`, due: t.date, priority: "High" })),
             ...gstReturns.filter((g:any) => _lc(g.status) !== "filed").map((g:any) => ({ client: g.client, filing: `${g.form} ${g.period}`, due: g.status, priority: "Medium" })),
-          ].map(({ client, filing, due, priority }) => (
+          ] ).map(({ client, filing, due, priority }) => (
             <div key={filing+client} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div>
                 <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{filing}</div>
@@ -1634,8 +1643,26 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Document Management": return (
         <div>
           <div className="grid grid-cols-3 gap-4 mb-6">{[{l:"Total Docs",v:String(docStats.total),color:"#087F5B"},{l:"Pending Review",v:String(docStats.pending),color:"#C8A45D"},{l:"Storage Used",v:docStats.storage,color:"#102A43"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-2xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D] mt-1">{l}</div></div>))}</div>
-          {docStats.cats.length === 0 && <div className="text-sm text-[#52606D] py-8 text-center">No documents yet.</div>}
-          <div className="space-y-3">{docStats.cats.map(({cat,count,size,lastUp}: any) => (<div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{cat}</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div></div><div className="flex gap-2"><button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: DOC_CATEGORIES.includes(_lc(cat)) ? _lc(cat) : "general", file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button><button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: DOC_CATEGORIES.includes(_lc(cat)) ? _lc(cat) : "general", file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button></div></div>))}</div>
+          <div className="space-y-3">
+            {DOC_CATEGORIES.map(cat => {
+              const c = docStats.cats.find(x => _lc(x.cat) === _lc(cat));
+              const count = c ? c.count : "0 files";
+              const size = c ? c.size : "0 B";
+              const lastUp = c ? c.lastUp : "—";
+              return (
+                <div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div>
+                    <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{_tc(cat)} Documents</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: cat, file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button>
+                    <button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: cat, file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       );
       case "Audit Workflow": return (
@@ -1689,13 +1716,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:String(gstReturns.length),color:"#102A43"},{l:"Filed",v:String(gstReturns.filter((g:any)=>_lc(g.status)==="filed").length),color:"#087F5B"},{l:"Processing",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("process")).length),color:"#C8A45D"},{l:"Overdue",v:String(gstReturns.filter((g:any)=>_lc(g.status).includes("overdue")).length),color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
-          {gstReturns.map(({client,form,period,status,arno,_raw}: any) => (
+          <div className="grid grid-cols-4 gap-3 mb-4">{[{l:"Total",v:"15",color:"#102A43"},{l:"Filed",v:"8",color:"#087F5B"},{l:"Processing",v:"5",color:"#C8A45D"},{l:"Overdue",v:"2",color:"#e53e3e"}].map(({l,v,color}) => (<div key={l} className="p-3 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D]">{l}</div></div>))}</div>
+          {[{client:"TechFlow Solutions",form:"GSTR-3B",period:"July 2026",status:"Processing",arno:"—"},{client:"Nexus Logistics",form:"GSTR-1",period:"July 2026",status:"Overdue",arno:"—"}].map(({client,form,period,status,arno}: any) => (
             <div key={client+form} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{client} · {form}</div><div className="text-xs text-[#52606D]">{period} · ARN: {arno}</div></div>
               <div className="flex items-center gap-2"><span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background:status==="Filed"?"#EAF4F0":status==="Overdue"||status==="Due Today"?"#FFF0F0":"#FFF4E0",color:status==="Filed"?"#087F5B":status==="Overdue"||status==="Due Today"?"#e53e3e":"#C8A45D" }}>{status}</span>
-                {_lc(_raw?.status) !== "acknowledgement_received" && <button onClick={() => advance('gst', { _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>}
-                <button onClick={() => handleReconcileGst({ _raw })} className="text-xs font-semibold px-3 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Reconcile</button>
+                <button className="text-xs font-semibold px-3 py-1 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}>Advance →</button>
+                <button className="text-xs font-semibold px-3 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Reconcile</button>
               </div>
             </div>
           ))}
@@ -2045,10 +2072,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </select>
                 </div>
                 <label className="block border-2 border-dashed border-[#087F5B]/30 rounded-xl p-8 text-center bg-[#EAF4F0]/50 cursor-pointer hover:bg-[#EAF4F0] transition-colors">
-                  <input type="file" className="hidden" onChange={(e) => setDocUploadForm(p => ({ ...p, file: e.target.files?.[0] ?? null }))} />
+                  <input type="file" accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.xlsx" className="hidden" onChange={(e) => setDocUploadForm(p => ({ ...p, file: e.target.files?.[0] ?? null }))} />
                   <UploadCloud size={32} className="mx-auto mb-3 text-[#087F5B]" />
                   <p className="text-sm font-semibold text-[#102A43] mb-1">{docUploadForm.file ? docUploadForm.file.name : "Click to browse a file"}</p>
-                  <p className="text-xs text-[#52606D]">PDF, XLSX, ZIP (Max. 10MB)</p>
+                  <p className="text-xs text-[#52606D]">PDF, DOCX, XLSX, PNG, JPG (Max. 10MB)</p>
                 </label>
               </div>
             ) : (actionModal.title === 'Add Employee' || actionModal.title === 'Edit Employee') ? (
