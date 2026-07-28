@@ -48,6 +48,14 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
     .filter(t => t.content && t.content.trim())
     .map(t => ({ name: t.author_name, role: t.author_title ?? "", text: t.content, avatar: t.author_name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), rating: t.rating ?? 5 }));
   const displayTestimonials = mappedLiveTestimonials.length ? mappedLiveTestimonials : TESTIMONIALS;
+  const showPreviousTestimonial = () => {
+    setActiveTestimonial(current =>
+      (current - 1 + displayTestimonials.length) % displayTestimonials.length
+    );
+  };
+  const showNextTestimonial = () => {
+    setActiveTestimonial(current => (current + 1) % displayTestimonials.length);
+  };
 
   const getStaticImage = (title: string) => {
     const t = title.toLowerCase();
@@ -597,12 +605,32 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
                 </div>
               </div>
             </div>
-            <div className="flex justify-center gap-2 mt-6">
-              {displayTestimonials.map((_, i) => (
-                <button key={i} onClick={() => setActiveTestimonial(i)}
-                  className="rounded-full transition-all"
-                  style={{ width: i === activeTestimonial ? 24 : 8, height: 8, background: i === activeTestimonial ? "#087F5B" : "#E2E8F0" }} />
-              ))}
+            <div className="flex items-center justify-center gap-4 mt-6">
+              <button
+                type="button"
+                onClick={showPreviousTestimonial}
+                aria-label="Show previous testimonial"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#087F5B] text-[#087F5B] transition-colors hover:bg-[#087F5B] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F5B] focus-visible:ring-offset-2"
+              >
+                <ChevronLeft size={20} aria-hidden="true" />
+              </button>
+              <div className="flex gap-2" aria-label="Testimonial navigation">
+                {displayTestimonials.map((_, i) => (
+                  <button key={i} type="button" onClick={() => setActiveTestimonial(i)}
+                    aria-label={`Show testimonial ${i + 1}`}
+                    aria-current={i === activeTestimonial ? "true" : undefined}
+                    className="rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F5B] focus-visible:ring-offset-2"
+                    style={{ width: i === activeTestimonial ? 24 : 8, height: 8, background: i === activeTestimonial ? "#087F5B" : "#E2E8F0" }} />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={showNextTestimonial}
+                aria-label="Show next testimonial"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#087F5B] text-[#087F5B] transition-colors hover:bg-[#087F5B] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F5B] focus-visible:ring-offset-2"
+              >
+                <ChevronRight size={20} aria-hidden="true" />
+              </button>
             </div>
           </div>
           <div className="text-center mt-8">
