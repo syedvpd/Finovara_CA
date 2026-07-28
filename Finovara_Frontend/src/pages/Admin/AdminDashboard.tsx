@@ -140,6 +140,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [audits, setAudits] = useState<any[]>([]);
   const [compliance, setCompliance] = useState<any[]>([]);
   const [docStats, setDocStats] = useState<{ total: number; pending: number; storage: string; cats: any[] }>({ total: 0, pending: 0, storage: "0 B", cats: [] });
+  const [documents, setDocuments] = useState<any[]>([]);
   const [docUploadForm, setDocUploadForm] = useState<{ clientId: string; category: string; file: File | null }>({ clientId: "", category: "general", file: null });
   const [queries, setQueries] = useState<any[]>([]);
   const [engagements, setEngagements] = useState<any[]>([]);
@@ -201,6 +202,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       setLeads(_rowsOf(r[4]).map((l: any) => ({ name: l.company_name ?? l.name, contact: l.name, source: _tc(l.source),
         service: "—", status: l.status, followUp: "—", _raw: l })));
       const allDocs = _rowsOf(r[5]);
+      setDocuments(allDocs);
       const pendingDocs = allDocs.filter((d: any) => _lc(d.status) === "pending");
       setReviewDocs(pendingDocs.map((d: any) => ({ id: d.id, doc: d.name, client: d.client_id?.slice(0, 8) ?? "—", uploaded: _date(d.created_at), reviewer: _tc(d.status) })));
       const fmtBytes = (n: number) => n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : n >= 1e3 ? `${(n / 1e3).toFixed(1)} KB` : `${n} B`;
@@ -1204,7 +1206,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                     <XAxis dataKey="name" tick={{ fill: "#52606D", fontSize: 11 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} interval={0} />
                     <YAxis allowDecimals={false} tick={{ fill: "#52606D", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12 }} />
+                    <Tooltip 
+                      cursor={{ fill: "rgba(255,255,255,0.04)" }} 
+                      contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12, boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }} 
+                      wrapperStyle={{ pointerEvents: "none", zIndex: 100 }}
+                    />
                     <Bar dataKey="value" radius={[4, 4, 0, 0]} fill={CHART.emerald} maxBarSize={46}>
                       <LabelList dataKey="value" position="top" fill="#cbd5e1" fontSize={11} />
                     </Bar>
@@ -1221,7 +1227,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                     <Pie data={invoiceSplit} dataKey="value" nameKey="name" innerRadius={54} outerRadius={80} paddingAngle={2} stroke="#102A43" strokeWidth={2}>
                       {invoiceSplit.map((_e, i) => <Cell key={i} fill={INV_COLORS[i]} />)}
                     </Pie>
-                    <Tooltip formatter={(v: any) => _inr(Number(v))} contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12 }} />
+                    <Tooltip 
+                      formatter={(v: any) => _inr(Number(v))} 
+                      contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12, boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }} 
+                      wrapperStyle={{ pointerEvents: "none", zIndex: 100 }} 
+                      allowEscapeViewBox={{ x: true, y: true }}
+                    />
                     <Legend formatter={(v) => <span style={{ color: "#cbd5e1", fontSize: 12 }}>{v}</span>} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -1342,13 +1353,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
 
       case "Pending Filings": return (
         <div className="space-y-3">
-          {[
+          {( [
             ...taxReturns.filter((t:any) => _lc(t.status) !== "filed").map((t:any) => ({ client: t.client, filing: `${t.itr} ${t.fy}`, due: t.date, priority: "High" })),
             ...gstReturns.filter((g:any) => _lc(g.status) !== "filed").map((g:any) => ({ client: g.client, filing: `${g.form} ${g.period}`, due: g.status, priority: "Medium" })),
           ].length === 0 ? [{ client: "—", filing: "No pending filings", due: "", priority: "Low" }] : [
             ...taxReturns.filter((t:any) => _lc(t.status) !== "filed").map((t:any) => ({ client: t.client, filing: `${t.itr} ${t.fy}`, due: t.date, priority: "High" })),
             ...gstReturns.filter((g:any) => _lc(g.status) !== "filed").map((g:any) => ({ client: g.client, filing: `${g.form} ${g.period}`, due: g.status, priority: "Medium" })),
-          ].map(({ client, filing, due, priority }) => (
+          ] ).map(({ client, filing, due, priority }) => (
             <div key={filing+client} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
               <div>
                 <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{filing}</div>
@@ -1708,8 +1719,27 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Document Management": return (
         <div>
-          <div className="grid grid-cols-3 gap-4 mb-6">{[{l:"Total Docs",v:"23",color:"#087F5B"},{l:"Pending Review",v:"0",color:"#C8A45D"},{l:"Storage Used",v:"2.8 MB",color:"#102A43"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-2xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D] mt-1">{l}</div></div>))}</div>
-          <div className="space-y-3">{[{cat:"General",count:"23 files",size:"2.8 MB",lastUp:"28 Jul"}].map(({cat,count,size,lastUp}: any) => (<div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{cat}</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div></div><div className="flex gap-2"><button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: "general", file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button><button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: "general", file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button></div></div>))}</div>
+          <div className="grid grid-cols-3 gap-4 mb-6">{[{l:"Total Docs",v:String(docStats.total),color:"#087F5B"},{l:"Pending Review",v:String(docStats.pending),color:"#C8A45D"},{l:"Storage Used",v:docStats.storage,color:"#102A43"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-2xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D] mt-1">{l}</div></div>))}</div>
+          <div className="space-y-3">
+            {DOC_CATEGORIES.map(cat => {
+              const c = docStats.cats.find(x => _lc(x.cat) === _lc(cat));
+              const count = c ? c.count : "0 files";
+              const size = c ? c.size : "0 B";
+              const lastUp = c ? c.lastUp : "—";
+              return (
+                <div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div>
+                    <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{_tc(cat)} Documents</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setActionModal({title: `${_tc(cat)} Documents`, type: 'browse', item: { category: cat }})} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button>
+                    <button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: cat, file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       );
       case "Audit Workflow": return (
@@ -2109,7 +2139,24 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               <h3 className="text-lg font-bold text-[#102A43]">{actionModal.title}</h3>
               <button onClick={() => setActionModal(null)} className="text-[#52606D] hover:text-[#102A43]"><X size={20} /></button>
             </div>
-            {actionModal.type === 'upload' ? (
+            {actionModal.type === 'browse' ? (
+              <div className="space-y-3 mb-5 text-left max-h-80 overflow-y-auto pr-2">
+                {documents.filter(d => _lc(d.file_category) === _lc(actionModal.item?.category)).length === 0 ? (
+                  <div className="text-center text-sm text-[#52606D] py-6">No documents found in this folder.</div>
+                ) : documents.filter(d => _lc(d.file_category) === _lc(actionModal.item?.category)).map(d => (
+                  <div key={d.id} className="flex items-center justify-between p-3 border border-[#E2E8F0] rounded-xl bg-white">
+                    <div className="flex items-center gap-3">
+                      <FileText size={16} style={{ color:"#087F5B" }} />
+                      <div>
+                        <div className="font-semibold text-xs text-[#102A43]">{d.name}</div>
+                        <div className="text-[10px] text-[#52606D]">{(d.file_size / 1024).toFixed(1)} KB • {_date(d.created_at)}</div>
+                      </div>
+                    </div>
+                    {d.file_url && <a href={d.file_url} target="_blank" rel="noreferrer" className="text-xs text-[#087F5B] font-semibold hover:underline">View</a>}
+                  </div>
+                ))}
+              </div>
+            ) : actionModal.type === 'upload' ? (
               <div className="space-y-4 mb-5 text-left">
                 <div>
                   <label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
@@ -2119,10 +2166,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                   </select>
                 </div>
                 <label className="block border-2 border-dashed border-[#087F5B]/30 rounded-xl p-8 text-center bg-[#EAF4F0]/50 cursor-pointer hover:bg-[#EAF4F0] transition-colors">
-                  <input type="file" className="hidden" onChange={(e) => setDocUploadForm(p => ({ ...p, file: e.target.files?.[0] ?? null }))} />
+                  <input type="file" accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.xlsx" className="hidden" onChange={(e) => setDocUploadForm(p => ({ ...p, file: e.target.files?.[0] ?? null }))} />
                   <UploadCloud size={32} className="mx-auto mb-3 text-[#087F5B]" />
                   <p className="text-sm font-semibold text-[#102A43] mb-1">{docUploadForm.file ? docUploadForm.file.name : "Click to browse a file"}</p>
-                  <p className="text-xs text-[#52606D]">PDF, XLSX, ZIP (Max. 10MB)</p>
+                  <p className="text-xs text-[#52606D]">PDF, DOCX, XLSX, PNG, JPG (Max. 10MB)</p>
                 </label>
               </div>
             ) : (actionModal.title === 'Add Employee' || actionModal.title === 'Edit Employee') ? (
