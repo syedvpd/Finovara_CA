@@ -1071,12 +1071,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   ];
 
   const roleTabMap: Record<string, string[]> = {
-    "Super Admin":          ["Dashboard","Settings","Portal Access Requests","Client Management","Employee Management","Service Management","Task Assignment","Compliance Calendar","Document Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Payment Tracking","Payroll","Ledger Accounts","Notifications","Reports","Blog Management","Careers Management","Website CMS","Lead Management","Role-Based Access","Communication Hub","Total Clients","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review","Open Queries","Monthly Revenue","Outstanding Invoices","Staff Workload","Service-wise Client Count"],
+    "Super Admin":          ["Dashboard","Settings","Portal Access Requests","Client Management","Employee Management","Service Management","Task Assignment","Compliance Calendar","Document Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Payment Tracking","Payroll","Ledger Accounts","Notifications","Reports","Blog Management","Careers Management","Website CMS","Lead Management","Role-Based Access","Communication Hub","Total Clients","Active Services","Due This Week","Overdue Tasks","Documents Awaiting Review","Open Queries","Monthly Revenue","Outstanding Invoices","Staff Workload","Service-wise Client Count"],
     "Managing Partner":     ["Dashboard","Branch Performance","Profit Analysis","Portal Access Requests","Client Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Reports","Monthly Revenue","Outstanding Invoices","Payment Tracking","Notifications","Staff Workload","Service-wise Client Count","Lead Management","Employee Management","Service Management","Communication Hub"],
-    "Chartered Accountant": ["Dashboard","Client Management","Task Assignment","Compliance Calendar","Document Management","Tax-Return Tracking","GST-Return Tracking","Open Queries","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review"],
+    "Chartered Accountant": ["Dashboard","Client Management","Task Assignment","Compliance Calendar","Document Management","Tax-Return Tracking","GST-Return Tracking","Open Queries","Active Services","Due This Week","Overdue Tasks","Documents Awaiting Review"],
     "Audit Manager":        ["Dashboard","Client Management","Audit Workflow","Document Management","Task Assignment","Compliance Calendar","Documents Awaiting Review","Reports","Staff Workload"],
-    "Tax Manager":          ["Dashboard","Client Management","Tax-Return Tracking","Compliance Calendar","Task Assignment","Pending Filings","Due This Week","Overdue Tasks","Document Management","Reports"],
-    "GST Consultant":       ["Dashboard","Client Management","GST-Return Tracking","Compliance Calendar","Task Assignment","Document Management","Pending Filings","Due This Week","Overdue Tasks"],
+    "Tax Manager":          ["Dashboard","Client Management","Tax-Return Tracking","Compliance Calendar","Task Assignment","Due This Week","Overdue Tasks","Document Management","Reports"],
+    "GST Consultant":       ["Dashboard","Client Management","GST-Return Tracking","Compliance Calendar","Task Assignment","Document Management","Due This Week","Overdue Tasks"],
     "Partner Accountant":   ["Dashboard","Ledger Accounts","Vouchers","Client Management","Document Management","Reports","Monthly Revenue","Invoice Management","Payment Tracking"],
     "Payroll Executive":    ["Dashboard","Payroll","Client Management","Task Assignment","Document Management","Due This Week","Compliance Calendar"],
     "Relationship Manager": ["Dashboard","Communication Hub","Client Management","Open Queries","Notifications","Lead Management","Active Services"],
@@ -1114,7 +1114,6 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     { label: "Profit Analysis",           icon: TrendingUp },
     { label: "Total Clients",             icon: Users },
     { label: "Active Services",           icon: CheckCircle },
-    { label: "Pending Filings",           icon: ClipboardList },
     { label: "Due This Week",             icon: Calendar },
     { label: "Overdue Tasks",             icon: AlertTriangle },
     { label: "Documents Awaiting Review", icon: Folder },
@@ -1139,7 +1138,6 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const paidTotal = invoices.reduce((s, i) => s + _num(i._raw?.paid_amount), 0);
   const revenue = invoices.reduce((s, i) => s + _num(i._raw?.total_amount), 0);
   const overdueTasks = tasks.filter((t) => t._raw?.status !== "done" && t._raw?.due_date && new Date(t._raw.due_date) < new Date()).length;
-  const pendingFilings = taxReturns.filter((t) => _lc(t.status) !== "filed").length + gstReturns.filter((g) => _lc(g.status) !== "filed").length;
 
   const _byStatus = (rows: any[], key = "status") => {
     const m: Record<string, number> = {};
@@ -1346,26 +1344,6 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               <div className="h-1.5 rounded-full bg-[#E2E8F0] overflow-hidden">
                 <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg, #087F5B, #065a40)" }} />
               </div>
-            </div>
-          ))}
-        </div>
-      );
-
-      case "Pending Filings": return (
-        <div className="space-y-3">
-          {( [
-            ...taxReturns.filter((t:any) => _lc(t.status) !== "filed").map((t:any) => ({ client: t.client, filing: `${t.itr} ${t.fy}`, due: t.date, priority: "High" })),
-            ...gstReturns.filter((g:any) => _lc(g.status) !== "filed").map((g:any) => ({ client: g.client, filing: `${g.form} ${g.period}`, due: g.status, priority: "Medium" })),
-          ].length === 0 ? [{ client: "—", filing: "No pending filings", due: "", priority: "Low" }] : [
-            ...taxReturns.filter((t:any) => _lc(t.status) !== "filed").map((t:any) => ({ client: t.client, filing: `${t.itr} ${t.fy}`, due: t.date, priority: "High" })),
-            ...gstReturns.filter((g:any) => _lc(g.status) !== "filed").map((g:any) => ({ client: g.client, filing: `${g.form} ${g.period}`, due: g.status, priority: "Medium" })),
-          ] ).map(({ client, filing, due, priority }) => (
-            <div key={filing+client} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
-              <div>
-                <div className="font-semibold text-[#102A43] text-sm" style={{ fontFamily: "Manrope" }}>{filing}</div>
-                <div className="text-xs text-[#52606D]">{client} · Due: {due}</div>
-              </div>
-              <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: priority==="High"?"#FFF0F0":priority==="Medium"?"#FFF4E0":"#EAF4F0", color: priority==="High"?"#e53e3e":priority==="Medium"?"#C8A45D":"#087F5B" }}>{priority}</span>
             </div>
           ))}
         </div>
