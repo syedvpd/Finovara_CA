@@ -77,6 +77,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [salaryForm, setSalaryForm] = useState({ salary: "" });
   const [staffCsv, setStaffCsv] = useState({ clientId: "", csv: "" });
   const [chatForm, setChatForm] = useState({ clientId: "", text: "" });
+  const [commLogs, setCommLogs] = useState<any[]>([]);
+  const [commFilter, setCommFilter] = useState<'all'|'call'|'email'|'handoff'|'query'>('all');
+  const [commClientFilter, setCommClientFilter] = useState("");
+  const [commForm, setCommForm] = useState({ clientId: "", type: "call", subject: "", body: "", direction: "outbound" });
+  const [commSearch, setCommSearch] = useState("");
   const [tbClientId, setTbClientId] = useState("");
   const [formValues, setFormValues] = useState({
     clientName: "",
@@ -173,8 +178,16 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         resources.vouchers.list({ page_size: 100 }),
         resources.payrollProfiles.list({ page_size: 100 }),
       ]);
+      const communicationLogRows = await resources.communicationLogs.list({ page_size: 100 })
+        .then((result: any) => result?.data ?? result ?? [])
+        .catch(() => []);
 
-      setClients(_rowsOf(r[0]).map((c: any) => {
+      const clientRows = _rowsOf(r[0]);
+      const clientNames = new Map(clientRows.map((c: any) => {
+        const entity = c.entities?.[0] ?? {};
+        return [c.id, entity.legal_name ?? entity.trade_name ?? c.client_code];
+      }));
+      setClients(clientRows.map((c: any) => {
         const e = c.entities?.[0] ?? {};
         return { n: e.legal_name ?? e.trade_name ?? c.client_code, ca: c.client_type ? _tc(c.client_type) : "—",
           pan: e.pan ?? "—", gstin: e.gst_number ?? "—", svc: c.entities?.length ?? 0,
@@ -258,6 +271,9 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
         no: v.voucher_number ?? v.id?.slice(0, 8), type: _tc(v.voucher_type), date: _date(v.voucher_date ?? v.created_at), amount: _money(v.total_amount ?? 0), status: _tc(v.status), _raw: v })));
       setPayrollProfiles(_rowsOf(r[21]).map((p: any) => ({
         name: p.employee_name, code: p.employee_code, salary: _money(p.base_salary), _raw: p })));
+      setCommLogs(communicationLogRows.map((log: any) => {
+        return { ...log, clientName: clientNames.get(log.client_id) ?? log.client_id?.slice(0, 8) ?? "â€”" };
+      }));
       setDataLoading(false);
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
@@ -839,6 +855,21 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     showToast(`${ok}/${rows.length} payroll profiles imported.`, ok ? 'success' : 'error');
   };
 
+  const handleAddCommLog = () => {
+    const client = clients.find(c => c._raw?.id === commForm.clientId);
+    if (!client) { showToast('Please select a client.', 'error'); return; }
+    if (!commForm.subject.trim()) { showToast('Please enter a subject.', 'error'); return; }
+    if (!commForm.body.trim()) { showToast('Please enter the log details.', 'error'); return; }
+    const direction = commForm.type === "handoff" ? "internal" : commForm.direction;
+    persist(() => resources.communicationLogs.create({
+      client_id: commForm.clientId,
+      communication_type: commForm.type,
+      direction,
+      subject: commForm.subject.trim(),
+      body: commForm.body.trim(),
+    } as any), 'Communication logged.');
+  };
+
   const handleSendChat = () => {
     const client = clients.find(c => c._raw?.id === chatForm.clientId);
     const text = chatForm.text.trim();
@@ -1032,19 +1063,23 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     { name: "Relationship Manager", desc: "Client communication assignments",              color: "#52606D", bg: "#EEF1F5", icon: HelpCircle },
     { name: "Accounts Admin",       desc: "Filings, invoices and payments",               color: "#C8A45D", bg: "#FFF4E0", icon: ReceiptText },
     { name: "Content Manager",      desc: "Website content management",                   color: "#e53e3e", bg: "#FFF0F0", icon: Globe },
+<<<<<<< HEAD
+    { name: "Client",               desc: "Own services, files and reports",              color: "#94a3b8", bg: "#102A43", icon: UserCheck },
+=======
     { name: "Client",               desc: "Own services, files and reports",              color: "white", bg: "#102A43", icon: UserCheck },
+>>>>>>> bf932b4ff5652e571c8151c35e997a035e1c8041
   ];
 
   const roleTabMap: Record<string, string[]> = {
-    "Super Admin":          ["Dashboard","Settings","Portal Access Requests","Client Management","Employee Management","Service Management","Task Assignment","Compliance Calendar","Document Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Payment Tracking","Payroll","Ledger Accounts","Notifications","Reports","Blog Management","Careers Management","Website CMS","Lead Management","Role-Based Access","Total Clients","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review","Open Queries","Monthly Revenue","Outstanding Invoices","Staff Workload","Service-wise Client Count"],
-    "Managing Partner":     ["Dashboard","Branch Performance","Profit Analysis","Portal Access Requests","Client Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Reports","Monthly Revenue","Outstanding Invoices","Payment Tracking","Notifications","Staff Workload","Service-wise Client Count","Lead Management","Employee Management","Service Management"],
+    "Super Admin":          ["Dashboard","Settings","Portal Access Requests","Client Management","Employee Management","Service Management","Task Assignment","Compliance Calendar","Document Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Payment Tracking","Payroll","Ledger Accounts","Notifications","Reports","Blog Management","Careers Management","Website CMS","Lead Management","Role-Based Access","Communication Hub","Total Clients","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review","Open Queries","Monthly Revenue","Outstanding Invoices","Staff Workload","Service-wise Client Count"],
+    "Managing Partner":     ["Dashboard","Branch Performance","Profit Analysis","Portal Access Requests","Client Management","Audit Workflow","Tax-Return Tracking","GST-Return Tracking","Invoice Management","Reports","Monthly Revenue","Outstanding Invoices","Payment Tracking","Notifications","Staff Workload","Service-wise Client Count","Lead Management","Employee Management","Service Management","Communication Hub"],
     "Chartered Accountant": ["Dashboard","Client Management","Task Assignment","Compliance Calendar","Document Management","Tax-Return Tracking","GST-Return Tracking","Open Queries","Active Services","Pending Filings","Due This Week","Overdue Tasks","Documents Awaiting Review"],
     "Audit Manager":        ["Dashboard","Client Management","Audit Workflow","Document Management","Task Assignment","Compliance Calendar","Documents Awaiting Review","Reports","Staff Workload"],
     "Tax Manager":          ["Dashboard","Client Management","Tax-Return Tracking","Compliance Calendar","Task Assignment","Pending Filings","Due This Week","Overdue Tasks","Document Management","Reports"],
     "GST Consultant":       ["Dashboard","Client Management","GST-Return Tracking","Compliance Calendar","Task Assignment","Document Management","Pending Filings","Due This Week","Overdue Tasks"],
     "Partner Accountant":   ["Dashboard","Ledger Accounts","Vouchers","Client Management","Document Management","Reports","Monthly Revenue","Invoice Management","Payment Tracking"],
     "Payroll Executive":    ["Dashboard","Payroll","Client Management","Task Assignment","Document Management","Due This Week","Compliance Calendar"],
-    "Relationship Manager": ["Dashboard","Client Management","Open Queries","Notifications","Lead Management","Active Services"],
+    "Relationship Manager": ["Dashboard","Communication Hub","Client Management","Open Queries","Notifications","Lead Management","Active Services"],
     "Accounts Admin":       ["Dashboard","Invoice Management","Payment Tracking","Outstanding Invoices","Client Management","Reports","Notifications"],
     "Content Manager":      ["Blog Management","Careers Management","Website CMS"],
     "Client":               ["Active Services","Documents Awaiting Review","Open Queries","Notifications","Reports"],
@@ -1139,10 +1174,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     { label: "GST Pending",         value: String(gstPending),            change: "live", icon: BarChart2,    color: "#C8A45D", bg: "#FFF4E0" },
     { label: "Tax Pending",         value: String(taxPending),            change: "live", icon: FileText,     color: "#C8A45D", bg: "#FFF4E0" },
     { label: "Payroll Running",     value: String(payrollRunning),        change: "live", icon: Users,        color: "#087F5B", bg: "#EAF4F0" },
-    { label: "Employee Utilization",value: `${utilisation}%`,             change: "live", icon: Briefcase,    color: "white",   bg: "#EEF1F5" },
+    { label: "Employee Utilization",value: `${utilisation}%`,             change: "live", icon: Briefcase,    color: "#52606D", bg: "#EEF1F5" },
     { label: "Due This Week",       value: String(dueTasks.length),       change: "live", icon: Calendar,     color: "#C8A45D", bg: "#FFF4E0" },
     { label: "Overdue Compliance",  value: String(overdueCompliance),     change: "live", icon: AlertTriangle,color: "#e53e3e", bg: "#FFF0F0" },
-    { label: "Open Queries",        value: String(queries.length),        change: "live", icon: HelpCircle,   color: "white",   bg: "#EEF1F5" },
+    { label: "Open Queries",        value: String(queries.length),        change: "live", icon: HelpCircle,   color: "#52606D", bg: "#EEF1F5" },
   ];
 
   const renderContent = () => {
@@ -1266,7 +1301,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               </div>
               <div className="text-xs text-[#52606D] mb-2" style={{ fontFamily: "Inter" }}>Users: {users.join(", ")}</div>
               <div className="flex flex-wrap gap-2">
-                {perms.map(p => <span key={p} className="text-xs px-2 py-1 rounded-lg" style={{ background: "white", color: "white", border: "1px solid rgba(0,0,0,0.07)" }}>{p}</span>)}
+                {perms.map(p => <span key={p} className="text-xs px-2 py-1 rounded-lg" style={{ background: "#F7F9FC", color: "#52606D", border: "1px solid rgba(0,0,0,0.07)" }}>{p}</span>)}
               </div>
             </div>
           ))}
@@ -1291,7 +1326,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                     <div className="text-xs text-[#52606D]">{ca} · {services} services</div>
                   </div>
                 </div>
-                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: status==="Active"?"#EAF4F0":"#102A43", color: status==="Active"?"#087F5B":"#52606D" }}>{status}</span>
+                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: status==="Active"?"#EAF4F0":"#102A43", color: status==="Active"?"#087F5B":"#94a3b8" }}>{status}</span>
               </div>
             ))}
           </div>
@@ -1422,7 +1457,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Monthly Revenue": return (
         <div>
           <div className="grid grid-cols-3 gap-4 mb-6">
-            {[{ l: "Billed", v: _inr(revenue), c: "live", color: "#087F5B", bg: "#EAF4F0" }, { l: "Collected", v: _inr(paidTotal), c: "", color: "white", bg: "#EEF1F5" }, { l: "Outstanding", v: _inr(outstanding), c: "", color: "#C8A45D", bg: "#FFF4E0" }].map(({ l, v, c, color, bg }) => (
+            {[{ l: "Billed", v: _inr(revenue), c: "live", color: "#087F5B", bg: "#EAF4F0" }, { l: "Collected", v: _inr(paidTotal), c: "", color: "#52606D", bg: "#EEF1F5" }, { l: "Outstanding", v: _inr(outstanding), c: "", color: "#C8A45D", bg: "#FFF4E0" }].map(({ l, v, c, color, bg }) => (
               <div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center">
                 <div className="text-xs text-[#52606D] mb-1" style={{ fontFamily: "Inter" }}>{l}</div>
                 <div className="text-xl font-extrabold text-[#102A43]" style={{ fontFamily: "Manrope" }}>{v}</div>
@@ -1505,10 +1540,10 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             { svc: "Income Tax",          clients: 892, growth: "+48", pct: 58, color: "#087F5B", bg: "#EAF4F0" },
             { svc: "GST Services",        clients: 743, growth: "+62", pct: 48, color: "#C8A45D", bg: "#FFF4E0" },
             { svc: "Accounting",          clients: 521, growth: "+31", pct: 34, color: "#087F5B", bg: "#EAF4F0" },
-            { svc: "Payroll Management",  clients: 389, growth: "+19", pct: 25, color: "white", bg: "#EEF1F5" },
+            { svc: "Payroll Management",  clients: 389, growth: "+19", pct: 25, color: "#52606D", bg: "#EEF1F5" },
             { svc: "Audit & Assurance",   clients: 267, growth: "+8",  pct: 17, color: "#C8A45D", bg: "#FFF4E0" },
             { svc: "Virtual CFO",         clients: 98,  growth: "+22", pct: 6,  color: "#087F5B", bg: "#EAF4F0" },
-            { svc: "Company Incorporation",clients: 78, growth: "+14", pct: 5,  color: "white", bg: "#EEF1F5" },
+            { svc: "Company Incorporation",clients: 78, growth: "+14", pct: 5,  color: "#52606D", bg: "#EEF1F5" },
             { svc: "Startup Advisory",    clients: 54,  growth: "+18", pct: 4,  color: "#087F5B", bg: "#EAF4F0" },
           ].map(({ svc, clients, growth, pct, color, bg }) => (
             <div key={svc} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-[#E2E8F0]">
@@ -1560,6 +1595,39 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
           </div>
         </div>
       );
+      case "Communication Hub": {
+        const filteredLogs = commLogs.filter((log: any) =>
+          (commFilter === "all" || log.communication_type === commFilter) &&
+          (!commClientFilter || log.client_id === commClientFilter) &&
+          (!commSearch || `${log.subject} ${log.body} ${log.clientName}`.toLowerCase().includes(commSearch.toLowerCase()))
+        );
+        const filteredQueries = queries.filter((query: any) =>
+          (commFilter === "all" || commFilter === "query") &&
+          (!commClientFilter || query._raw?.client_id === commClientFilter) &&
+          (!commSearch || `${query.q} ${query.client}`.toLowerCase().includes(commSearch.toLowerCase()))
+        );
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-[#52606D]">Append-only timeline of calls, emails, handoffs, and client-raised queries.</div>
+              <button onClick={() => { setCommForm({ clientId: clients[0]?._raw?.id ?? "", type: "call", subject: "", body: "", direction: "outbound" }); setActionModal({ title: "Log Communication", type: "form" }); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Plus size={13} /> Log interaction</button>
+            </div>
+            <div className="grid gap-2 md:grid-cols-3">
+              <input value={commSearch} onChange={(e) => setCommSearch(e.target.value)} placeholder="Search timeline…" className="px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" />
+              <select value={commClientFilter} onChange={(e) => setCommClientFilter(e.target.value)} className="px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="">All clients</option>{clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}</select>
+              <div className="flex gap-1 overflow-x-auto">{(["all", "call", "email", "handoff", "query"] as const).map((type) => <button key={type} onClick={() => setCommFilter(type)} className="px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap" style={{ background: commFilter === type ? "#EAF4F0" : "#F7F9FC", color: commFilter === type ? "#087F5B" : "#52606D" }}>{_tc(type)}</button>)}</div>
+            </div>
+            <div className="space-y-3">
+              {filteredLogs.map((log: any) => <div key={log.id} className="p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+                <div className="flex items-start justify-between gap-3"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{log.subject}</div><div className="text-xs text-[#52606D] mt-1">{log.clientName} · {_tc(log.communication_type)} · {_tc(log.direction)} · {_date(log.created_at)}</div></div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background: log.communication_type === "handoff" ? "#FFF4E0" : "#EAF4F0", color: log.communication_type === "handoff" ? "#C8A45D" : "#087F5B" }}>{_tc(log.communication_type)}</span></div>
+                <p className="text-sm text-[#52606D] mt-3 whitespace-pre-wrap">{log.body}</p>
+              </div>)}
+              {filteredQueries.map((query: any) => <div key={`query-${query._raw?.id}`} className="p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div className="flex items-start justify-between gap-3"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{query.q}</div><div className="text-xs text-[#52606D] mt-1">{query.client} · Client query · {query.age} ago</div></div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:"#EEF1F5", color:"#52606D" }}>Query</span></div><p className="text-sm text-[#52606D] mt-3 whitespace-pre-wrap">{query._raw?.query_text}</p>{query._raw?.responses?.length > 0 && <div className="mt-3 pt-3 border-t border-[#E2E8F0] space-y-2">{query._raw.responses.slice(-2).map((reply: any) => <div key={reply.id} className="text-xs text-[#52606D]"><span className="font-semibold text-[#102A43]">Reply:</span> {reply.response_text}</div>)}</div>}</div>)}
+              {filteredLogs.length + filteredQueries.length === 0 && <div className="py-10 text-center text-sm text-[#52606D]">No interactions match these filters.</div>}
+            </div>
+          </div>
+        );
+      }
       case "Employee Management": return (
         <div>
           <div className="flex items-center justify-between mb-5">
@@ -1596,9 +1664,16 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               <div key={_raw?.id ?? svc} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
                 <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{svc}</div><div className="text-xs text-[#52606D]">{cat} · {price} · {clients} clients</div></div>
                 <div className="flex items-center gap-2">
+<<<<<<< HEAD
+                  <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:active?"#EAF4F0":"#102A43",color:active?"#087F5B":"#94a3b8" }}>{active?"Active":"Inactive"}</span>
+                  <button onClick={() => openEditService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
+                  <button onClick={() => openDeleteService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
+                  <button onClick={() => openEditService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Pricing</button>
+=======
                   <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:active?"#EAF4F0":"#102A43",color:active?"#087F5B":"#52606D" }}>{active?"Active":"Inactive"}</span>
                   <button onClick={() => openEditService(s)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
                   <button onClick={() => openDeleteService(s)} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
+>>>>>>> bf932b4ff5652e571c8151c35e997a035e1c8041
                 </div>
               </div>
             );})}
@@ -1767,7 +1842,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
             <div key={r} className="p-5 bg-white rounded-2xl border border-[#E2E8F0]">
               <div className="flex items-start justify-between mb-2"><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{r}</div><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:"#EAF4F0",color:"#087F5B" }}>{tag}</span></div>
               <p className="text-xs text-[#52606D] mb-3">{desc}</p>
-              <div className="flex gap-2"><button onClick={() => handleDownloadReport(r)} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Download size={12} /> Download</button><button onClick={() => setActionModal({title: 'Schedule', type: 'form'})} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background:"#EEF1F5",color: "white" }}>Schedule</button></div>
+              <div className="flex gap-2"><button onClick={() => handleDownloadReport(r)} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Download size={12} /> Download</button><button onClick={() => setActionModal({title: 'Schedule', type: 'form'})} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background:"#EEF1F5",color: "#52606D" }}>Schedule</button></div>
             </div>
           ))}
         </div>
@@ -1781,7 +1856,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       case "Careers Management": return (
         <div>
           <div className="flex items-center justify-between mb-5"><div className="text-sm text-[#52606D]">{careersList.length} positions</div><button onClick={() => { setCareerForm({ job_title: "", department: "", location: "", description: "", requirements: "" }); setActionModal({title: 'New Job', type: 'form'}); }} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background:"linear-gradient(135deg,#087F5B,#065a40)" }}><Briefcase size={13} /> Post Job</button></div>
-          <div className="space-y-3">{careersList.map(({role,type,loc,apps,status,_raw}: any) => (<div key={role} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{role}</div><div className="text-xs text-[#52606D]">{type} · {loc} · {apps} applications</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#102A43",color:status==="Active"?"#087F5B":"#52606D" }}>{status}</span><button onClick={() => handleToggleCareer({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">{_raw?.status === "open" ? "Close" : "Reopen"}</button><button onClick={() => openEditCareer({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button></div></div>))}</div>
+          <div className="space-y-3">{careersList.map(({role,type,loc,apps,status,_raw}: any) => (<div key={role} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{role}</div><div className="text-xs text-[#52606D]">{type} · {loc} · {apps} applications</div></div><div className="flex items-center gap-2"><span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:status==="Active"?"#EAF4F0":"#102A43",color:status==="Active"?"#087F5B":"#94a3b8" }}>{status}</span><button onClick={() => handleToggleCareer({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">{_raw?.status === "open" ? "Close" : "Reopen"}</button><button onClick={() => openEditCareer({ _raw })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button></div></div>))}</div>
         </div>
       );
       case "Website CMS": return (
@@ -2327,6 +2402,13 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 </div>
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Message *</label><textarea value={chatForm.text} onChange={(e) => setChatForm(p => ({ ...p, text: e.target.value }))} rows={4} maxLength={4000} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="Type your message to the client…" /></div>
               </div>
+            ) : actionModal.title === 'Log Communication' ? (
+              <div className="space-y-4 mb-5 text-left">
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label><select value={commForm.clientId} onChange={(e) => setCommForm(p => ({ ...p, clientId: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="">Select client…</option>{clients.map((c) => <option key={c._raw?.id} value={c._raw?.id}>{c.n}</option>)}</select></div>
+                <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-[#102A43] mb-1">Type *</label><select value={commForm.type} onChange={(e) => setCommForm(p => ({ ...p, type: e.target.value, direction: e.target.value === "handoff" ? "internal" : p.direction === "internal" ? "outbound" : p.direction }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm"><option value="call">Call note</option><option value="email">Email</option><option value="handoff">Internal handoff</option></select></div><div><label className="block text-xs font-semibold text-[#102A43] mb-1">Direction *</label><select disabled={commForm.type === "handoff"} value={commForm.type === "handoff" ? "internal" : commForm.direction} onChange={(e) => setCommForm(p => ({ ...p, direction: e.target.value }))} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm disabled:bg-[#F7F9FC]"><option value="outbound">Outbound</option><option value="inbound">Inbound</option><option value="internal">Internal</option></select></div></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Subject *</label><input value={commForm.subject} onChange={(e) => setCommForm(p => ({ ...p, subject: e.target.value }))} maxLength={200} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="Short interaction summary" /></div>
+                <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Details *</label><textarea value={commForm.body} onChange={(e) => setCommForm(p => ({ ...p, body: e.target.value }))} rows={5} maxLength={10000} className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm" placeholder="Record the discussion, commitment, or handoff context…" /></div>
+              </div>
             ) : actionModal.title === 'Import Bank Statement' ? (
               <div className="space-y-4 mb-5 text-left">
                 <div><label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
@@ -2586,6 +2668,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                 if (actionModal?.title === 'Revise Salary')       { handleReviseSalary(); return; }
                 if (actionModal?.title === 'Bulk Import Staff')   { handleStaffBulkImport(); return; }
                 if (actionModal?.title === 'Send Message')        { handleSendChat(); return; }
+                if (actionModal?.title === 'Log Communication')   { handleAddCommLog(); return; }
                 if (actionModal?.title === 'Import Bank Statement') { handleBankImport(); return; }
                 if (actionModal?.title === 'Set Reminder')        { handleAddReminder(); return; }
                 if (actionModal?.title === 'Add Checklist Item')  { handleAddChecklist(); return; }

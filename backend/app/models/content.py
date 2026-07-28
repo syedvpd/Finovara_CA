@@ -96,6 +96,20 @@ class ChatMessage(Base, UUIDPrimaryKeyMixin):
     created_at: Mapped[datetime] = created_ts()
 
 
+class CommunicationLog(Base, UUIDPrimaryKeyMixin):
+    """Immutable staff record of an external or internal client interaction."""
+
+    __tablename__ = "communication_logs"
+
+    client_id: Mapped[uuid.UUID] = fk("clients.id")
+    created_by: Mapped[uuid.UUID] = fk("users.id", ondelete="RESTRICT")
+    communication_type: Mapped[str] = str_col(20)
+    direction: Mapped[str] = str_col(20)
+    subject: Mapped[str] = str_col(200)
+    body: Mapped[str] = text_col(nullable=False)
+    created_at: Mapped[datetime] = created_ts()
+
+
 # --- Website CMS -------------------------------------------------------------
 
 

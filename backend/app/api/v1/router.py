@@ -92,6 +92,7 @@ api_router.include_router(communications.router, prefix="/notifications", tags=[
 api_router.include_router(communications.templates_router, prefix="/notification-templates", tags=["Notifications · Templates"])
 api_router.include_router(communications.queries_router, prefix="/queries", tags=["Queries"])
 api_router.include_router(communications.chat_router, prefix="/messages", tags=["Messages"])
+api_router.include_router(communications.communication_logs_router, prefix="/communication-logs", tags=["Communication Hub"])
 
 # Reporting and analytics
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
