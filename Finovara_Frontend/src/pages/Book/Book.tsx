@@ -24,14 +24,34 @@ export function BookPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
+  const validateBookingField = (name: string, value: string): string => {
+    const trimmed = value.trim();
+    if (name === 'name') {
+      if (!trimmed) return "Full name is required";
+      if (trimmed.length < 3) return "Name must be at least 3 characters";
+      if (!/^[A-Za-z\s]+$/.test(trimmed)) return "Enter a valid name (letters only)";
+      return "";
+    }
+    if (name === 'email') {
+      if (!trimmed) return "Email address is required";
+      if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(trimmed)) return "Enter a valid email address";
+      return "";
+    }
+    if (name === 'phone') {
+      if (!trimmed) return "Phone number is required";
+      const digits = trimmed.replace(/[\s\-]/g, '');
+      if (!/^(\+91)?[6789]\d{9}$/.test(digits)) return "Enter a valid 10-digit Indian mobile number";
+      return "";
+    }
+    return "";
+  };
+
   const handleConfirm = async () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = "Full name is required";
-    if (!formData.email.trim()) newErrors.email = "Email address is required";
-    else if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = "Enter a valid email address";
-
-    if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
-    else if (!/^\+?[\d\s-]{10,}$/.test(formData.phone.trim().replace(/[^\d]/g, ''))) newErrors.phone = "Enter a valid phone number";
+    ['name', 'email', 'phone'].forEach(field => {
+      const err = validateBookingField(field, formData[field as keyof typeof formData]);
+      if (err) newErrors[field] = err;
+    });
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -165,14 +185,14 @@ export function BookPage() {
               <div>
                 <label className="text-xs font-semibold text-[#102A43] mb-1.5 flex items-center gap-1 uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Email Address <span className="text-red-500 text-base leading-none">*</span></label>
                 <div className="relative">
-                  <input type="email" value={formData.email} onChange={e => { setFormData({...formData, email: e.target.value}); setErrors({...errors, email: ''}); }} placeholder="e.g. rahul@company.com" className={`w-full px-4 py-3 rounded-xl border transition-all ${errors.email ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400 focus:ring-red-500/20' : 'border-[#CBD5E1] bg-white text-[#102A43] placeholder-[#94A3B8] focus:ring-[#087F5B]/30 hover:border-[#087F5B]/40'} text-sm outline-none focus:ring-2`} style={{ fontFamily: "Inter" }} />
+                  <input type="email" value={formData.email} onChange={e => { const v = e.target.value; setFormData({...formData, email: v}); if (errors.email) setErrors({...errors, email: validateBookingField('email', v)}); }} onBlur={e => setErrors({...errors, email: validateBookingField('email', e.target.value)})} placeholder="e.g. rahul@company.com" className={`w-full px-4 py-3 rounded-xl border transition-all ${errors.email ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400 focus:ring-red-500/20' : 'border-[#CBD5E1] bg-white text-[#102A43] placeholder-[#94A3B8] focus:ring-[#087F5B]/30 hover:border-[#087F5B]/40'} text-sm outline-none focus:ring-2`} style={{ fontFamily: "Inter" }} />
                 </div>
                 {errors.email && <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1.5 animate-in fade-in"><AlertCircle size={14} /> {errors.email}</p>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-[#102A43] mb-1.5 flex items-center gap-1 uppercase tracking-wide" style={{ fontFamily: "Inter" }}>Phone Number <span className="text-red-500 text-base leading-none">*</span></label>
                 <div className="relative">
-                  <input type="tel" value={formData.phone} onChange={e => { setFormData({...formData, phone: e.target.value.replace(/[^\d\s\+\-]/g, '')}); setErrors({...errors, phone: ''}); }} placeholder="e.g. +91 98765 43210" className={`w-full px-4 py-3 rounded-xl border transition-all ${errors.phone ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400 focus:ring-red-500/20' : 'border-[#CBD5E1] bg-white text-[#102A43] placeholder-[#94A3B8] focus:ring-[#087F5B]/30 hover:border-[#087F5B]/40'} text-sm outline-none focus:ring-2`} style={{ fontFamily: "Inter" }} />
+                  <input type="tel" value={formData.phone} onChange={e => { const v = e.target.value.replace(/[^\d\s\+\-]/g, ''); setFormData({...formData, phone: v}); if (errors.phone) setErrors({...errors, phone: validateBookingField('phone', v)}); }} onBlur={e => setErrors({...errors, phone: validateBookingField('phone', e.target.value)})} placeholder="e.g. +91 98765 43210" className={`w-full px-4 py-3 rounded-xl border transition-all ${errors.phone ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400 focus:ring-red-500/20' : 'border-[#CBD5E1] bg-white text-[#102A43] placeholder-[#94A3B8] focus:ring-[#087F5B]/30 hover:border-[#087F5B]/40'} text-sm outline-none focus:ring-2`} style={{ fontFamily: "Inter" }} />
                 </div>
                 {errors.phone && <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1.5 animate-in fade-in"><AlertCircle size={14} /> {errors.phone}</p>}
               </div>

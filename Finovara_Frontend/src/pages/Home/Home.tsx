@@ -615,12 +615,26 @@ export function HomePage({ setPage }: { setPage: (p: Page) => void }) {
                 </div>
               </div>
             </div>
-            <div className="flex justify-center gap-2 mt-6">
-              {displayTestimonials.map((_, i) => (
-                <button key={i} onClick={() => setActiveTestimonial(i)}
-                  className="rounded-full transition-all"
-                  style={{ width: i === activeTestimonial ? 24 : 8, height: 8, background: i === activeTestimonial ? "#087F5B" : "#E2E8F0" }} />
-              ))}
+            <div className="flex items-center justify-center gap-4 mt-6">
+              <button
+                onClick={() => setActiveTestimonial(p => (p - 1 + displayTestimonials.length) % displayTestimonials.length)}
+                className="w-9 h-9 rounded-full flex items-center justify-center border border-gray-200 bg-white hover:bg-[#087F5B] hover:border-[#087F5B] hover:text-white text-gray-500 transition-all"
+                aria-label="Previous testimonial">
+                <ChevronLeft size={18} />
+              </button>
+              <div className="flex gap-2">
+                {displayTestimonials.map((_, i) => (
+                  <button key={i} onClick={() => setActiveTestimonial(i)}
+                    className="rounded-full transition-all"
+                    style={{ width: i === activeTestimonial ? 24 : 8, height: 8, background: i === activeTestimonial ? "#087F5B" : "#E2E8F0" }} />
+                ))}
+              </div>
+              <button
+                onClick={() => setActiveTestimonial(p => (p + 1) % displayTestimonials.length)}
+                className="w-9 h-9 rounded-full flex items-center justify-center border border-gray-200 bg-white hover:bg-[#087F5B] hover:border-[#087F5B] hover:text-white text-gray-500 transition-all"
+                aria-label="Next testimonial">
+                <ChevronRight size={18} />
+              </button>
             </div>
           </div>
           <div className="text-center mt-8">

@@ -104,7 +104,7 @@ export function AboutPage({ setPage }: { setPage: (p: Page) => void }) {
           <Reveal direction="up" delay={0.2}>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {values.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="bg-white rounded-2xl p-6 border border-[#E2E8F0] hover:border-[#087F5B] hover:shadow-[0_0_40px_rgba(8,127,91,0.3)] transition-all duration-300 hover:-translate-y-4 text-center group cursor-pointer relative overflow-hidden">
+              <div key={title} className="bg-white rounded-2xl p-6 border border-[#E2E8F0] hover:border-[#087F5B] hover:shadow-[0_0_40px_rgba(8,127,91,0.3)] transition-all duration-300 hover:-translate-y-4 text-center group cursor-default relative overflow-hidden">
                 <div className="absolute inset-0 border-[3px] border-transparent group-hover:border-[#087F5B]/60 rounded-2xl transition-all duration-300"></div>
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-transform duration-300 group-hover:scale-110 relative z-10" style={{ background: "#EAF4F0" }}>
                   <Icon size={24} style={{ color: "#087F5B" }} />

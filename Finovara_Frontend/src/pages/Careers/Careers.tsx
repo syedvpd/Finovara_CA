@@ -396,7 +396,7 @@ export function CareersPage({ setPage }: { setPage: (p: Page) => void }) {
           <Reveal direction="up" delay={0.2}>
           <div className="grid md:grid-cols-4 gap-6">
             {benefits.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-md hover:border-[#087F5B] hover:shadow-[0_8px_30px_rgba(8,127,91,0.2)] transition-all duration-300 hover:-translate-y-2 relative overflow-hidden group cursor-pointer">
+              <div key={title} className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-md hover:border-[#087F5B] hover:shadow-[0_8px_30px_rgba(8,127,91,0.2)] transition-all duration-300 hover:-translate-y-2 relative overflow-hidden group cursor-default">
                 <div className="absolute inset-0 border-[3px] border-transparent group-hover:border-[#087F5B]/40 rounded-2xl transition-all duration-300"></div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-[#EAF4F0] group-hover:scale-110 transition-transform">
