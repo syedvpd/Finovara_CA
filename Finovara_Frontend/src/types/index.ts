@@ -4,7 +4,7 @@ export type Page =
   | "resources" | "faqs" | "testimonials" | "careers"
   | "contact" | "book" | "login" | "dashboard" | "admin"
   | "partner" | "ca" | "audit" | "tax" | "gst" | "accountant" | "payroll" | "rm" | "accountsadmin" | "content"
-  | "privacy" | "terms";
+  | "privacy" | "terms" | "cookie" | "disclaimer";
 
 // Navigation prop shared across all pages
 export interface NavProps {

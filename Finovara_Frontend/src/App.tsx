@@ -47,15 +47,20 @@ export default function App() {
   }, []);
 
   const navigateTo = useCallback((p: Page) => {
+    // Stamp current scroll position into the current history entry before leaving
+    window.history.replaceState({ ...window.history.state, scrollY: window.scrollY }, '');
     setPage(p);
     const path = p === "book" ? "/book-consultation" : p === "home" ? "/home" : `/${p}`;
-    window.history.pushState({}, '', path);
+    window.history.pushState({ scrollY: 0 }, '', path);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   useEffect(() => {
-    const handlePopState = () => {
+    const handlePopState = (e: PopStateEvent) => {
       const path = window.location.pathname.replace('/', '');
+      const savedScrollY: number = e.state?.scrollY ?? 0;
+      // Write scroll target into sessionStorage so the mounting page can read it
+      window.sessionStorage.setItem('restoreScrollY', String(savedScrollY));
       setPage((path as Page) || "home");
     };
     window.addEventListener("popstate", handlePopState);
@@ -95,7 +100,6 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap');
 
-        * { scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(16,42,67,0.2); border-radius: 3px; }
@@ -135,6 +139,8 @@ export default function App() {
             {staffRoutes.includes(page) && <AdminDashboardPage setPage={navigateTo} userRole={userRole} />}
             {page === "privacy" && <LegalPage page="privacy" setPage={navigateTo} />}
             {page === "terms" && <LegalPage page="terms" setPage={navigateTo} />}
+            {page === "cookie" && <LegalPage page="cookie" setPage={navigateTo} />}
+            {page === "disclaimer" && <LegalPage page="disclaimer" setPage={navigateTo} />}
           </motion.div>
         </AnimatePresence>
         </main>
