@@ -19,7 +19,7 @@ import { Reveal } from "../../components/animations/Reveal";
 import heroVideo from "../../assets/videos/Hero_video.mp4";
 import clientImg from "../../assets/images/client.png";
 
-export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => void }) {
+export function HomePage({ setPage }: { setPage: (p: Page) => void }) {
   const statsRef = useRef<HTMLDivElement>(null);
   const [statsStarted, setStatsStarted] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -30,6 +30,24 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
   const [bouncingStep, setBouncingStep] = useState<number | null>(null);
   const processRef = useRef<HTMLDivElement>(null);
   const [processStarted, setProcessStarted] = useState(false);
+
+  // Restore scroll position when returning via browser back button.
+  // We read from sessionStorage (written by App.tsx popstate handler) and
+  // wait for two animation frames so the full page height is established
+  // before scrolling — this is the key fix for landing on the wrong section.
+  useEffect(() => {
+    const target = window.sessionStorage.getItem('restoreScrollY');
+    if (target === null) return;
+    window.sessionStorage.removeItem('restoreScrollY');
+    const y = parseInt(target, 10);
+    if (!y) return;
+    // rAF x2: first frame commits layout, second frame is safe to scroll
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: y, behavior: 'instant' as ScrollBehavior });
+      });
+    });
+  }, []);
 
   // Dynamic data
   const [liveTestimonials, setLiveTestimonials] = useState<any[]>([]);
@@ -693,21 +711,30 @@ export function HomePage({ setPage }: { setPage: (p: Page, hash?: string) => voi
             <h2 className="text-4xl font-extrabold text-gray-900" style={{ fontFamily: "Manrope" }}>Tools & Downloads</h2>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {(liveDownloads.length ? liveDownloads : [
+{(liveDownloads.length ? liveDownloads : [
               { id: "1", title: "Firm Profile", description: "Complete overview of Finovara services and expertise", file_url: null },
               { id: "2", title: "Compliance Checklist", description: "Monthly compliance calendar for FY 2024-25", file_url: null },
               { id: "3", title: "Tax Guide 2025", description: "Comprehensive guide to new tax regime changes", file_url: null },
               { id: "4", title: "Startup Handbook", description: "Step-by-step incorporation and compliance guide", file_url: null },
-            ]).map((item) => (
-              <div key={item.id} onClick={() => item.file_url && window.open(item.file_url, "_blank", "noopener")} className="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-[#087F5B] hover:shadow-lg transition-all cursor-pointer">
-                <Download size={28} style={{ color: "#087F5B" }} className="mb-4" />
-                <h4 className="font-bold text-gray-900 mb-2" style={{ fontFamily: "Manrope" }}>{item.title}</h4>
-                <p className="text-sm text-gray-600" style={{ fontFamily: "Inter" }}>{item.description}</p>
-                <button className="flex items-center gap-1 mt-4 text-xs font-semibold text-[#087F5B]" style={{ fontFamily: "Inter" }}>
-                  Download Free <Download size={12} />
-                </button>
-              </div>
-            ))}
+            ]).map((item) => {
+              const handleDownload = () => {
+                if (item.file_url) {
+                  window.open(item.file_url, "_blank", "noopener");
+                } else {
+                  handleDownloadResource(item.title);
+                }
+              };
+              return (
+                <div key={item.id} onClick={handleDownload} className="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-[#087F5B] hover:shadow-lg transition-all cursor-pointer">
+                  <Download size={28} style={{ color: "#087F5B" }} className="mb-4" />
+                  <h4 className="font-bold text-gray-900 mb-2" style={{ fontFamily: "Manrope" }}>{item.title}</h4>
+                  <p className="text-sm text-gray-600" style={{ fontFamily: "Inter" }}>{item.description}</p>
+                  <button onClick={(e) => { e.stopPropagation(); handleDownload(); }} className="flex items-center gap-1 mt-4 text-xs font-semibold text-[#087F5B]" style={{ fontFamily: "Inter" }}>
+                    Download Free <Download size={12} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

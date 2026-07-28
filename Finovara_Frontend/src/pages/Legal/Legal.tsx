@@ -1,10 +1,12 @@
 import { ArrowLeft, ShieldCheck, FileText } from "lucide-react";
 import { Page } from "../../types/index";
 
-export function LegalPage({ page, setPage }: { page: "privacy" | "terms"; setPage: (p: Page) => void }) {
+export function LegalPage({ page, setPage }: { page: "privacy" | "terms" | "cookie" | "disclaimer"; setPage: (p: Page) => void }) {
   const isPrivacy = page === "privacy";
-  const title = isPrivacy ? "Privacy Policy" : "Terms of Use";
-  const Icon = isPrivacy ? ShieldCheck : FileText;
+  const isCookie = page === "cookie";
+  const isDisclaimer = page === "disclaimer";
+  const title = isPrivacy ? "Privacy Policy" : isCookie ? "Cookie Policy" : isDisclaimer ? "Disclaimer" : "Terms of Use";
+  const Icon = isPrivacy || isCookie ? ShieldCheck : FileText;
   const lastUpdated = "July 15, 2025";
 
   return (
@@ -34,7 +36,45 @@ export function LegalPage({ page, setPage }: { page: "privacy" | "terms"; setPag
           </div>
 
           <div className="prose prose-lg max-w-none text-slate-700 prose-headings:font-bold prose-headings:text-slate-900 leading-relaxed" style={{ fontFamily: "Inter" }}>
-            {isPrivacy ? (
+            {isCookie ? (
+              <>
+                <h3 className="text-xl font-bold text-slate-900 mt-8 mb-4" style={{ fontFamily: "Manrope" }}>1. What Are Cookies</h3>
+                <p className="mb-6">
+                  Cookies are small text files stored on your device when you visit our website. They help us remember your preferences, keep you logged in, and understand how you use our site.
+                </p>
+                <h3 className="text-xl font-bold text-slate-900 mt-8 mb-4" style={{ fontFamily: "Manrope" }}>2. How We Use Cookies</h3>
+                <p className="mb-6">
+                  We use essential cookies to operate the client portal, analytical cookies to improve our services, and preference cookies to remember your settings. We do not use cookies for advertising purposes.
+                </p>
+                <h3 className="text-xl font-bold text-slate-900 mt-8 mb-4" style={{ fontFamily: "Manrope" }}>3. Managing Cookies</h3>
+                <p className="mb-6">
+                  You can control or delete cookies through your browser settings at any time. Disabling essential cookies may affect the functionality of the client portal.
+                </p>
+                <h3 className="text-xl font-bold text-slate-900 mt-8 mb-4" style={{ fontFamily: "Manrope" }}>4. Third-Party Cookies</h3>
+                <p className="mb-6">
+                  We may use trusted third-party services (such as analytics providers) that set their own cookies. These are governed by the respective third-party privacy policies.
+                </p>
+              </>
+            ) : isDisclaimer ? (
+              <>
+                <h3 className="text-xl font-bold text-slate-900 mt-8 mb-4" style={{ fontFamily: "Manrope" }}>1. General Disclaimer</h3>
+                <p className="mb-6">
+                  The information provided on this website is for general informational purposes only. It does not constitute professional financial, legal, or tax advice and should not be relied upon as such.
+                </p>
+                <h3 className="text-xl font-bold text-slate-900 mt-8 mb-4" style={{ fontFamily: "Manrope" }}>2. No Professional Relationship</h3>
+                <p className="mb-6">
+                  Accessing this website does not create a client-professional relationship between you and Finovara Chartered Accountants LLP. A formal engagement letter is required before any professional services are rendered.
+                </p>
+                <h3 className="text-xl font-bold text-slate-900 mt-8 mb-4" style={{ fontFamily: "Manrope" }}>3. Accuracy of Information</h3>
+                <p className="mb-6">
+                  While we strive to keep the information up to date and accurate, we make no representations or warranties of any kind about the completeness, accuracy, or reliability of the content on this website.
+                </p>
+                <h3 className="text-xl font-bold text-slate-900 mt-8 mb-4" style={{ fontFamily: "Manrope" }}>4. External Links</h3>
+                <p className="mb-6">
+                  This website may contain links to external sites. Finovara is not responsible for the content or privacy practices of those sites.
+                </p>
+              </>
+            ) : isPrivacy ? (
               <>
                 <h3 className="text-xl font-bold text-slate-900 mt-8 mb-4" style={{ fontFamily: "Manrope" }}>1. Information We Collect</h3>
                 <p className="mb-6">

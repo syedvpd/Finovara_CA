@@ -160,6 +160,8 @@ export function Footer({ setPage }: { setPage: (p: Page) => void }) {
               <button key={link} onClick={() => {
                 if (link === "Privacy Policy") setPage("privacy");
                 if (link === "Terms of Use") setPage("terms");
+                if (link === "Cookie Policy") setPage("cookie");
+                if (link === "Disclaimer") setPage("disclaimer");
               }} className="text-xs hover:text-white transition-colors cursor-pointer" style={{ fontFamily: "Inter", color: "rgba(255,255,255,0.4)" }}>{link}</button>
             ))}
             <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}

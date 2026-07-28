@@ -68,14 +68,14 @@ export function ContactPage({ setPage }: { setPage: (p: Page) => void }) {
         return "";
       case 'email':
         if (!trimmed) return "Email is required";
-        if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(trimmed)) return "Enter a valid business email address";
+        if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(trimmed)) return "Enter a valid email address";
         const domain = trimmed.split('@')[1]?.toLowerCase();
         if (domain && DISPOSABLE_EMAILS.includes(domain)) return "Please use a valid business email address";
         return "";
       case 'phone':
         if (!trimmed) return "Phone number is required";
-        const phoneClean = trimmed.replace(/[\s-]/g, '');
-        if (!/^(\+91)?[6789]\d{9}$/.test(phoneClean)) return "Enter a valid 10-digit Indian mobile number";
+        const phoneClean = trimmed.replace(/[\s\-]/g, '');
+        if (!/^(\+91)?[6789]\d{9}$/.test(phoneClean)) return "Enter a valid 10-digit Indian mobile number (e.g. 9876543210)";
         return "";
       case 'service':
         if (!trimmed) return "Please select a service";
@@ -332,7 +332,7 @@ export function ContactPage({ setPage }: { setPage: (p: Page) => void }) {
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-white/10">
-                <button type="submit" disabled={isSubmitting || !isFormValid} className={`flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-white font-extrabold text-base transition-all duration-300 ${isSubmitting || !isFormValid ? 'opacity-50 cursor-not-allowed saturate-50' : 'hover:-translate-y-1 hover:shadow-xl hover:shadow-[#087F5B]/30'}`} style={{ background: "linear-gradient(135deg, #087F5B, #065a40)", fontFamily: "Inter" }}>
+                <button type="submit" disabled={isSubmitting} className={`flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-white font-extrabold text-base transition-all duration-300 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:-translate-y-1 hover:shadow-xl hover:shadow-[#087F5B]/30'}`} style={{ background: "linear-gradient(135deg, #087F5B, #065a40)", fontFamily: "Inter" }}>
                   {isSubmitting ? (
                     <><Loader2 size={20} className="animate-spin" /> Submitting...</>
                   ) : (
