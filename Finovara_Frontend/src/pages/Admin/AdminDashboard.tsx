@@ -1063,11 +1063,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
     { name: "Relationship Manager", desc: "Client communication assignments",              color: "#52606D", bg: "#EEF1F5", icon: HelpCircle },
     { name: "Accounts Admin",       desc: "Filings, invoices and payments",               color: "#C8A45D", bg: "#FFF4E0", icon: ReceiptText },
     { name: "Content Manager",      desc: "Website content management",                   color: "#e53e3e", bg: "#FFF0F0", icon: Globe },
-<<<<<<< HEAD
+
     { name: "Client",               desc: "Own services, files and reports",              color: "#94a3b8", bg: "#102A43", icon: UserCheck },
-=======
+
     { name: "Client",               desc: "Own services, files and reports",              color: "white", bg: "#102A43", icon: UserCheck },
->>>>>>> bf932b4ff5652e571c8151c35e997a035e1c8041
+
   ];
 
   const roleTabMap: Record<string, string[]> = {
@@ -1664,16 +1664,16 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               <div key={_raw?.id ?? svc} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
                 <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{svc}</div><div className="text-xs text-[#52606D]">{cat} · {price} · {clients} clients</div></div>
                 <div className="flex items-center gap-2">
-<<<<<<< HEAD
+
                   <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:active?"#EAF4F0":"#102A43",color:active?"#087F5B":"#94a3b8" }}>{active?"Active":"Inactive"}</span>
                   <button onClick={() => openEditService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
                   <button onClick={() => openDeleteService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
                   <button onClick={() => openEditService({ svc, cat, price, clients, active })} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Pricing</button>
-=======
+
                   <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:active?"#EAF4F0":"#102A43",color:active?"#087F5B":"#52606D" }}>{active?"Active":"Inactive"}</span>
                   <button onClick={() => openEditService(s)} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Edit</button>
                   <button onClick={() => openDeleteService(s)} className="text-xs px-2 py-1 rounded-lg" style={{ background:"#FFF0F0",color:"#e53e3e" }}>Delete</button>
->>>>>>> bf932b4ff5652e571c8151c35e997a035e1c8041
+
                 </div>
               </div>
             );})}
