@@ -4034,6 +4034,27 @@ export default function App() {
   });
   const [userRole, setUserRole] = useState<string>("Client");
 
+  useEffect(() => {
+    const titles: Record<string, string> = {
+      home: "Home",
+      about: "About Us",
+      services: "Services",
+      industries: "Industries",
+      insights: "Insights",
+      resources: "Resources",
+      faqs: "FAQs",
+      testimonials: "Testimonials",
+      careers: "Careers",
+      contact: "Contact",
+      book: "Book Consultation",
+      login: "Client Login",
+      dashboard: "Dashboard",
+      admin: "Admin Dashboard",
+    };
+    const baseTitle = "Finovara Chartered Accountants";
+    document.title = page === "home" ? baseTitle : `${titles[page] || page} | ${baseTitle}`;
+  }, [page]);
+
   // Make setUserRole accessible to LoginPage
   useEffect(() => {
     (window as any).setUserRole = setUserRole;

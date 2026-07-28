@@ -253,7 +253,14 @@ export function BookPage() {
                 </div>
               ))}
             </div>
-            <button onClick={() => setStep(1)} className="px-6 py-3 rounded-xl border-2 border-[#087F5B] text-[#087F5B] font-semibold text-sm" style={{ fontFamily: "Inter" }}>
+            <button onClick={() => {
+              setStep(1);
+              setSelectedService("");
+              setSelectedDate("");
+              setSelectedTime("");
+              setFormData({ name: '', email: '', phone: '', company: '', notes: '' });
+              setErrors({});
+            }} className="px-6 py-3 rounded-xl border-2 border-[#087F5B] text-[#087F5B] font-semibold text-sm" style={{ fontFamily: "Inter" }}>
               Book Another
             </button>
           </div>

@@ -1,15 +1,26 @@
 import { useState, useRef, useEffect, ChangeEvent, FocusEvent, FormEvent } from "react";
 import {
-  ChevronDown, MapPin, Briefcase, FileText, CheckCircle, AlertCircle, Loader2, Send, X, Users, Globe, Award, TrendingUp, Check, Trash2, UploadCloud, ArrowRight
+  ChevronDown, MapPin, Briefcase, FileText, CheckCircle, AlertCircle, Loader2, Clock, Hash, Users, Globe, Award, TrendingUp, Check, Trash2, UploadCloud, ArrowRight
 } from "lucide-react";
 import { Page } from "../../types/index";
-import { OPEN_POSITIONS } from "../../utils/constants";
+import { OPEN_POSITIONS, OpenPosition } from "../../utils/constants";
 import { Reveal } from "../../components/animations/Reveal";
 import { publicApi, Career } from "../../services/public";
 import { ApiError } from "../../lib/api";
 
 // Normalized shape the list renders; id is null for the static fallback.
-interface Position { id: string | null; title: string; dept: string; location: string; type: string; }
+interface Position {
+  id: string | null;
+  jobId: string;
+  title: string;
+  dept: string;
+  location: string;
+  type: string;
+  experience: string;
+  responsibilities: string[];
+  qualifications: string[];
+  skills: string[];
+}
 
 // --- Validation Constants ---
 const DISPOSABLE_EMAILS = ['tempmail.com', '10minutemail.com', 'yopmail.com', 'guerrillamail.com', 'mailinator.com'];
@@ -313,26 +324,39 @@ function ApplicationForm({ positionTitle, careerId, onComplete }: { positionTitl
 }
 
 // Static fallback in the frontend's own shape, used if the API has no vacancies.
-const FALLBACK_POSITIONS: Position[] = OPEN_POSITIONS.map(p => ({
-  id: null, title: p.title, dept: p.dept, location: p.location, type: p.type,
+const FALLBACK_POSITIONS: Position[] = OPEN_POSITIONS.map((p: OpenPosition) => ({
+  id: null,
+  jobId: p.jobId,
+  title: p.title,
+  dept: p.dept,
+  location: p.location,
+  type: p.type,
+  experience: p.experience,
+  responsibilities: p.responsibilities,
+  qualifications: p.qualifications,
+  skills: p.skills,
 }));
 
 export function CareersPage({ setPage }: { setPage: (p: Page) => void }) {
   const [openApp, setOpenApp] = useState<number | null>(null);
+  const [openDetails, setOpenDetails] = useState<number | null>(null);
   const [toast, setToast] = useState<{ status: 'success' | 'error', message: string } | null>(null);
   const [positions, setPositions] = useState<Position[]>(FALLBACK_POSITIONS);
 
   useEffect(() => {
+    // Always display the static list. Only patch in the API `id` so the
+    // application form can submit to the correct backend vacancy record.
     publicApi.careers()
       .then((careers: Career[]) => {
         if (careers.length) {
-          setPositions(careers.map(c => ({
-            id: c.id,
-            title: c.title,
-            dept: c.department ?? "—",
-            location: c.location ?? "—",
-            type: c.employment_type ?? "Full-time",
-          })));
+          setPositions(prev =>
+            prev.map(pos => {
+              const match = careers.find(
+                c => c.title.trim().toLowerCase() === pos.title.trim().toLowerCase()
+              );
+              return match ? { ...pos, id: match.id } : pos;
+            })
+          );
         }
       })
       .catch(() => { /* keep the static fallback list */ });
@@ -420,28 +444,102 @@ export function CareersPage({ setPage }: { setPage: (p: Page) => void }) {
           <Reveal direction="up" delay={0.2}>
           <div className="space-y-6">
             {positions.map((pos, i) => (
-              <div key={i} className={`bg-[#102A43] rounded-[2rem] p-8 md:p-10 border transition-all duration-300 relative overflow-hidden group hover:-translate-y-3 ${openApp === i ? 'border-[#087F5B] shadow-[0_0_40px_rgba(8,127,91,0.3)]' : 'border-white/10 hover:border-[#087F5B] hover:shadow-[0_0_40px_rgba(8,127,91,0.3)]'}`}>
+              <div key={i} className={`bg-[#102A43] rounded-[2rem] p-8 md:p-10 border transition-all duration-300 relative overflow-hidden group ${
+                openApp === i || openDetails === i
+                  ? 'border-[#087F5B] shadow-[0_0_40px_rgba(8,127,91,0.3)]'
+                  : 'border-white/10 hover:border-[#087F5B] hover:shadow-[0_0_40px_rgba(8,127,91,0.3)] hover:-translate-y-3'
+              }`}>
                 <div className="absolute inset-0 border-[3px] border-transparent group-hover:border-[#087F5B]/60 rounded-[2rem] transition-all duration-300"></div>
-                <div className="relative z-10 flex items-center justify-between flex-wrap gap-6">
-                  <div>
+
+                {/* Card Header */}
+                <div className="relative z-10 flex items-start justify-between flex-wrap gap-6">
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-extrabold text-white text-2xl mb-3" style={{ fontFamily: "Manrope" }}>{pos.title}</h3>
-                    <div className="flex flex-wrap items-center gap-5">
+                    <div className="flex flex-wrap items-center gap-3">
                       <span className="flex items-center gap-1.5 text-sm font-semibold text-[#94A3B8]" style={{ fontFamily: "Inter" }}>
                         <Briefcase size={16} style={{ color: "#087F5B" }} /> {pos.dept}
                       </span>
                       <span className="flex items-center gap-1.5 text-sm font-semibold text-[#94A3B8]" style={{ fontFamily: "Inter" }}>
                         <MapPin size={16} style={{ color: "#087F5B" }} /> {pos.location}
                       </span>
+                      {/* Employment type badge */}
                       <span className="text-xs font-bold px-4 py-1.5 rounded-full" style={{ background: "#EAF4F0", color: "#087F5B", fontFamily: "Inter" }}>{pos.type}</span>
+                      {/* Job ID badge */}
+                      <span className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: "rgba(200,164,93,0.15)", color: "#C8A45D", fontFamily: "Inter" }}>
+                        <Hash size={11} /> {pos.jobId}
+                      </span>
+                      {/* Experience badge */}
+                      <span className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)", color: "#94A3B8", fontFamily: "Inter" }}>
+                        <Clock size={11} /> {pos.experience}
+                      </span>
                     </div>
                   </div>
-                  <button onClick={() => setOpenApp(openApp === i ? null : i)}
-                    className={`px-8 py-3.5 rounded-full text-sm font-bold text-white transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer whitespace-nowrap ${openApp === i ? 'bg-[#102A43] hover:bg-[#102A43]/90' : 'bg-[#087F5B] hover:bg-[#065a40]'}`}
-                    style={{ fontFamily: "Inter" }}>
-                    {openApp === i ? 'Close Form' : 'Apply Now'}
-                  </button>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <button
+                      onClick={() => { setOpenDetails(openDetails === i ? null : i); setOpenApp(null); }}
+                      className="px-5 py-3 rounded-full text-sm font-bold border transition-all duration-300 hover:-translate-y-1 cursor-pointer whitespace-nowrap"
+                      style={{
+                        borderColor: openDetails === i ? "#087F5B" : "rgba(255,255,255,0.2)",
+                        color: openDetails === i ? "#087F5B" : "#94A3B8",
+                        background: "transparent",
+                        fontFamily: "Inter",
+                      }}>
+                      {openDetails === i ? "Hide Details" : "View Details"}
+                    </button>
+                    <button
+                      onClick={() => { setOpenApp(openApp === i ? null : i); setOpenDetails(null); }}
+                      className={`px-8 py-3.5 rounded-full text-sm font-bold text-white transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer whitespace-nowrap ${
+                        openApp === i ? 'bg-[#102A43] border border-white/20' : 'bg-[#087F5B] hover:bg-[#065a40]'
+                      }`}
+                      style={{ fontFamily: "Inter" }}>
+                      {openApp === i ? "Close Form" : "Apply Now"}
+                    </button>
+                  </div>
                 </div>
-                
+
+                {/* Expandable Job Details Panel */}
+                {openDetails === i && (
+                  <div className="relative z-10 mt-8 pt-8 border-t border-white/10 animate-in fade-in slide-in-from-top-4 duration-400">
+                    <div className="grid md:grid-cols-3 gap-8">
+                      {/* Responsibilities */}
+                      <div>
+                        <h4 className="text-xs font-extrabold uppercase tracking-widest mb-4" style={{ color: "#C8A45D", fontFamily: "Inter" }}>Key Responsibilities</h4>
+                        <ul className="space-y-2">
+                          {pos.responsibilities.map((r, ri) => (
+                            <li key={ri} className="flex items-start gap-2 text-sm text-white/75" style={{ fontFamily: "Inter" }}>
+                              <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#087F5B" }} />
+                              {r}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      {/* Qualifications */}
+                      <div>
+                        <h4 className="text-xs font-extrabold uppercase tracking-widest mb-4" style={{ color: "#C8A45D", fontFamily: "Inter" }}>Qualifications</h4>
+                        <ul className="space-y-2">
+                          {pos.qualifications.map((q, qi) => (
+                            <li key={qi} className="flex items-start gap-2 text-sm text-white/75" style={{ fontFamily: "Inter" }}>
+                              <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#087F5B" }} />
+                              {q}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      {/* Skills */}
+                      <div>
+                        <h4 className="text-xs font-extrabold uppercase tracking-widest mb-4" style={{ color: "#C8A45D", fontFamily: "Inter" }}>Skills Required</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {pos.skills.map((s, si) => (
+                            <span key={si} className="text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: "rgba(8,127,91,0.15)", color: "#4ade80", fontFamily: "Inter" }}>{s}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Application Form */}
                 <div className="relative z-10">
                   {openApp === i && <ApplicationForm positionTitle={pos.title} careerId={pos.id} onComplete={handleApplicationComplete} />}

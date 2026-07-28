@@ -275,12 +275,139 @@ export const FAQS = [
   },
 ];
 
-export const OPEN_POSITIONS = [
-  { title: "Senior Chartered Accountant", dept: "Audit & Assurance", type: "Full-time", location: "Hyderabad" },
-  { title: "GST Consultant", dept: "Indirect Tax", type: "Full-time", location: "Hyderabad / Remote" },
-  { title: "Payroll Executive", dept: "Payroll", type: "Full-time", location: "Bengaluru" },
-  { title: "Article Assistant (CA)", dept: "Articleship", type: "Internship", location: "Hyderabad" },
-  { title: "Financial Controller", dept: "Client Services", type: "Full-time", location: "Hyderabad" },
+export interface OpenPosition {
+  jobId: string;
+  title: string;
+  dept: string;
+  type: string;
+  location: string;
+  experience: string;
+  responsibilities: string[];
+  qualifications: string[];
+  skills: string[];
+}
+
+export const OPEN_POSITIONS: OpenPosition[] = [
+  {
+    jobId: "JOB-AUD-001",
+    title: "Senior Chartered Accountant",
+    dept: "Audit & Assurance",
+    type: "Full-time",
+    location: "Hyderabad",
+    experience: "5–8 Years",
+    responsibilities: [
+      "Lead statutory, internal, and tax audit engagements end-to-end",
+      "Review financial statements for accuracy and GAAP/Ind AS compliance",
+      "Manage client relationships and coordinate with audit teams",
+      "Prepare and present audit reports to senior management",
+      "Mentor and guide junior associates and article assistants",
+    ],
+    qualifications: [
+      "Qualified Chartered Accountant (ICAI)",
+      "5–8 years of post-qualification experience in audit",
+      "Prior experience in a CA firm or Big 4 preferred",
+    ],
+    skills: [
+      "Ind AS / IFRS", "Statutory & Tax Audit", "Financial Reporting",
+      "Team Leadership", "Client Management", "Tally / SAP",
+    ],
+  },
+  {
+    jobId: "JOB-TAX-001",
+    title: "GST Consultant",
+    dept: "Indirect Tax",
+    type: "Full-time",
+    location: "Hyderabad / Remote",
+    experience: "3–5 Years",
+    responsibilities: [
+      "Handle GST registration, return filing (GSTR-1, 3B, 9, 9C), and reconciliations",
+      "Advise clients on GST implications for transactions and business models",
+      "Manage GST notices, assessments, and departmental correspondence",
+      "Conduct input tax credit reviews and identify optimisation opportunities",
+      "Stay current with GST law amendments and communicate impact to clients",
+    ],
+    qualifications: [
+      "CA / CMA / LLB with specialisation in indirect tax",
+      "3–5 years of hands-on GST compliance and advisory experience",
+      "Experience handling GST audits and litigation preferred",
+    ],
+    skills: [
+      "GST Law & Compliance", "ITC Reconciliation", "E-invoicing",
+      "GST Portal", "MS Excel", "Client Advisory",
+    ],
+  },
+  {
+    jobId: "JOB-PAY-001",
+    title: "Payroll Executive",
+    dept: "Payroll",
+    type: "Full-time",
+    location: "Bengaluru",
+    experience: "2–4 Years",
+    responsibilities: [
+      "Process end-to-end monthly payroll for multiple client accounts",
+      "Manage PF, ESI, PT, and TDS computations and statutory filings",
+      "Generate payslips, full-and-final settlements, and payroll reports",
+      "Maintain employee master data and salary structures",
+      "Coordinate with clients for attendance data and reimbursement inputs",
+    ],
+    qualifications: [
+      "B.Com / M.Com / MBA (Finance / HR)",
+      "2–4 years of payroll processing experience",
+      "Familiarity with payroll software (GreytHR, Keka, or similar)",
+    ],
+    skills: [
+      "Payroll Processing", "PF & ESI Compliance", "TDS on Salary",
+      "GreytHR / Keka", "MS Excel", "Attention to Detail",
+    ],
+  },
+  {
+    jobId: "JOB-ART-001",
+    title: "Article Assistant (CA)",
+    dept: "Articleship",
+    type: "Internship",
+    location: "Hyderabad",
+    experience: "0–1 Years",
+    responsibilities: [
+      "Assist in statutory and internal audit assignments",
+      "Support tax return preparation and compliance filings",
+      "Perform vouching, verification, and reconciliation tasks",
+      "Prepare working papers and draft reports under supervision",
+      "Participate in client visits and data collection",
+    ],
+    qualifications: [
+      "CA Intermediate cleared (both groups preferred)",
+      "Registered with ICAI for articleship",
+      "Strong academic record in commerce / accounting",
+    ],
+    skills: [
+      "Accounting Fundamentals", "MS Excel", "Tally",
+      "Analytical Thinking", "Attention to Detail", "Team Collaboration",
+    ],
+  },
+  {
+    jobId: "JOB-FIN-001",
+    title: "Financial Controller",
+    dept: "Client Services",
+    type: "Full-time",
+    location: "Hyderabad",
+    experience: "8–12 Years",
+    responsibilities: [
+      "Oversee financial reporting, budgeting, and forecasting for key client accounts",
+      "Ensure timely month-end and year-end close processes",
+      "Manage a team of accountants and review their deliverables",
+      "Liaise with auditors, banks, and regulatory authorities",
+      "Provide strategic financial insights and MIS to client leadership",
+    ],
+    qualifications: [
+      "CA / CMA with 8–12 years of experience",
+      "Prior experience as a Financial Controller or Senior Finance Manager",
+      "Exposure to ERP systems (SAP, Oracle, or similar)",
+    ],
+    skills: [
+      "Financial Reporting", "Budgeting & Forecasting", "Team Management",
+      "ERP Systems", "MIS & Analytics", "Stakeholder Communication",
+    ],
+  },
 ];
 
 export const INDUSTRY_DETAILS: Record<string, { services: string[]; compliance: string[]; color: string }> = {
