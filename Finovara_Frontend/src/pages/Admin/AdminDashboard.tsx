@@ -1169,7 +1169,11 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                     <XAxis dataKey="name" tick={{ fill: "#52606D", fontSize: 11 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} interval={0} />
                     <YAxis allowDecimals={false} tick={{ fill: "#52606D", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12 }} />
+                    <Tooltip 
+                      cursor={{ fill: "rgba(255,255,255,0.04)" }} 
+                      contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12, boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }} 
+                      wrapperStyle={{ pointerEvents: "none", zIndex: 100 }}
+                    />
                     <Bar dataKey="value" radius={[4, 4, 0, 0]} fill={CHART.emerald} maxBarSize={46}>
                       <LabelList dataKey="value" position="top" fill="#cbd5e1" fontSize={11} />
                     </Bar>
@@ -1186,7 +1190,12 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                     <Pie data={invoiceSplit} dataKey="value" nameKey="name" innerRadius={54} outerRadius={80} paddingAngle={2} stroke="#102A43" strokeWidth={2}>
                       {invoiceSplit.map((_e, i) => <Cell key={i} fill={INV_COLORS[i]} />)}
                     </Pie>
-                    <Tooltip formatter={(v: any) => _inr(Number(v))} contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12 }} />
+                    <Tooltip 
+                      formatter={(v: any) => _inr(Number(v))} 
+                      contentStyle={{ background: "#0d1f30", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 12, boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }} 
+                      wrapperStyle={{ pointerEvents: "none", zIndex: 100 }} 
+                      allowEscapeViewBox={{ x: true, y: true }}
+                    />
                     <Legend formatter={(v) => <span style={{ color: "#cbd5e1", fontSize: 12 }}>{v}</span>} />
                   </PieChart>
                 </ResponsiveContainer>
