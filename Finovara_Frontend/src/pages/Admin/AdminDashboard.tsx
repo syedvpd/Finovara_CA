@@ -135,6 +135,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const [audits, setAudits] = useState<any[]>([]);
   const [compliance, setCompliance] = useState<any[]>([]);
   const [docStats, setDocStats] = useState<{ total: number; pending: number; storage: string; cats: any[] }>({ total: 0, pending: 0, storage: "0 B", cats: [] });
+  const [documents, setDocuments] = useState<any[]>([]);
   const [docUploadForm, setDocUploadForm] = useState<{ clientId: string; category: string; file: File | null }>({ clientId: "", category: "general", file: null });
   const [queries, setQueries] = useState<any[]>([]);
   const [engagements, setEngagements] = useState<any[]>([]);
@@ -188,6 +189,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       setLeads(_rowsOf(r[4]).map((l: any) => ({ name: l.company_name ?? l.name, contact: l.name, source: _tc(l.source),
         service: "—", status: l.status, followUp: "—", _raw: l })));
       const allDocs = _rowsOf(r[5]);
+      setDocuments(allDocs);
       const pendingDocs = allDocs.filter((d: any) => _lc(d.status) === "pending");
       setReviewDocs(pendingDocs.map((d: any) => ({ id: d.id, doc: d.name, client: d.client_id?.slice(0, 8) ?? "—", uploaded: _date(d.created_at), reviewer: _tc(d.status) })));
       const fmtBytes = (n: number) => n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : n >= 1e3 ? `${(n / 1e3).toFixed(1)} KB` : `${n} B`;
@@ -1656,7 +1658,7 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
                     <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{_tc(cat)} Documents</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: cat, file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button>
+                    <button onClick={() => setActionModal({title: `${_tc(cat)} Documents`, type: 'browse', item: { category: cat }})} className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button>
                     <button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: cat, file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button>
                   </div>
                 </div>
@@ -2062,7 +2064,24 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
               <h3 className="text-lg font-bold text-[#102A43]">{actionModal.title}</h3>
               <button onClick={() => setActionModal(null)} className="text-[#52606D] hover:text-[#102A43]"><X size={20} /></button>
             </div>
-            {actionModal.type === 'upload' ? (
+            {actionModal.type === 'browse' ? (
+              <div className="space-y-3 mb-5 text-left max-h-80 overflow-y-auto pr-2">
+                {documents.filter(d => _lc(d.file_category) === _lc(actionModal.item?.category)).length === 0 ? (
+                  <div className="text-center text-sm text-[#52606D] py-6">No documents found in this folder.</div>
+                ) : documents.filter(d => _lc(d.file_category) === _lc(actionModal.item?.category)).map(d => (
+                  <div key={d.id} className="flex items-center justify-between p-3 border border-[#E2E8F0] rounded-xl bg-white">
+                    <div className="flex items-center gap-3">
+                      <FileText size={16} style={{ color:"#087F5B" }} />
+                      <div>
+                        <div className="font-semibold text-xs text-[#102A43]">{d.name}</div>
+                        <div className="text-[10px] text-[#52606D]">{(d.file_size / 1024).toFixed(1)} KB • {_date(d.created_at)}</div>
+                      </div>
+                    </div>
+                    {d.file_url && <a href={d.file_url} target="_blank" rel="noreferrer" className="text-xs text-[#087F5B] font-semibold hover:underline">View</a>}
+                  </div>
+                ))}
+              </div>
+            ) : actionModal.type === 'upload' ? (
               <div className="space-y-4 mb-5 text-left">
                 <div>
                   <label className="block text-xs font-semibold text-[#102A43] mb-1">Client *</label>
