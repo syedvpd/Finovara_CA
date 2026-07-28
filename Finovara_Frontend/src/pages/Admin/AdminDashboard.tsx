@@ -1642,8 +1642,27 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
       );
       case "Document Management": return (
         <div>
-          <div className="grid grid-cols-3 gap-4 mb-6">{[{l:"Total Docs",v:"23",color:"#087F5B"},{l:"Pending Review",v:"0",color:"#C8A45D"},{l:"Storage Used",v:"2.8 MB",color:"#102A43"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-2xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D] mt-1">{l}</div></div>))}</div>
-          <div className="space-y-3">{[{cat:"General",count:"23 files",size:"2.8 MB",lastUp:"28 Jul"}].map(({cat,count,size,lastUp}: any) => (<div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div><div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{cat}</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div></div><div className="flex gap-2"><button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: "general", file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button><button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: "general", file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button></div></div>))}</div>
+          <div className="grid grid-cols-3 gap-4 mb-6">{[{l:"Total Docs",v:String(docStats.total),color:"#087F5B"},{l:"Pending Review",v:String(docStats.pending),color:"#C8A45D"},{l:"Storage Used",v:docStats.storage,color:"#102A43"}].map(({l,v,color}) => (<div key={l} className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center"><div className="text-2xl font-extrabold" style={{ fontFamily:"Manrope",color }}>{v}</div><div className="text-xs text-[#52606D] mt-1">{l}</div></div>))}</div>
+          <div className="space-y-3">
+            {DOC_CATEGORIES.map(cat => {
+              const c = docStats.cats.find(x => _lc(x.cat) === _lc(cat));
+              const count = c ? c.count : "0 files";
+              const size = c ? c.size : "0 B";
+              const lastUp = c ? c.lastUp : "—";
+              return (
+                <div key={cat} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#E2E8F0]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:"#EAF4F0" }}><Folder size={16} style={{ color:"#087F5B" }} /></div>
+                    <div><div className="font-bold text-[#102A43] text-sm" style={{ fontFamily:"Manrope" }}>{_tc(cat)} Documents</div><div className="text-xs text-[#52606D]">{count} · {size} · Updated: {lastUp}</div></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: cat, file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg bg-white border border-[#E2E8F0]">Browse</button>
+                    <button onClick={() => { setDocUploadForm({ clientId: clients[0]?._raw?.id ?? "", category: cat, file: null }); setActionModal({title: 'Upload File', type: 'upload'}); }}  className="text-xs px-2 py-1 rounded-lg" style={{ background:"#EAF4F0",color:"#087F5B" }}>Upload</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       );
       case "Audit Workflow": return (
