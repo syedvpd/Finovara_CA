@@ -1021,16 +1021,16 @@ export function AdminDashboardPage({ setPage, userRole }: { setPage: (p: Page) =
   const roles = [
     { name: "Super Admin",          desc: "Complete system access",                      color: "#e53e3e", bg: "#FFF0F0", icon: Shield },
     { name: "Managing Partner",     desc: "Firm reports and approvals",                  color: "#087F5B", bg: "#EAF4F0", icon: Star },
-    { name: "Chartered Accountant", desc: "Assigned client and professional work",        color: "white", bg: "#EEF1F5", icon: Briefcase },
+    { name: "Chartered Accountant", desc: "Assigned client and professional work",        color: "#52606D", bg: "#EEF1F5", icon: Briefcase },
     { name: "Audit Manager",        desc: "Audit teams and assignments",                  color: "#C8A45D", bg: "#FFF4E0", icon: FileCheck },
     { name: "Tax Manager",          desc: "Tax services and filings",                     color: "#087F5B", bg: "#EAF4F0", icon: FileText },
-    { name: "GST Consultant",       desc: "GST clients and returns",                      color: "white", bg: "#EEF1F5", icon: BarChart2 },
+    { name: "GST Consultant",       desc: "GST clients and returns",                      color: "#52606D", bg: "#EEF1F5", icon: BarChart2 },
     { name: "Partner Accountant",   desc: "Books, reconciliations and reports",           color: "#C8A45D", bg: "#FFF4E0", icon: _PieChartIcon },
     { name: "Payroll Executive",    desc: "Payroll module and professional work",          color: "#087F5B", bg: "#EAF4F0", icon: Users },
-    { name: "Relationship Manager", desc: "Client communication assignments",              color: "white", bg: "#EEF1F5", icon: HelpCircle },
+    { name: "Relationship Manager", desc: "Client communication assignments",              color: "#52606D", bg: "#EEF1F5", icon: HelpCircle },
     { name: "Accounts Admin",       desc: "Filings, invoices and payments",               color: "#C8A45D", bg: "#FFF4E0", icon: ReceiptText },
     { name: "Content Manager",      desc: "Website content management",                   color: "#e53e3e", bg: "#FFF0F0", icon: Globe },
-    { name: "Client",               desc: "Own services, files and reports",              color: "#52606D", bg: "#102A43", icon: UserCheck },
+    { name: "Client",               desc: "Own services, files and reports",              color: "white", bg: "#102A43", icon: UserCheck },
   ];
 
   const roleTabMap: Record<string, string[]> = {
