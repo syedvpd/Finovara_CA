@@ -83,7 +83,7 @@ export function ServicesPage({ setPage }: { setPage: (p: Page) => void }) {
 
                 {"features" in service && service.features && (
                   <div className="mb-8">
-                    <h4 className="font-bold text-white mb-3" style={{ fontFamily: "Manrope" }}>Features</h4>
+                    <h4 className="font-bold text-black mb-3" style={{ fontFamily: "Manrope" }}>Features</h4>
                     <div className="grid sm:grid-cols-2 gap-3">
                       {service.features.map((f: string) => (
                           <div key={f} className="flex items-start gap-2 bg-white p-3 rounded-xl border border-[#E2E8F0]">
@@ -97,7 +97,7 @@ export function ServicesPage({ setPage }: { setPage: (p: Page) => void }) {
 
                 {"portalFeatures" in service && service.portalFeatures && (
                   <div className="mb-8">
-                    <h4 className="font-bold text-white mb-3" style={{ fontFamily: "Manrope" }}>Portal Features</h4>
+                    <h4 className="font-bold text-black mb-3" style={{ fontFamily: "Manrope" }}>Portal Features</h4>
                     <div className="grid sm:grid-cols-2 gap-3">
                       {service.portalFeatures.map((pf: string) => (
                           <div key={pf} className="flex items-start gap-2 bg-white p-3 rounded-xl border border-[#E2E8F0]">
@@ -111,7 +111,7 @@ export function ServicesPage({ setPage }: { setPage: (p: Page) => void }) {
 
                 <div className="grid md:grid-cols-2 gap-6 mb-8">
                   <div>
-                    <h4 className="font-bold text-white mb-3" style={{ fontFamily: "Manrope" }}>Key Benefits</h4>
+                    <h4 className="font-bold text-black mb-3" style={{ fontFamily: "Manrope" }}>Key Benefits</h4>
                     <div className="space-y-2">
                       {["Expert handling by qualified CAs", "100% regulatory compliance", "Transparent pricing & timelines", "Dedicated relationship manager"].map(b => (
                         <div key={b} className="flex items-start gap-2">
@@ -122,7 +122,7 @@ export function ServicesPage({ setPage }: { setPage: (p: Page) => void }) {
                     </div>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-3" style={{ fontFamily: "Manrope" }}>Deliverables</h4>
+                    <h4 className="font-bold text-black mb-3" style={{ fontFamily: "Manrope" }}>Deliverables</h4>
                     <div className="space-y-2">
                       {(("deliverables" in service && service.deliverables) || ["Comprehensive compliance filings", "Detailed advisory reports", "Digital document delivery", "Ongoing compliance monitoring"]).map((d: string) => (
                         <div key={d} className="flex items-start gap-2">
@@ -136,7 +136,7 @@ export function ServicesPage({ setPage }: { setPage: (p: Page) => void }) {
 
                 {"workflow" in service && service.workflow && (
                   <div className="mb-8 p-6 bg-white rounded-2xl border border-[#E2E8F0]">
-                    <h4 className="font-bold text-white mb-4" style={{ fontFamily: "Manrope" }}>Audit Workflow</h4>
+                    <h4 className="font-bold text-black mb-4" style={{ fontFamily: "Manrope" }}>Audit Workflow</h4>
                     <div className="flex flex-wrap gap-2 mb-6">
                       {service.workflow.map((item: any, idx: number) => (
                         <div key={item.step} className="flex items-center gap-2">
